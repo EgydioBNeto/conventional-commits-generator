@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import subprocess
+import sys
 
 # ANSI color codes
 RED = '\033[91m'
@@ -24,28 +25,31 @@ def choose_commit_type():
     ]
 
     while True:
-        # Choose commit type
-        print(YELLOW + "Choose the commit type:" + RESET)
-        for i, commit_type_explanation in enumerate(commit_types_explanation, start=1):
-            print(f"{i}. {commit_type_explanation}")
+        try:
+            # Choose commit type
+            print(YELLOW + "Choose the commit type:" + RESET)
+            for i, commit_type_explanation in enumerate(commit_types_explanation, start=1):
+                print(f"{i}. {commit_type_explanation}")
 
-        user_input = read_input(YELLOW + "Choose the commit type or enter directly (e.g., feat, fix, chore):" + RESET)
+            user_input = read_input(YELLOW + "Choose the commit type or enter directly (e.g., feat, fix, chore):" + RESET)
 
-        # Check if the user input is a number
-        if user_input.isdigit() and 1 <= int(user_input) <= len(commit_types_explanation):
-            commit_type = commit_types_explanation[int(user_input) - 1].split()[0]
-        elif user_input.lower() in [ct.split()[0].lower() for ct in commit_types_explanation]:
-            commit_type = user_input.lower()
-        else:
-            print(RED + "Invalid choice." + RESET)
-            continue
+            # Check if the user input is a number
+            if user_input.isdigit() and 1 <= int(user_input) <= len(commit_types_explanation):
+                commit_type = commit_types_explanation[int(user_input) - 1].split()[0]
+            elif user_input.lower() in [ct.split()[0].lower() for ct in commit_types_explanation]:
+                commit_type = user_input.lower()
+            else:
+                print(RED + "Invalid choice." + RESET)
+                continue
 
-        # Validate if the commit type is not empty
-        if commit_type.strip():
-            return commit_type
-        else:
-            print(RED + "Invalid choice. Commit type cannot be empty." + RESET)
-
+            # Validate if the commit type is not empty
+            if commit_type.strip():
+                return commit_type
+            else:
+                print(RED + "Invalid choice. Commit type cannot be empty." + RESET)
+        except KeyboardInterrupt:
+            print("\nExiting the script. Goodbye!")
+            sys.exit()
 
 def generate_commit_message():
     commit_type = choose_commit_type()
