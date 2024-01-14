@@ -9,15 +9,8 @@ repos:
     -   id: check-json
     -   id: detect-aws-credentials
     -   id: detect-private-key
-    -   id: name-tests-test
-        args: [ --pytest-test-first ]
-
--   repo: https://github.com/pre-commit/mirrors-pylint
-    rev: v3.0.0a5
+-   repo: https://github.com/doublify/pre-commit-rust
+    rev: master
     hooks:
-    -   id: pylint
-
--   repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v1.7.1
-    hooks:
-    -   id: mypy
+    -   id: fmt
+    -   id: cargo-check
