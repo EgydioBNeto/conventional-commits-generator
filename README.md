@@ -13,22 +13,23 @@ This script provides a simple yet powerful interactive interface for creating we
 ```text
 $ ccg
 
-Choose the commit type:
 1. feat - A new feature for the user or a particular enhancement
 2. fix - A bug fix for the user or a particular issue
 3. chore - Routine tasks, maintenance, or minor updates
 ...
 
-Choose the commit type or enter directly (e.g., feat, fix, chore): feat
+Choose the commit type: feat
 
-Enter the scope (optional, press Enter to skip): authentication
+Enter the scope (optional): authentication
+
+Is this a BREAKING CHANGE? (y/n): n
 
 Enter the commit message: implement OAuth login
 
 Commit message:
 feat(authentication): implement OAuth login
 
-Do you want to confirm this commit? (y/n): y
+Confirm this commit? (y/n): y
 
 New commit successfully made.
 
