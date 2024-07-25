@@ -89,10 +89,20 @@ def git_add():
 def git_commit(commit_message):
     """Run 'git commit' with the provided message."""
     try:
-        subprocess.run(["git", "commit", "-m", commit_message], check=True)
-        print(GREEN + "New commit successfully made." + RESET)
-    except subprocess.CalledProcessError:
-        print(RED + "Error during 'git commit'" + RESET)
+        result = subprocess.run(
+            ["git", "commit", "-m", commit_message],
+            check=True,
+            capture_output=True,
+            text=True
+        )
+        if result.returncode == 0:
+            print(GREEN + "New commit successfully made." + RESET)
+    except subprocess.CalledProcessError as error:
+        if "nothing to commit" in error.stderr.decode():
+            print(YELLOW + "No changes to commit." + RESET)
+        else:
+            print(RED + "Error during 'git commit':" + RESET)
+            print(RED + error.stderr.decode() + RESET)
         sys.exit(1)
 
 def git_push():
