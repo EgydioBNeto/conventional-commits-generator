@@ -30,8 +30,7 @@ def choose_commit_type():
     while True:
         try:
             print(YELLOW + "Choose the commit type:" + RESET)
-            for i, commit_type_explanation in enumerate(
-                commit_types_explanation, start=1):
+            for i, commit_type_explanation in enumerate(commit_types_explanation, start=1):
                 print(f"{i}. {commit_type_explanation}")
 
             user_input = read_input(
@@ -40,15 +39,12 @@ def choose_commit_type():
             )
 
             # Check if the user input is a number
-            if user_input.isdigit() and 1 <= int(user_input) <= len(
-                commit_types_explanation):
-                commit_type = commit_types_explanation[
-                    int(user_input) - 1].split()[0]
-            elif user_input.lower() in [
-                ct.split()[0].lower() for ct in commit_types_explanation]:
+            if user_input.isdigit() and 1 <= int(user_input) <= len(commit_types_explanation):
+                commit_type = commit_types_explanation[int(user_input) - 1].split()[0]
+            elif user_input.lower() in [ct.split()[0].lower() for ct in commit_types_explanation]:
                 commit_type = user_input.lower()
             else:
-                print(RED + "Invalid choice." + RESET)
+                print(RED + "Invalid choice. Please select a valid option." + RESET)
                 continue
 
             if commit_type.strip():
@@ -84,6 +80,7 @@ def main():
     try:
         subprocess.run(["git", "add", "."], capture_output=True, check=True)
     except subprocess.CalledProcessError as error:
+        print(RED + "Error during 'git add':" + RESET)
         print(RED + error.stderr.decode() + RESET)
         sys.exit(1)
     except FileNotFoundError:
@@ -101,13 +98,13 @@ def main():
             if push == "y":
                 try:
                     subprocess.run(["git", "push"], check=True)
-                    print(GREEN + "Changes pushed to the repository." + RESET)
-                except subprocess.CalledProcessError as error:
-                    print(RED + error.stderr.decode() + RESET)
+                    print(GREEN + "Changes pushed." + RESET)
+                except subprocess.CalledProcessError:
+                    print(RED + "Error during 'git push'" + RESET)
             else:
                 print(RED + "Push canceled." + RESET)
-        except subprocess.CalledProcessError as error:
-            print(RED + error.stderr.decode() + RESET)
+        except subprocess.CalledProcessError:
+            print(RED + "Error during 'git commit'" + RESET)
 
 if __name__ == "__main__":
     main()
