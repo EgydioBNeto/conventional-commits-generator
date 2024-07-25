@@ -121,17 +121,16 @@ def main():
     """Main function to handle git operations and user input."""
     git_add()
 
+    if len(sys.argv) > 1 and sys.argv[1] == "--push":
+        git_push()
+        sys.exit(0)
+
     check_and_notify_pre_commit()
 
     commit_message = generate_commit_message()
 
     if commit_message:
         git_commit(commit_message)
-
-        if read_input(YELLOW + "Do you want to push the changes? (y/n)" + RESET).lower() == "y":
-            git_push()
-        else:
-            print(RED + "Push canceled." + RESET)
 
 if __name__ == "__main__":
     main()
