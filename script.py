@@ -110,10 +110,9 @@ def check_and_notify_pre_commit():
         with open(".pre-commit-config.yaml") as f:
             try:
                 subprocess.run(["pre-commit", "--version"], check=True, capture_output=True)
-                print(GREEN + "pre-commit is installed." + RESET)
             except (FileNotFoundError, subprocess.CalledProcessError):
-                print(RED + "pre-commit is not installed. Please install pre-commit to use the hooks." + RESET)
-                sys.exit(1)  # Exit the script if pre-commit is not installed
+                print(RED + "pre-commit is not installed." + RESET)
+                sys.exit(1)
     except FileNotFoundError:
         pass
 
