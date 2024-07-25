@@ -135,8 +135,7 @@ def main():
 
     if commit_message:
         git_commit(commit_message)
-
-    git_push()
+        git_push()
 
 if __name__ == "__main__":
     main()
