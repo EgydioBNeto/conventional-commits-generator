@@ -98,11 +98,11 @@ def git_commit(commit_message):
         if result.returncode == 0:
             print(GREEN + "New commit successfully made." + RESET)
     except subprocess.CalledProcessError as error:
-        if "nothing to commit" in error.stderr.decode():
+        if "nothing to commit" in error.stderr.encode():
             print(YELLOW + "No changes to commit." + RESET)
         else:
             print(RED + "Error during 'git commit':" + RESET)
-            print(RED + error.stderr.decode() + RESET)
+            print(RED + error.stderr.encode() + RESET)
         sys.exit(1)
 
 def git_push():
