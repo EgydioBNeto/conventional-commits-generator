@@ -17,28 +17,28 @@ def read_input(prompt):
 def choose_commit_type():
     """Prompt the user to choose a commit type."""
     commit_types_explanation = [
-        "feat - A new feature for the user or a particular enhancement",
-        "fix - A bug fix for the user or a particular issue",
-        "chore - Routine tasks, maintenance, or minor updates",
-        "refactor - Code refactoring without changing its behavior",
-        "style - Code style changes, formatting, or cosmetic improvements",
-        "docs - Documentation-related changes",
-        "test - Adding or modifying tests",
-        "build - Changes that affect the build system or external dependencies",
+        "feat       - A new feature for the user or a particular enhancement",
+        "fix        - A bug fix for the user or a particular issue",
+        "chore      - Routine tasks, maintenance, or minor updates",
+        "refactor   - Code refactoring without changing its behavior",
+        "style      - Code style changes, formatting, or cosmetic improvements",
+        "docs       - Documentation-related changes",
+        "test       - Adding or modifying tests",
+        "build      - Changes that affect the build system or external dependencies",
+        "revert     - Reverts a previous commit",
+        "ci        - Changes to our CI configuration files and scripts",
+        "perf      - A code change that improves performance"
     ]
 
-    print(YELLOW + "Choose the commit type:" + RESET)
     for i, explanation in enumerate(commit_types_explanation, start=1):
         print(f"{i}. {explanation}")
 
     while True:
         try:
             user_input = read_input(
-                YELLOW + "Choose the commit type or enter directly " +
-                "(e.g., feat, fix, chore):" + RESET
+                YELLOW + "Choose the commit type" + RESET
             )
 
-            # Validate user input
             if user_input.isdigit() and 1 <= int(user_input) <= len(commit_types_explanation):
                 commit_type = commit_types_explanation[int(user_input) - 1].split()[0]
             elif user_input.lower() in [ct.split()[0].lower() for ct in commit_types_explanation]:
@@ -54,25 +54,45 @@ def choose_commit_type():
 
 def generate_commit_message():
     """Generate the commit message based on user input."""
-    commit_type = choose_commit_type()
-    scope = read_input(YELLOW + "Enter the scope (optional, press Enter to skip)" + RESET)
-
     while True:
-        message = read_input(YELLOW + "Enter the commit message" + RESET)
-        if message.strip():
-            break
+        try:
+            commit_type = choose_commit_type()
+            scope = read_input(YELLOW + "Enter the scope (optional)" + RESET)
 
-    commit_message = f"{commit_type}({scope}): {message}" if scope else f"{commit_type}: {message}"
+            while True:
+                breaking = read_input(YELLOW + "Is this a BREAKING CHANGE? (y/n)" + RESET).lower()
+                if breaking not in ('y', 'n'):
+                    print(RED + "Invalid choice. Please enter 'y' or 'n'." + RESET)
+                    continue
+                breaking_ind = "!" if breaking == "y" else ""
+                break
 
-    print(YELLOW + "Commit message:" + RESET)
-    print(GREEN + commit_message + RESET)
+            while True:
+                message = read_input(YELLOW + "Enter the commit message" + RESET)
+                if message.strip():
+                    break
+                print(RED + "Commit message cannot be empty." + RESET)
 
-    confirm = read_input(YELLOW + "Do you want to confirm this commit? (y/n)" + RESET).lower()
-    if confirm != "y":
-        print(RED + "Commit canceled." + RESET)
-        return None
+            header = f"{commit_type}{breaking_ind}({scope}): " if scope else f"{commit_type}: "
+            body= f"{message}"
+            commit_message = f"{header}{body}"
+            print(YELLOW + "Commit message:" + RESET)
+            print(GREEN + commit_message + RESET)
 
-    return commit_message
+            while True:
+                confirm = read_input(YELLOW + "Confirm this commit? (y/n)" + RESET).lower()
+                if confirm not in ('y', 'n'):
+                    print(RED + "Invalid choice. Please enter 'y' or 'n'." + RESET)
+                    continue
+                if confirm == "y":
+                    break
+                if confirm == "n":
+                    print("\nExiting the script. Goodbye!")
+                    sys.exit()
+            return commit_message
+        except KeyboardInterrupt:
+            print("\nExiting the script. Goodbye!")
+            sys.exit()
 
 def git_add():
     """Run 'git add' to stage changes."""
