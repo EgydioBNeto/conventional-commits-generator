@@ -97,6 +97,10 @@ def git_commit(commit_message):
 
 def git_push():
     """Run 'git push' to push changes."""
+    confirm = read_input(YELLOW + "Do you want to push these changes? (y/n)" + RESET).lower()
+    if confirm != "y":
+        print(RED + "Changes not pushed." + RESET)
+        sys.exit(0)
     try:
         subprocess.run(["git", "push"], check=True)
         print(GREEN + "Changes pushed." + RESET)
@@ -131,6 +135,8 @@ def main():
 
     if commit_message:
         git_commit(commit_message)
+
+    git_push()
 
 if __name__ == "__main__":
     main()
