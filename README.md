@@ -30,7 +30,12 @@ feat(authentication): implement OAuth login
 
 Do you want to confirm this commit? (y/n): y
 
-New commit successfully made, push to the repository
+New commit successfully made.
+
+Do you want to push these changes? (y/n): y
+
+Changes pushed.
+
 ```
 
 ## Features
@@ -38,6 +43,7 @@ New commit successfully made, push to the repository
 ### Commands
 
 - **ccg** : Generate a new commit.
+- **ccg --push** : Just run git push.
 
 ## Requirements
 
