@@ -107,9 +107,10 @@ def git_push():
 def check_and_notify_pre_commit():
     """Check for .pre-commit-config.yaml and notify if pre-commit is needed."""
     try:
-        with open(".pre-commit-config.yaml") as f:
+        with open(".pre-commit-config.yaml"):
             try:
-                subprocess.run(["pre-commit", "--version"], check=True, capture_output=True)
+                if subprocess.run(["pre-commit", "--version"], check=True, capture_output=True):
+                    subprocess.run(["pre-commit", "install"], check=True, capture_output=True)
             except (FileNotFoundError, subprocess.CalledProcessError):
                 print(RED + "pre-commit is not installed." + RESET)
                 sys.exit(1)
