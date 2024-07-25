@@ -27,18 +27,18 @@ def choose_commit_type():
         "build - Changes that affect the build system or external dependencies",
     ]
 
+    print(YELLOW + "Choose the commit type:" + RESET)
+    for i, explanation in enumerate(commit_types_explanation, start=1):
+        print(f"{i}. {explanation}")
+
     while True:
         try:
-            print(YELLOW + "Choose the commit type:" + RESET)
-            for i, commit_type_explanation in enumerate(commit_types_explanation, start=1):
-                print(f"{i}. {commit_type_explanation}")
-
             user_input = read_input(
                 YELLOW + "Choose the commit type or enter directly " +
                 "(e.g., feat, fix, chore):" + RESET
             )
 
-            # Check if the user input is a number
+            # Validate user input
             if user_input.isdigit() and 1 <= int(user_input) <= len(commit_types_explanation):
                 commit_type = commit_types_explanation[int(user_input) - 1].split()[0]
             elif user_input.lower() in [ct.split()[0].lower() for ct in commit_types_explanation]:
@@ -47,8 +47,7 @@ def choose_commit_type():
                 print(RED + "Invalid choice. Please select a valid option." + RESET)
                 continue
 
-            if commit_type.strip():
-                return commit_type
+            return commit_type
         except KeyboardInterrupt:
             print("\nExiting the script. Goodbye!")
             sys.exit()
@@ -75,8 +74,8 @@ def generate_commit_message():
 
     return commit_message
 
-def main():
-    """Main function to handle git operations and user input."""
+def git_add():
+    """Run 'git add' to stage changes."""
     try:
         subprocess.run(["git", "add", "."], capture_output=True, check=True)
     except subprocess.CalledProcessError as error:
@@ -87,24 +86,52 @@ def main():
         print(RED + "Git is not installed. Please install Git and try again." + RESET)
         sys.exit(1)
 
+def git_commit(commit_message):
+    """Run 'git commit' with the provided message."""
+    try:
+        subprocess.run(["git", "commit", "-m", commit_message], check=True)
+        print(GREEN + "New commit successfully made." + RESET)
+    except subprocess.CalledProcessError:
+        print(RED + "Error during 'git commit'" + RESET)
+        sys.exit(1)
+
+def git_push():
+    """Run 'git push' to push changes."""
+    try:
+        subprocess.run(["git", "push"], check=True)
+        print(GREEN + "Changes pushed." + RESET)
+    except subprocess.CalledProcessError:
+        print(RED + "Error during 'git push'" + RESET)
+        sys.exit(1)
+
+def check_and_notify_pre_commit():
+    """Check for .pre-commit-config.yaml and notify if pre-commit is needed."""
+    try:
+        with open(".pre-commit-config.yaml") as f:
+            try:
+                subprocess.run(["pre-commit", "--version"], check=True, capture_output=True)
+                print(GREEN + "pre-commit is installed." + RESET)
+            except (FileNotFoundError, subprocess.CalledProcessError):
+                print(RED + "pre-commit is not installed. Please install pre-commit to use the hooks." + RESET)
+                sys.exit(1)  # Exit the script if pre-commit is not installed
+    except FileNotFoundError:
+        pass
+
+def main():
+    """Main function to handle git operations and user input."""
+    git_add()
+
+    check_and_notify_pre_commit()
+
     commit_message = generate_commit_message()
 
     if commit_message:
-        try:
-            subprocess.run(["git", "commit", "-m", commit_message], check=True)
-            print(GREEN + "New commit successfully made." + RESET)
+        git_commit(commit_message)
 
-            push = read_input(YELLOW + "Do you want to push the changes? (y/n)" + RESET).lower()
-            if push == "y":
-                try:
-                    subprocess.run(["git", "push"], check=True)
-                    print(GREEN + "Changes pushed." + RESET)
-                except subprocess.CalledProcessError:
-                    print(RED + "Error during 'git push'" + RESET)
-            else:
-                print(RED + "Push canceled." + RESET)
-        except subprocess.CalledProcessError:
-            print(RED + "Error during 'git commit'" + RESET)
+        if read_input(YELLOW + "Do you want to push the changes? (y/n)" + RESET).lower() == "y":
+            git_push()
+        else:
+            print(RED + "Push canceled." + RESET)
 
 if __name__ == "__main__":
     main()
