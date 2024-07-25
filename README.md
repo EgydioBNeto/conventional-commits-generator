@@ -42,6 +42,7 @@ New commit successfully made, push to the repository
 ## Requirements
 
 - **Python3**
+- **Git**
 
 ## Installation
 
