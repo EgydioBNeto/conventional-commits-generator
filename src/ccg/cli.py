@@ -1,23 +1,87 @@
 """Command-line interface for Conventional Commits Generator."""
 
 import argparse
+import os
 import sys
 import traceback
 from typing import List, Optional
 
 from ccg import __version__
-from ccg.core import (
-    GREEN,
-    RED,
-    RESET,
-    YELLOW,
-    check_and_install_pre_commit,
-    confirm_push,
-    generate_commit_message,
-    git_add,
-    git_commit,
-    git_push,
-)
+from ccg.core import (check_and_install_pre_commit, confirm_push,
+                      generate_commit_message, git_add, git_commit, git_push)
+
+# Enhanced terminal colors and styles
+RESET = "\033[0m"
+BOLD = "\033[1m"
+GREEN = "\033[92m"
+YELLOW = "\033[93m"
+RED = "\033[91m"
+BLUE = "\033[94m"
+CYAN = "\033[96m"
+MAGENTA = "\033[95m"
+
+# Symbols for different message types
+CHECK = "✓"
+ARROW = "→"
+CROSS = "✗"
+INFO = "ℹ"
+STAR = "★"
+WARNING = "⚠"
+
+# Get terminal width for centered text
+try:
+    TERM_WIDTH = os.get_terminal_size().columns
+except (AttributeError, OSError):
+    TERM_WIDTH = 80
+
+
+def print_header(text: str) -> None:
+    """Print a stylized header."""
+    print()
+    print(f"{CYAN}{BOLD}{'═' * TERM_WIDTH}{RESET}")
+    print(f"{CYAN}{BOLD}{text.center(TERM_WIDTH)}{RESET}")
+    print(f"{CYAN}{BOLD}{'═' * TERM_WIDTH}{RESET}")
+    print()
+
+
+def print_section(text: str) -> None:
+    """Print a section divider."""
+    print()
+    print(f"{BLUE}{BOLD}┌{'─' * (len(text) + 2)}┐{RESET}")
+    print(f"{BLUE}{BOLD}│ {text} │{RESET}")
+    print(f"{BLUE}{BOLD}└{'─' * (len(text) + 2)}┘{RESET}")
+
+
+def print_success(message: str) -> None:
+    """Print a success message."""
+    print(f"{GREEN}{BOLD}{CHECK} {message}{RESET}")
+
+
+def print_info(message: str) -> None:
+    """Print an info message."""
+    print(f"{BLUE}{INFO} {message}{RESET}")
+
+
+def print_process(message: str) -> None:
+    """Print a process message."""
+    print(f"{YELLOW}{ARROW} {message}{RESET}")
+
+
+def print_error(message: str) -> None:
+    """Print an error message."""
+    print(f"{RED}{BOLD}{CROSS} {message}{RESET}")
+
+
+def print_warning(message: str) -> None:
+    """Print a warning message."""
+    print(f"{MAGENTA}{WARNING} {message}{RESET}")
+
+
+def print_complete() -> None:
+    """Print a completion message."""
+    print()
+    print(f"{GREEN}{BOLD}{STAR} All done! {STAR}{RESET}")
+    print()
 
 
 def parse_args(args: Optional[List[str]] = None) -> argparse.Namespace:
@@ -48,69 +112,77 @@ def main(args: Optional[List[str]] = None) -> int:
     try:
         parsed_args = parse_args(args)
 
-        print(f"{GREEN}Conventional Commits Generator{RESET}")
+        print_header("Conventional Commits Generator")
 
         # Just push mode
         if parsed_args.push:
-            print(f"{YELLOW}Push mode: pushing existing commits...{RESET}")
+            print_section("Push Only Mode")
+            print_process("Pushing existing commits to remote repository...")
             if git_push():
-                print(f"{GREEN}Push successful.{RESET}")
+                print_success("Changes pushed successfully to remote!")
                 return 0
-            print(f"{RED}Push failed.{RESET}")
+            print_error("Failed to push changes to remote")
             return 1
 
         # Stage changes
         if not parsed_args.dry_run:
-            print(f"{YELLOW}Staging changes...{RESET}")
+            print_section("Git Staging")
+            print_process("Staging changes for commit...")
             if not git_add():
-                print(f"{RED}Failed to stage changes. Exiting.{RESET}")
+                print_error("Failed to stage changes. Exiting workflow.")
                 return 1
-            print(f"{GREEN}Changes staged successfully.{RESET}")
+            print_success("Changes staged successfully")
 
-        # Check for pre-commit hooks (only if not in dry-run mode)
+        # Check for pre-commit hooks
         if not parsed_args.dry_run:
-            print(f"{YELLOW}Running pre-commit checks...{RESET}")
+            print_section("Pre-commit Validation")
+            print_process("Running pre-commit checks on staged files...")
             pre_commit_result = check_and_install_pre_commit()
             if not pre_commit_result:
-                print(f"{RED}Aborting commit due to pre-commit check failures.{RESET}")
+                print_error("Pre-commit checks failed. Aborting workflow.")
                 sys.exit(1)  # Force immediate exit
-            print(f"{GREEN}Pre-commit checks passed.{RESET}")
+            print_success("All pre-commit checks passed successfully")
 
         # Generate commit message
-        print(f"{YELLOW}Generating commit message...{RESET}")
+        print_section("Commit Message Generation")
+        print_process("Building conventional commit message...")
         commit_message = generate_commit_message()
         if not commit_message:
-            print(f"{RED}Failed to generate commit message. Exiting.{RESET}")
+            print_error("Failed to generate commit message. Exiting workflow.")
             return 1
 
-        # Dry run mode - just show the message and exit
+        # Dry run mode
         if parsed_args.dry_run:
-            print(f"{GREEN}Dry run complete. No commit was made.{RESET}")
+            print_section("Dry Run Complete")
+            print_info("No changes were committed (dry-run mode)")
             return 0
 
         # Commit changes
-        print(f"{YELLOW}Committing changes...{RESET}")
+        print_section("Commit")
+        print_process("Committing changes to local repository...")
         if not git_commit(commit_message):
-            print(f"{RED}Failed to commit changes. Exiting.{RESET}")
+            print_error("Failed to commit changes. Exiting workflow.")
             return 1
-        print(f"{GREEN}Changes committed successfully.{RESET}")
+        print_success("Changes committed successfully to local repository")
 
         # Ask to push changes
         if confirm_push():
-            print(f"{YELLOW}Pushing changes...{RESET}")
+            print_section("Remote Push")
+            print_process("Pushing commits to remote repository...")
             if not git_push():
-                print(f"{RED}Failed to push changes.{RESET}")
+                print_error("Failed to push changes to remote")
                 return 1
-            print(f"{GREEN}Changes pushed successfully.{RESET}")
+            print_success("Changes pushed successfully to remote repository")
 
-        print(f"{GREEN}All done!{RESET}")
+        print_complete()
         return 0
 
     except KeyboardInterrupt:
-        print(f"\n{YELLOW}Operation cancelled by user.{RESET}")
+        print()
+        print_warning("Operation cancelled by user")
         return 130  # Standard exit code for SIGINT
     except Exception as e:
-        print(f"{RED}An unexpected error occurred:{RESET}")
+        print_error("An unexpected error occurred")
         print(f"{RED}{str(e)}{RESET}")
         traceback.print_exc()
         return 1
