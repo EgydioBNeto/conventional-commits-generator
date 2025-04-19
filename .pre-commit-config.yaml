@@ -5,18 +5,27 @@ repos:
     -   id: trailing-whitespace
     -   id: end-of-file-fixer
     -   id: check-yaml
-        args: [ --allow-multiple-documents ]
-    -   id: check-json
-    -   id: detect-private-key
-    -   id: name-tests-test
-        args: [ --pytest-test-first ]
+    -   id: check-toml
+    -   id: debug-statements
+    -   id: check-added-large-files
 
--   repo: https://github.com/pre-commit/mirrors-pylint
-    rev: v3.0.0a5
+-   repo: https://github.com/psf/black
+    rev: 24.3.0
     hooks:
-    -   id: pylint
+    -   id: black
+
+-   repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.3.0
+    hooks:
+    -   id: ruff
+        args: [--fix]
+
+-   repo: https://github.com/pycqa/isort
+    rev: 5.13.2
+    hooks:
+    -   id: isort
 
 -   repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v1.7.1
+    rev: v1.8.0
     hooks:
     -   id: mypy
