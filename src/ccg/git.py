@@ -36,12 +36,12 @@ def run_git_command(command: List[str], error_message: str, success_message: Opt
 
     except subprocess.CalledProcessError as error:
         print_error(error_message)
-        # Return stderr in case of failure when show_output is True
+        # When text=True is used, stderr is already a string, no need to decode
         if show_output:
-            return False, error.stderr.decode() if error.stderr else error.stdout.decode()
+            return False, error.stderr if error.stderr else error.stdout
         else:
             if error.stderr:
-                print(f"\033[91m{error.stderr.decode()}\033[0m")
+                print(f"\033[91m{error.stderr}\033[0m")
             return False, None
 
     except FileNotFoundError:
