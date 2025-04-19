@@ -1,9 +1,52 @@
 """Git operations for the Conventional Commits Generator."""
 
 import subprocess
-from typing import List, Optional, Tuple
+from typing import List, Optional, Tuple, Any
 
-from ccg.utils import print_error, print_process, print_success, print_info
+from ccg.utils import print_error, print_process, print_success, print_info, print_warning
+
+
+def run_git_command(command: List[str], error_message: str, success_message: Optional[str] = None,
+                   show_output: bool = False) -> Tuple[bool, Any]:
+    """Run a git command and handle errors consistently.
+
+    Args:
+        command: The git command to run as a list of strings
+        error_message: Message to display on error
+        success_message: Message to display on success (optional)
+        show_output: Whether to return the command output
+
+    Returns:
+        Tuple[bool, Any]: Success status and command output if show_output is True
+    """
+    try:
+        result = subprocess.run(
+            command,
+            capture_output=True,
+            check=True,
+            text=True
+        )
+
+        if success_message:
+            print_success(success_message)
+
+        if show_output:
+            return True, result.stdout.strip()
+        return True, None
+
+    except subprocess.CalledProcessError as error:
+        print_error(error_message)
+        # Return stderr in case of failure when show_output is True
+        if show_output:
+            return False, error.stderr.decode() if error.stderr else error.stdout.decode()
+        else:
+            if error.stderr:
+                print(f"\033[91m{error.stderr.decode()}\033[0m")
+            return False, None
+
+    except FileNotFoundError:
+        print_error("Git is not installed. Please install Git and try again.")
+        return False, None
 
 
 def git_add() -> bool:
@@ -12,18 +55,13 @@ def git_add() -> bool:
     Returns:
         bool: True if successful, False otherwise
     """
-    try:
-        print_process("Staging changes with git...")
-        subprocess.run(["git", "add", "."], capture_output=True, check=True)
-        print_success("Changes staged successfully")
-        return True
-    except subprocess.CalledProcessError as error:
-        print_error("Error during 'git add':")
-        print(f"\033[91m{error.stderr.decode()}\033[0m")
-        return False
-    except FileNotFoundError:
-        print_error("Git is not installed. Please install Git and try again.")
-        return False
+    print_process("Staging changes with git...")
+    success, _ = run_git_command(
+        ["git", "add", "."],
+        "Error during 'git add'",
+        "Changes staged successfully"
+    )
+    return success
 
 
 def git_commit(commit_message: str) -> bool:
@@ -35,16 +73,13 @@ def git_commit(commit_message: str) -> bool:
     Returns:
         bool: True if successful, False otherwise
     """
-    try:
-        print_process("Committing changes...")
-        subprocess.run(["git", "commit", "-m", commit_message], check=True)
-        print_success("New commit successfully created!")
-        return True
-    except subprocess.CalledProcessError as error:
-        print_error("Error during 'git commit'")
-        if error.stderr:
-            print(f"\033[91m{error.stderr.decode()}\033[0m")
-        return False
+    print_process("Committing changes...")
+    success, _ = run_git_command(
+        ["git", "commit", "-m", commit_message],
+        "Error during 'git commit'",
+        "New commit successfully created!"
+    )
+    return success
 
 
 def git_push() -> bool:
@@ -53,16 +88,13 @@ def git_push() -> bool:
     Returns:
         bool: True if successful, False otherwise
     """
-    try:
-        print_process("Pushing changes to remote repository...")
-        subprocess.run(["git", "push"], check=True)
-        print_success("Changes pushed successfully!")
-        return True
-    except subprocess.CalledProcessError as error:
-        print_error("Error during 'git push'")
-        if error.stderr:
-            print(f"\033[91m{error.stderr.decode()}\033[0m")
-        return False
+    print_process("Pushing changes to remote repository...")
+    success, _ = run_git_command(
+        ["git", "push"],
+        "Error during 'git push'",
+        "Changes pushed successfully!"
+    )
+    return success
 
 
 def get_staged_files() -> List[str]:
@@ -71,16 +103,15 @@ def get_staged_files() -> List[str]:
     Returns:
         List[str]: The list of staged files
     """
-    try:
-        result = subprocess.run(
-            ["git", "diff", "--name-only", "--cached"],
-            check=True,
-            capture_output=True,
-            text=True
-        )
-        return [file for file in result.stdout.strip().split("\n") if file]
-    except (subprocess.CalledProcessError, FileNotFoundError):
-        return []
+    success, output = run_git_command(
+        ["git", "diff", "--name-only", "--cached"],
+        "Failed to get staged files",
+        show_output=True
+    )
+
+    if success and output:
+        return [file for file in output.split("\n") if file]
+    return []
 
 
 def check_is_git_repo() -> bool:
@@ -89,15 +120,12 @@ def check_is_git_repo() -> bool:
     Returns:
         bool: True if it's a git repository, False otherwise
     """
-    try:
-        subprocess.run(
-            ["git", "rev-parse", "--is-inside-work-tree"],
-            check=True,
-            capture_output=True
-        )
-        return True
-    except (subprocess.CalledProcessError, FileNotFoundError):
-        return False
+    success, _ = run_git_command(
+        ["git", "rev-parse", "--is-inside-work-tree"],
+        "Not a git repository",
+        show_output=True
+    )
+    return success
 
 
 def check_and_install_pre_commit() -> bool:
@@ -113,21 +141,32 @@ def check_and_install_pre_commit() -> bool:
                 pass
         except FileNotFoundError:
             # No pre-commit config found, that's okay
+            print_info("No pre-commit configuration found. Skipping pre-commit checks.")
             return True
 
         # Check if pre-commit is installed
-        try:
-            subprocess.run(["pre-commit", "--version"], check=True, capture_output=True)
-        except (FileNotFoundError, subprocess.CalledProcessError):
-            print_info("pre-commit is configured but not installed.")
+        pre_commit_installed, _ = run_git_command(
+            ["pre-commit", "--version"],
+            "pre-commit command not found",
+            show_output=True
+        )
+
+        if not pre_commit_installed:
+            print_warning("pre-commit is configured but not installed.")
             print_info("Run 'pip install pre-commit' to install it.")
             print_info("After installing, run 'pre-commit install' to set up the hooks.")
             return False
 
         # Install pre-commit hooks
         print_process("Setting up pre-commit hooks...")
-        subprocess.run(["pre-commit", "install"], check=True, capture_output=True)
-        print_success("Pre-commit hooks installed successfully")
+        hooks_installed, _ = run_git_command(
+            ["pre-commit", "install"],
+            "Failed to install pre-commit hooks",
+            "Pre-commit hooks installed successfully"
+        )
+
+        if not hooks_installed:
+            return False
 
         # Run pre-commit against staged files
         print_process("Running pre-commit checks on staged files...")
@@ -135,21 +174,35 @@ def check_and_install_pre_commit() -> bool:
 
         # Only run pre-commit if there are staged files
         if staged_files:
-            result = subprocess.run(
-                ["pre-commit", "run", "--files"] + staged_files,
-                capture_output=True,
-                text=True
-            )
+            # For pre-commit, we'll run it directly to capture the full output
+            try:
+                result = subprocess.run(
+                    ["pre-commit", "run", "--files"] + staged_files,
+                    capture_output=True,
+                    text=True
+                )
 
-            if result.returncode != 0:
-                print_error("Some pre-commit checks failed. Exiting the script.")
-                # Display the output
-                print(result.stdout)
-                print(result.stderr)
-                # Return False when pre-commit fails
+                if result.returncode != 0:
+                    print_error("Some pre-commit checks failed:")
+                    # Print the complete output to help with debugging
+                    if result.stdout:
+                        print(result.stdout)
+                    if result.stderr:
+                        print(f"\033[91m{result.stderr}\033[0m")
+                    return False
+
+                print_success("All pre-commit checks passed successfully")
+            except subprocess.CalledProcessError as e:
+                print_error("Error running pre-commit:")
+                if e.stdout:
+                    print(e.stdout)
+                if e.stderr:
+                    print(f"\033[91m{e.stderr}\033[0m")
+                return False
+            except Exception as e:
+                print_error(f"Unexpected error running pre-commit: {str(e)}")
                 return False
 
-        print_success("All pre-commit checks passed successfully")
         return True
 
     except Exception as e:

@@ -3,12 +3,28 @@
 import argparse
 import sys
 import traceback
-from typing import List, Optional
+from typing import List, Optional, NoReturn
 
 from ccg import __version__
 from ccg.core import generate_commit_message, confirm_push
 from ccg.git import git_add, git_commit, git_push, check_and_install_pre_commit, check_is_git_repo
-from ccg.utils import print_header, print_section, print_success, print_error, print_warning, print_info, print_process, print_complete
+from ccg.utils import (
+    print_header, print_section, print_success, print_error,
+    print_warning, print_info, print_process, print_complete, print_logo
+)
+
+
+class CustomHelpFormatter(argparse.HelpFormatter):
+    """Custom formatter for argparse help text that includes ASCII logo."""
+
+    def __init__(self, prog):
+        super().__init__(prog, max_help_position=50, width=100)
+
+    def _format_usage(self, usage, actions, groups, prefix):
+        # First print the logo
+        print_logo()
+        # Then format usage as usual
+        return super()._format_usage(usage, actions, groups, prefix)
 
 
 def parse_args(args: Optional[List[str]] = None) -> argparse.Namespace:
@@ -23,9 +39,12 @@ def parse_args(args: Optional[List[str]] = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         prog="ccg",
         description="Conventional Commits Generator - Create standardized git commits",
+        formatter_class=CustomHelpFormatter,
     )
     parser.add_argument(
-        "--version", action="version", version=f"%(prog)s {__version__}"
+        "--version",
+        action="version",
+        version=f"%(prog)s {__version__}"
     )
     parser.add_argument(
         "--push",
@@ -52,6 +71,7 @@ def handle_push_only() -> int:
     if git_push():
         print_success("Changes pushed successfully to remote!")
         return 0
+
     print_error("Failed to push changes to remote")
     return 1
 
@@ -82,8 +102,7 @@ def handle_git_workflow(dry_run: bool = False) -> int:
         # Check for pre-commit hooks
         print_section("Pre-commit Validation")
         print_process("Running pre-commit checks on staged files...")
-        pre_commit_result = check_and_install_pre_commit()
-        if not pre_commit_result:
+        if not check_and_install_pre_commit():
             print_error("Pre-commit checks failed. Aborting workflow.")
             return 1
         print_success("All pre-commit checks passed successfully")
@@ -134,7 +153,10 @@ def main(args: Optional[List[str]] = None) -> int:
     """
     try:
         parsed_args = parse_args(args)
-        print_header("Conventional Commits Generator")
+
+        # Only print the header if we're not showing help (which already has the logo)
+        if not any(help_flag in sys.argv for help_flag in ['-h', '--help']):
+            print_logo()
 
         # Just push mode
         if parsed_args.push:
