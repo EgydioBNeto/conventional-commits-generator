@@ -2,7 +2,18 @@
 
 import os
 import shutil
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Any, Callable
+
+# ASCII Logo for CCG
+ASCII_LOGO = r"""
+   ______   ______   ______
+  / ____/  / ____/  / ____/
+ / /      / /      / / __
+/ /___   / /___   / /_/ /
+\____/   \____/   \____/
+
+ Conventional Commits Generator
+"""
 
 # Import prompt_toolkit with better error handling
 try:
@@ -10,13 +21,15 @@ try:
     from prompt_toolkit.history import InMemoryHistory
     from prompt_toolkit.styles import Style
 
-    # Initialize history objects only if library is available
-    type_history = InMemoryHistory()
-    scope_history = InMemoryHistory()
-    message_history = InMemoryHistory()
+    # Initialize history objects
+    HISTORIES = {
+        "type": InMemoryHistory(),
+        "scope": InMemoryHistory(),
+        "message": InMemoryHistory()
+    }
 
     # Define style for prompt_toolkit
-    prompt_style = Style.from_dict({
+    PROMPT_STYLE = Style.from_dict({
         "prompt": "#00AFFF bold",
         "command": "#00FF00 bold",
         "option": "#FF00FF",
@@ -26,10 +39,8 @@ try:
 except ImportError:
     PROMPT_TOOLKIT_AVAILABLE = False
     # Define dummy variables to avoid reference errors
-    type_history = None
-    scope_history = None
-    message_history = None
-    prompt_style = None
+    HISTORIES = {}
+    PROMPT_STYLE = None
 
 # ANSI color codes
 RED = "\033[91m"
@@ -131,6 +142,11 @@ COMMIT_TYPES: List[Dict[str, str]] = [
 ]
 
 
+def print_logo() -> None:
+    """Print the ASCII logo."""
+    print(f"{CYAN}{BOLD}{ASCII_LOGO}{RESET}")
+
+
 def print_header(text: str) -> None:
     """Print a stylized header."""
     print()
@@ -148,29 +164,42 @@ def print_section(text: str) -> None:
     print(f"{BLUE}{BOLD}└{'─' * (len(text) + 2)}┘{RESET}")
 
 
+def print_message(color: str, symbol: str, message: str, bold: bool = False) -> None:
+    """Print a formatted message with the given color and symbol.
+
+    Args:
+        color: ANSI color code
+        symbol: Symbol to display
+        message: Message to print
+        bold: Whether to make the text bold
+    """
+    bold_code = BOLD if bold else ""
+    print(f"{color}{bold_code}{symbol} {message}{RESET}")
+
+
 def print_success(message: str) -> None:
     """Print a success message."""
-    print(f"{GREEN}{BOLD}{CHECK} {message}{RESET}")
+    print_message(GREEN, CHECK, message, bold=True)
 
 
 def print_info(message: str) -> None:
     """Print an info message."""
-    print(f"{BLUE}{INFO} {message}{RESET}")
+    print_message(BLUE, INFO, message)
 
 
 def print_process(message: str) -> None:
     """Print a process message."""
-    print(f"{YELLOW}{ARROW} {message}{RESET}")
+    print_message(YELLOW, ARROW, message)
 
 
 def print_error(message: str) -> None:
     """Print an error message."""
-    print(f"{RED}{BOLD}{CROSS} {message}{RESET}")
+    print_message(RED, CROSS, message, bold=True)
 
 
 def print_warning(message: str) -> None:
     """Print a warning message."""
-    print(f"{MAGENTA}{WARNING} {message}{RESET}")
+    print_message(MAGENTA, WARNING, message)
 
 
 def print_complete() -> None:
@@ -192,14 +221,8 @@ def read_input(prompt_text: str, history_type: Optional[str] = None) -> str:
     """
     if PROMPT_TOOLKIT_AVAILABLE:
         try:
-            # Choose appropriate history based on type
-            history = None
-            if history_type == "type":
-                history = type_history
-            elif history_type == "scope":
-                history = scope_history
-            elif history_type == "message":
-                history = message_history
+            # Get appropriate history based on type
+            history = HISTORIES.get(history_type) if history_type else None
 
             # Remove ANSI codes from prompt text to avoid issues
             clean_prompt = prompt_text
@@ -210,7 +233,7 @@ def read_input(prompt_text: str, history_type: Optional[str] = None) -> str:
             result = prompt(
                 f"{clean_prompt}: ",
                 history=history,
-                style=prompt_style
+                style=PROMPT_STYLE
             ).strip()
 
             return result
