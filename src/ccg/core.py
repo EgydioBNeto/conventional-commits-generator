@@ -204,7 +204,6 @@ def confirm_push() -> bool:
             continue
 
         if confirm in ("y", "yes"):
-            print_info("Preparing to push changes...")
             return True
         elif confirm in ("n", "no"):
             print_info("Not pushing changes")
