@@ -93,19 +93,15 @@ def handle_git_workflow(dry_run: bool = False) -> int:
     # Stage changes
     if not dry_run:
         print_section("Git Staging")
-        print_process("Staging changes for commit...")
         if not git_add():
             print_error("Failed to stage changes. Exiting workflow.")
             return 1
-        print_success("Changes staged successfully")
 
         # Check for pre-commit hooks
         print_section("Pre-commit Validation")
-        print_process("Running pre-commit checks on staged files...")
         if not check_and_install_pre_commit():
             print_error("Pre-commit checks failed. Aborting workflow.")
             return 1
-        print_success("All pre-commit checks passed successfully")
 
     # Generate commit message
     print_section("Commit Message Generation")
