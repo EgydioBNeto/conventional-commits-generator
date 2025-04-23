@@ -191,11 +191,13 @@ def confirm_push() -> bool:
     """
     print_section("Push Changes")
     print_info("This will execute 'git push' command")
+    print ()
 
     while True:
         confirm = read_input(
             f"{YELLOW}Do you want to push these changes? (y/n){RESET}"
         ).lower()
+        print()
 
         if not confirm:
             print_warning("Please enter 'y' or 'n'")
