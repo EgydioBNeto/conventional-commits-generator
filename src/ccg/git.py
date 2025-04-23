@@ -618,7 +618,8 @@ def edit_commit_message(commit_hash: str, new_message: str) -> bool:
         ]
 
         if is_initial_commit:
-            command.append(f"{commit_hash}^..HEAD")
+            command.append("--")
+            command.append("--all")
         else:
             command.append(f"{commit_hash}^..HEAD")
 
