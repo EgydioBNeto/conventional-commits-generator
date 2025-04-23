@@ -113,18 +113,13 @@ Do you want to push these changes? (y/n): y
 [pipx](https://pypa.github.io/pipx/) is the recommended way to install command-line tools written in Python:
 
 ```bash
-# Install pipx if you don't have it
-pip install --user pipx
-pipx ensurepath
-
-# Install ccg
-pipx install ccg
+pipx install conventional-commits-generator
 ```
 
 ### Using pip
 
 ```bash
-pip install ccg
+pip install conventional-commits-generator
 ```
 
 ### Development Installation
