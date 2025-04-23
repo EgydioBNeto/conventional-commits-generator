@@ -144,14 +144,14 @@ COMMIT_TYPES: List[Dict[str, str]] = [
 
 def print_logo() -> None:
     """Print the ASCII logo."""
-    print(f"{CYAN}{BOLD}{ASCII_LOGO}{RESET}")
+    print(f"{WHITE}{BOLD}{ASCII_LOGO}{RESET}")
 
 
 def print_header(text: str) -> None:
     """Print a stylized header."""
     print()
     print(f"{CYAN}{BOLD}{'═' * TERM_WIDTH}{RESET}")
-    print(f"{CYAN}{BOLD}{text.center(TERM_WIDTH)}{RESET}")
+    print(f"{WHITE}{BOLD}{text.center(TERM_WIDTH)}{RESET}")
     print(f"{CYAN}{BOLD}{'═' * TERM_WIDTH}{RESET}")
     print()
 

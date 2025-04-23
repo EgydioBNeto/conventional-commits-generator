@@ -108,7 +108,6 @@ def handle_git_workflow(dry_run: bool = False) -> int:
     print_process("Building conventional commit message...")
     commit_message = generate_commit_message()
     if not commit_message:
-        print_error("Failed to generate commit message. Exiting workflow.")
         return 1
 
     # Dry run mode
@@ -119,11 +118,9 @@ def handle_git_workflow(dry_run: bool = False) -> int:
 
     # Commit changes
     print_section("Commit")
-    print_process("Committing changes to local repository...")
     if not git_commit(commit_message):
         print_error("Failed to commit changes. Exiting workflow.")
         return 1
-    print_success("Changes committed successfully to local repository")
 
     # Ask to push changes
     if confirm_push():
