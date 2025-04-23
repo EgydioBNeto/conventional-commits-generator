@@ -103,7 +103,7 @@ def is_breaking_change() -> bool:
         bool: True if breaking change, False otherwise
     """
     print_section("Breaking Change")
-    print_info("A breaking change means this commit includes incompatible API changes")
+    print_info("A breaking change means this commit includes incompatible changes")
     print_info("Examples: changing function signatures, removing features, etc.")
 
     while True:
@@ -133,7 +133,6 @@ def get_commit_message() -> str:
     """
     print_section("Commit Message")
     print_info("Provide a clear, concise description of the change")
-    print_info("Tips: use imperative mood, like 'add', 'fix', 'update' (not 'added', 'fixed')")
     print_info("Examples: 'implement OAuth login', 'fix navigation bug', 'update documentation'")
 
     while True:
@@ -163,7 +162,7 @@ def confirm_commit(commit_message: str) -> bool:
 
     print(f"{GREEN}┌{'─' * box_width}┐{RESET}")
     print(f"{GREEN}│{' ' * box_width}│{RESET}")
-    print(f"{GREEN}│  {BOLD}{commit_message}{RESET}{GREEN}{' ' * (box_width - len(commit_message) - 2)}│{RESET}")
+    print(f"{WHITE}│  {BOLD}{commit_message}{RESET}{WHITE}{' ' * (box_width - len(commit_message) - 2)}│{RESET}")
     print(f"{GREEN}│{' ' * box_width}│{RESET}")
     print(f"{GREEN}└{'─' * box_width}┘{RESET}")
     print()
