@@ -150,9 +150,9 @@ def print_logo() -> None:
 def print_header(text: str) -> None:
     """Print a stylized header."""
     print()
-    print(f"{CYAN}{BOLD}{'═' * TERM_WIDTH}{RESET}")
+    print(f"{BLUE}{BOLD}{'═' * TERM_WIDTH}{RESET}")
     print(f"{WHITE}{BOLD}{text.center(TERM_WIDTH)}{RESET}")
-    print(f"{CYAN}{BOLD}{'═' * TERM_WIDTH}{RESET}")
+    print(f"{BLUE}{BOLD}{'═' * TERM_WIDTH}{RESET}")
     print()
 
 
@@ -200,13 +200,6 @@ def print_error(message: str) -> None:
 def print_warning(message: str) -> None:
     """Print a warning message."""
     print_message(MAGENTA, WARNING, message)
-
-
-def print_complete() -> None:
-    """Print a completion message."""
-    print()
-    print(f"{GREEN}{BOLD}{STAR} All done! {STAR}{RESET}")
-    print()
 
 
 def read_input(prompt_text: str, history_type: Optional[str] = None) -> str:

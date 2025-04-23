@@ -197,7 +197,6 @@ def confirm_push() -> bool:
         confirm = read_input(
             f"{YELLOW}Do you want to push these changes? (y/n){RESET}"
         ).lower()
-        print()
 
         if not confirm:
             print_warning("Please enter 'y' or 'n'")

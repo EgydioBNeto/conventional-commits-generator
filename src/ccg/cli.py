@@ -10,7 +10,7 @@ from ccg.core import generate_commit_message, confirm_push
 from ccg.git import git_add, git_commit, git_push, check_and_install_pre_commit, check_is_git_repo
 from ccg.utils import (
     print_header, print_section, print_success, print_error,
-    print_warning, print_info, print_process, print_complete, print_logo
+    print_warning, print_info, print_process, print_logo
 )
 
 
@@ -126,8 +126,6 @@ def handle_git_workflow(dry_run: bool = False) -> int:
         if not git_push():
             print_error("Failed to push changes to remote")
             return 1
-
-    print_complete()
     return 0
 
 
