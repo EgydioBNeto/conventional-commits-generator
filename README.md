@@ -13,38 +13,98 @@ A simple yet powerful interactive CLI tool for creating well-structured and stan
 ```
 $ ccg
 
-1. feat       - A new feature for the user or a particular enhancement
-2. fix        - A bug fix for the user or a particular issue
-3. chore      - Routine tasks, maintenance, or minor updates
+┌────────────────────────────────────────────────────────────────────────────────┐
+│                                 Commit Types                                   │
+└────────────────────────────────────────────────────────────────────────────────┘
+
+1. ★ feat       - A new feature for the user or a particular enhancement
+2. ♥ fix        - A bug fix for the user or a particular issue
+3. • chore      - Routine tasks, maintenance, or minor updates
 ...
 
-Choose the commit type: feat
+┌──────────────────────┐
+│ Scope                │
+└──────────────────────┘
 
-Enter the scope (optional): authentication
+ℹ The scope provides context for the commit (e.g., module or file name)
+ℹ Examples: auth, ui, api, database
+Enter the scope (optional, press Enter to skip): authentication
 
+✓ Scope set to: authentication
+
+┌──────────────────────┐
+│ Breaking Change      │
+└──────────────────────┘
+
+ℹ A breaking change means this commit includes incompatible changes
+ℹ Examples: changing function signatures, removing features, etc.
 Is this a BREAKING CHANGE? (y/n): n
 
+ℹ Not a breaking change
+
+┌──────────────────────┐
+│ Commit Message       │
+└──────────────────────┘
+
+ℹ Provide a clear, concise description of the change
+ℹ Examples: 'implement OAuth login', 'fix navigation bug', 'update documentation'
 Enter the commit message: implement OAuth login
 
-Commit message:
-feat(authentication): implement OAuth login
+✓ Message: implement OAuth login
 
-Confirm this commit? (y/n): y
+┌──────────────────────┐
+│ Review               │
+└──────────────────────┘
 
-New commit successfully made.
+┌────────────────────────────────────────────────┐
+│                                                │
+│  feat(authentication): implement OAuth login   │
+│                                                │
+└────────────────────────────────────────────────┘
 
+Confirm this commit message? (y/n): y
+
+✓ Commit message confirmed!
+
+┌──────────────────────┐
+│ Commit               │
+└──────────────────────┘
+
+→ Committing changes...
+✓ New commit successfully created!
+
+┌──────────────────────┐
+│ Push Changes         │
+└──────────────────────┘
+
+ℹ This will execute 'git push' command
 Do you want to push these changes? (y/n): y
 
-Changes pushed.
+┌──────────────────────┐
+│ Remote Push          │
+└──────────────────────┘
+
+→ Pushing changes to remote repository...
+✓ Changes pushed successfully!
 ```
 
 ## Features
 
-- Interactive CLI for creating conventional commits
-- Supports git add, commit, and push operations
-- Pre-commit hooks integration
-- Type checking with mypy
-- Linting with pylint
+- Interactive CLI with colored output and user-friendly prompts
+- Complete conventional commit format support:
+  - Type selection with detailed descriptions
+  - Optional scope field
+  - Breaking change indicator
+  - Descriptive commit message
+- Git integration:
+  - Automatic `git add` to stage changes
+  - Commit with formatted message
+  - Optional push to remote
+- Advanced features:
+  - Pre-commit hooks integration
+  - Push-only mode
+  - Dry-run mode for testing
+  - Command history for easier input
 
 ## Installation
 
@@ -118,7 +178,7 @@ pre-commit install
 ### Basic Usage
 
 ```bash
-# Generate a commit
+# Generate a commit interactively
 ccg
 
 # Just push without creating a new commit
@@ -143,6 +203,10 @@ See [CONTRIBUTING.md](.github/CONTRIBUTING.md) for details on how to contribute 
 ## Code of Conduct
 
 Please read the [Code of Conduct](.github/CODE_OF_CONDUCT.md) for details on our code of conduct.
+
+## Security
+
+For details about reporting security vulnerabilities, see [SECURITY.md](.github/SECURITY.md).
 
 ## License
 
