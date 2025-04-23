@@ -126,7 +126,6 @@ def handle_git_workflow(dry_run: bool = False) -> int:
         if not git_push():
             print_error("Failed to push changes to remote")
             return 1
-        print_success("Changes pushed successfully to remote repository")
 
     print_complete()
     return 0
