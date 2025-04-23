@@ -5,7 +5,7 @@ build-backend = "hatchling.build"
 [project]
 name = "ccg"
 version = "2.0.0"
-description = "Conventional Commits Generator - A tool to create standardized commit messages"
+description = "Conventional Commits Generator - A CLI to create standardized commit messages"
 readme = "README.md"
 requires-python = ">=3.7"
 license = {file = "LICENSE"}
