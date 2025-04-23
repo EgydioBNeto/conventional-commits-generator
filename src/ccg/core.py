@@ -165,7 +165,6 @@ def confirm_commit(commit_message: str) -> bool:
     print(f"{WHITE}│  {BOLD}{commit_message}{RESET}{WHITE}{' ' * (box_width - len(commit_message) - 2)}│{RESET}")
     print(f"{GREEN}│{' ' * box_width}│{RESET}")
     print(f"{GREEN}└{'─' * box_width}┘{RESET}")
-    print()
 
     while True:
         confirm = read_input(f"{YELLOW}Confirm this commit message? (y/n){RESET}").lower()
@@ -191,7 +190,6 @@ def confirm_push() -> bool:
     """
     print_section("Push Changes")
     print_info("This will execute 'git push' command")
-    print ()
 
     while True:
         confirm = read_input(
