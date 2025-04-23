@@ -67,9 +67,7 @@ def handle_push_only() -> int:
         int: Exit code (0 for success, non-zero for error)
     """
     print_section("Push Only Mode")
-    print_process("Pushing existing commits to remote repository...")
     if git_push():
-        print_success("Changes pushed successfully to remote!")
         return 0
 
     print_error("Failed to push changes to remote")
