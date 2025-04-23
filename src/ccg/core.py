@@ -190,7 +190,6 @@ def confirm_push() -> bool:
         bool: True if confirmed, False otherwise
     """
     print_section("Push Changes")
-    print_info("You can push your changes to the remote repository")
     print_info("This will execute 'git push' command")
 
     while True:
