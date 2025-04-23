@@ -184,7 +184,7 @@ def print_success(message: str) -> None:
 
 def print_info(message: str) -> None:
     """Print an info message."""
-    print_message(BLUE, INFO, message)
+    print_message(WHITE, INFO, message)
 
 
 def print_process(message: str) -> None:
