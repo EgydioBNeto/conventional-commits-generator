@@ -255,12 +255,14 @@ def edit_specific_commit(commit_hash: str) -> int:
         print(f"Body:\n{body}")
 
     print()
-    print_info("Enter the new commit message. Leave empty to cancel.")
+    print_info("Edit the commit message below. Leave empty to cancel.")
     print_info("Message must follow conventional commit format: <type>[optional scope][optional !]: <description>")
 
+    # Pre-fill the input with the original commit message
     new_message = read_input(
         f"{YELLOW}New commit message{RESET}",
-        history_type="message"
+        history_type="message",
+        default_text=subject  # Add the original message as default text
     )
 
     if not new_message:

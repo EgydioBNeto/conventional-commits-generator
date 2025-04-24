@@ -202,12 +202,13 @@ def print_warning(message: str) -> None:
     print_message(MAGENTA, WARNING, message)
 
 
-def read_input(prompt_text: str, history_type: Optional[str] = None) -> str:
-    """Read user input with a given prompt, supporting arrow keys and history.
+def read_input(prompt_text: str, history_type: Optional[str] = None, default_text: Optional[str] = None) -> str:
+    """Read user input with a given prompt, supporting arrow keys, history, and default text.
 
     Args:
         prompt_text: The text to display as the prompt
         history_type: Type of history to use ("type", "scope", "message", or None)
+        default_text: Optional default text to pre-fill in the input field
 
     Returns:
         The user input as a string
@@ -226,13 +227,18 @@ def read_input(prompt_text: str, history_type: Optional[str] = None) -> str:
             result = prompt(
                 f"{clean_prompt}: ",
                 history=history,
-                style=PROMPT_STYLE
+                style=PROMPT_STYLE,
+                default=default_text or ""  # Use default_text if provided
             ).strip()
 
             return result
         except Exception:
             # Fall back to standard input on error
+            if default_text:
+                print(f"Default: {default_text}")
             return input(f"{prompt_text}: ").strip()
     else:
         # Fall back to the standard input() function
+        if default_text:
+            print(f"Default: {default_text}")
         return input(f"{prompt_text}: ").strip()
