@@ -29,6 +29,8 @@ def run_git_command(command: List[str], error_message: str, success_message: Opt
         )
 
         if success_message:
+            if success_message == "Changes pushed successfully!":
+                print_section("Remote Push")
             print_success(success_message)
 
         if show_output:
