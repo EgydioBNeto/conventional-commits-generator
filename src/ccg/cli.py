@@ -6,7 +6,7 @@ import traceback
 from typing import List, Optional, NoReturn
 
 from ccg import __version__
-from ccg.core import generate_commit_message, confirm_push
+from ccg.core import generate_commit_message, confirm_push, validate_commit_message
 from ccg.git import (
     git_add, git_commit, git_push, check_and_install_pre_commit,
     check_is_git_repo, check_has_changes, check_remote_access,
@@ -256,6 +256,7 @@ def edit_specific_commit(commit_hash: str) -> int:
 
     print()
     print_info("Enter the new commit message. Leave empty to cancel.")
+    print_info("Message must follow conventional commit format: <type>[optional scope][optional !]: <description>")
 
     new_message = read_input(
         f"{YELLOW}New commit message{RESET}",
@@ -265,6 +266,31 @@ def edit_specific_commit(commit_hash: str) -> int:
     if not new_message:
         print_info("Edit cancelled. Commit message remains unchanged.")
         return 0
+
+    # Validate the commit message format
+    is_valid, error_message = validate_commit_message(new_message)
+
+    if not is_valid:
+        print_error(f"Invalid commit message format: {error_message}")
+        print_info("Examples of valid formats:")
+        print_info("  feat: add new feature")
+        print_info("  fix(auth): resolve login issue")
+        print_info("  chore!: drop support for Node 6")
+
+        # Ask if they want to try again
+        while True:
+            try_again = read_input(
+                f"{YELLOW}Would you like to try again? (y/n){RESET}"
+            ).lower()
+
+            if try_again in ("y", "yes"):
+                return edit_specific_commit(commit_hash)  # Recursive call to try again
+            elif try_again in ("n", "no"):
+                print_info("Edit cancelled. Commit message remains unchanged.")
+                return 0
+            else:
+                print_warning("Please enter 'y' or 'n'")
+                continue
 
     # Confirm the edit
     print_section("Confirm Edit")

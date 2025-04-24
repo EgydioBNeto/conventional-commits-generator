@@ -1,7 +1,7 @@
 """Core functionality for the Conventional Commits Generator."""
 
 import sys
-from typing import Optional, List, Dict
+from typing import Optional, List, Dict, Tuple
 
 from ccg.utils import (
     COMMIT_TYPES, print_header, print_section, print_success,
@@ -207,6 +207,53 @@ def confirm_push() -> bool:
             return False
 
         print_error("Invalid choice. Please enter 'y' or 'n'.")
+
+
+def validate_commit_message(message: str) -> Tuple[bool, Optional[str]]:
+    """Validate if a commit message follows the conventional commit format.
+
+    Args:
+        message: The commit message to validate
+
+    Returns:
+        Tuple[bool, Optional[str]]: (is_valid, error_message)
+            is_valid: True if the message is valid, False otherwise
+            error_message: None if valid, error description if invalid
+    """
+    if not message:
+        return False, "Commit message cannot be empty."
+
+    # Basic format: <type>[optional scope][optional !]: <description>
+    parts = message.split(':', 1)
+
+    # Check if there's a colon in the message
+    if len(parts) < 2:
+        return False, "Invalid format. Expected: <type>[optional scope][optional !]: <description>"
+
+    header, description = parts
+
+    # Check if description exists and is not empty
+    if not description.strip():
+        return False, "Description cannot be empty after the colon."
+
+    # Extract type (and optional scope and breaking change indicator)
+    if '(' in header:
+        # Has scope
+        type_part = header.split('(', 1)[0]
+        # Check if the scope is properly closed
+        if not header.endswith(')') and not header.endswith(')!'):
+            return False, "Scope opening parenthesis without closing: use format <type>(<scope>): or <type>(<scope>)!:"
+    else:
+        # No scope
+        type_part = header.rstrip('!')
+
+    # Check if type is one of the predefined types
+    valid_types = [commit_data["type"] for commit_data in COMMIT_TYPES]
+    if type_part not in valid_types:
+        return False, f"Invalid commit type '{type_part}'. Valid types: {', '.join(valid_types)}"
+
+    return True, None
+
 
 def generate_commit_message() -> Optional[str]:
     """Generate a conventional commit message based on user input.
