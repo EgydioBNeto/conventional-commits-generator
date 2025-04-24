@@ -277,7 +277,6 @@ def edit_specific_commit(commit_hash: str) -> int:
         print_info("Examples of valid formats:")
         print_info("  feat: add new feature")
         print_info("  fix(auth): resolve login issue")
-        print_info("  chore!: drop support for Node 6")
 
         # Ask if they want to try again
         while True:
