@@ -3,7 +3,7 @@
 import subprocess
 from typing import List, Optional, Tuple, Any, Dict
 
-from ccg.utils import print_error, print_process, print_success, print_info, print_warning
+from ccg.utils import print_error, print_process, print_success, print_info, print_warning, print_section
 
 
 def run_git_command(command: List[str], error_message: str, success_message: Optional[str] = None,
