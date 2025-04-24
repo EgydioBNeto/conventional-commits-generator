@@ -18,6 +18,7 @@ def run_git_command(command: List[str], error_message: str, success_message: Opt
 
     Returns:
         Tuple[bool, Any]: Success status and command output if show_output is True
+                         or error output if failure and show_output is True
     """
     try:
         result = subprocess.run(
@@ -38,7 +39,9 @@ def run_git_command(command: List[str], error_message: str, success_message: Opt
         print_error(error_message)
         # When text=True is used, stderr is already a string, no need to decode
         if show_output:
-            return False, error.stderr if error.stderr else error.stdout
+            # Return the error output (stderr preferably, stdout as fallback)
+            error_text = error.stderr if error.stderr else error.stdout
+            return False, error_text
         else:
             if error.stderr:
                 print(f"\033[91m{error.stderr}\033[0m")
@@ -152,11 +155,57 @@ def git_push(set_upstream: bool = False, force: bool = False) -> bool:
         return success
     else:
         # Regular push
-        success, _ = run_git_command(
+        branch_name = get_current_branch()
+        if not branch_name:
+            print_error("Failed to determine current branch name")
+            return False
+
+        # Get remote name (usually origin)
+        success, remote_output = run_git_command(
+            ["git", "remote"],
+            "Failed to get remote name",
+            show_output=True
+        )
+
+        if not success or not remote_output:
+            print_error("No remote repository configured")
+            return False
+
+        remote_name = remote_output.split()[0]  # Get first remote
+
+        # Try regular push first
+        success, error_output = run_git_command(
             ["git", "push"],
             "Error during 'git push'",
-            "Changes pushed successfully!"
+            "Changes pushed successfully!",
+            show_output=True
         )
+
+        # If push failed, check if it's due to upstream not being set
+        if not success and error_output:
+            if "set the remote as upstream" in error_output or "no upstream branch" in error_output:
+                print_warning("Upstream not set for this branch")
+                print_info(f"Suggested command: git push --set-upstream {remote_name} {branch_name}")
+
+                # Ask if user wants to set upstream
+                while True:
+                    from ccg.utils import read_input, YELLOW, RESET
+                    confirm = read_input(
+                        f"{YELLOW}Do you want to set upstream and push? (y/n){RESET}"
+                    ).lower()
+
+                    if not confirm:
+                        print_warning("Please enter 'y' or 'n'")
+                        continue
+
+                    if confirm in ("y", "yes"):
+                        return git_push(set_upstream=True)
+                    elif confirm in ("n", "no"):
+                        print_info("Push cancelled. Changes remain local only.")
+                        return False
+
+                    print_error("Invalid choice. Please enter 'y' or 'n'.")
+
         print()
         return success
 

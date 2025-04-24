@@ -501,9 +501,12 @@ def handle_push_only() -> int:
             print_info("Push operation cancelled")
             return 0
     else:
-        # Normal push for existing branch
+        # Normal push for existing branch - now handles upstream errors internally
         if not git_push():
-            print_error("Failed to push changes to remote")
+            # The git_push function now handles the upstream error case internally
+            # So if it returns False here, it means either:
+            # 1. The user chose not to set upstream
+            # 2. There was a different error that couldn't be resolved
             return 1
 
     return 0
@@ -589,9 +592,12 @@ def handle_git_workflow(dry_run: bool = False) -> int:
                 print_info("Changes committed locally only")
                 return 0
         else:
-            # Normal push for existing branch
+            # Normal push for existing branch - now handles upstream errors internally
             if not git_push():
-                print_error("Failed to push changes to remote")
+                # The git_push function now handles the upstream error case internally
+                # So if it returns False here, it means either:
+                # 1. The user chose not to set upstream
+                # 2. There was a different error that couldn't be resolved
                 return 1
     return 0
 
