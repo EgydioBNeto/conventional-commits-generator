@@ -572,8 +572,8 @@ def handle_git_workflow(dry_run: bool = False) -> int:
         return 1
 
     # Ask to push changes
-    if confirm_push():
-        print_section("Remote Push")
+    #if confirm_push():
+    #    print_section("Remote Push")
 
         # Get current branch name
         branch_name = get_current_branch()
