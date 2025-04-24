@@ -89,6 +89,11 @@ def parse_args(args: Optional[List[str]] = None) -> argparse.Namespace:
         help="Hash of the specific commit to edit",
         metavar="HASH",
     )
+    parser.add_argument(
+        "--path",
+        nargs="+",  # Accept one or more path arguments
+        help="Specify path(s) to stage instead of all changes",
+    )
 
     return parser.parse_args(args)
 
@@ -511,11 +516,12 @@ def handle_push_only() -> int:
     return 0
 
 
-def handle_git_workflow(dry_run: bool = False) -> int:
+def handle_git_workflow(dry_run: bool = False, paths: Optional[List[str]] = None) -> int:
     """Handle the git workflow (add, commit, push).
 
     Args:
         dry_run: If True, don't actually commit changes
+        paths: List of specific paths to stage (None for all changes)
 
     Returns:
         int: Exit code (0 for success, non-zero for error)
@@ -534,14 +540,14 @@ def handle_git_workflow(dry_run: bool = False) -> int:
     # Check if there are changes to commit (skip in dry-run mode)
     if not dry_run:
         print_section("Changes Validation")
-        if not check_has_changes():
-            print_error("No changes to commit. Make some changes before running the tool.")
+        if not check_has_changes(paths):
+            print_error("No changes to commit in the specified path(s). Make some changes before running the tool.")
             return 1
 
     # Stage changes
     if not dry_run:
         print_section("Git Staging")
-        if not git_add():
+        if not git_add(paths):
             print_error("Failed to stage changes. Exiting workflow.")
             return 1
 
@@ -638,7 +644,7 @@ def main(args: Optional[List[str]] = None) -> int:
             return handle_tag()
 
         # Normal or dry-run mode
-        return handle_git_workflow(dry_run=parsed_args.dry_run)
+        return handle_git_workflow(dry_run=parsed_args.dry_run, paths=parsed_args.path)
 
     except KeyboardInterrupt:
         print()

@@ -54,19 +54,34 @@ def run_git_command(command: List[str], error_message: str, success_message: Opt
         return False, None
 
 
-def git_add() -> bool:
+def git_add(paths: Optional[List[str]] = None) -> bool:
     """Run 'git add' to stage changes.
+
+    Args:
+        paths: List of paths to stage (defaults to "." for all changes)
 
     Returns:
         bool: True if successful, False otherwise
     """
-    print_process("Staging changes with git...")
-    success, _ = run_git_command(
-        ["git", "add", "."],
-        "Error during 'git add'",
-        "Changes staged successfully"
-    )
-    return success
+    # If no paths are provided, use "." to stage all changes
+    if not paths:
+        paths = ["."]
+
+    path_str = ", ".join(paths)
+    print_process(f"Staging changes for {path_str}...")
+
+    # Add the paths one by one to handle spaces in paths better
+    for path in paths:
+        success, _ = run_git_command(
+            ["git", "add", path],
+            f"Error during 'git add' for path '{path}'",
+            None  # No success message for individual paths
+        )
+        if not success:
+            return False
+
+    print_success("Changes staged successfully")
+    return True
 
 
 def git_commit(commit_message: str) -> bool:
@@ -382,27 +397,52 @@ def check_is_git_repo() -> bool:
     return success
 
 
-def check_has_changes() -> bool:
-    """Check if there are changes to commit.
+def check_has_changes(paths: Optional[List[str]] = None) -> bool:
+    """Check if there are changes to commit in the specified paths.
+
+    Args:
+        paths: List of paths to check for changes (None for all paths)
 
     Returns:
         bool: True if there are changes, False otherwise
     """
-    print_process("Checking for changes...")
+    # If no paths are provided, check the entire working directory
+    if not paths:
+        print_process("Checking for changes in the working directory...")
 
-    # First check unstaged changes
-    success, output = run_git_command(
-        ["git", "status", "--porcelain"],
-        "Failed to check for changes",
-        show_output=True
-    )
+        # Check unstaged changes
+        success, output = run_git_command(
+            ["git", "status", "--porcelain"],
+            "Failed to check for changes",
+            show_output=True
+        )
 
-    if success:
-        if not output:
-            print_info("No changes detected in the working directory.")
-            return False
-        return True
+        if success:
+            if not output:
+                print_info("No changes detected in the working directory.")
+                return False
+            return True
 
+        return False
+
+    # Check changes for specific paths
+    path_str = ", ".join(paths)
+    print_process(f"Checking for changes in: {path_str}...")
+
+    # Check each path for changes
+    for path in paths:
+        success, output = run_git_command(
+            ["git", "status", "--porcelain", path],
+            f"Failed to check for changes in '{path}'",
+            show_output=True
+        )
+
+        if success and output:
+            # Changes found in this path
+            return True
+
+    # No changes found in any of the specified paths
+    print_info(f"No changes detected in the specified path(s): {path_str}")
     return False
 
 
@@ -764,7 +804,7 @@ def check_and_install_pre_commit() -> bool:
                     print(f"\033[91m{e.stderr}\033[0m")
                 return False
             except Exception as e:
-                print_error(f"Unexpected error running pre-commit: {str(e)}")
+                print_error(f"Unexpected error running pre-commit checks: {str(e)}")
                 return False
 
         return True
