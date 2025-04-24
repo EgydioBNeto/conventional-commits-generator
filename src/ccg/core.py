@@ -207,6 +207,7 @@ def confirm_push() -> bool:
             return False
 
         print_error("Invalid choice. Please enter 'y' or 'n'.")
+    print()
 
 
 def generate_commit_message() -> Optional[str]:
