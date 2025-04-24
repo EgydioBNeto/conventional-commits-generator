@@ -290,6 +290,7 @@ def edit_specific_commit(commit_hash: str) -> int:
 
     # Ask to push changes
     if confirm_push():
+
         # Get current branch name
         branch_name = get_current_branch()
         if not branch_name:

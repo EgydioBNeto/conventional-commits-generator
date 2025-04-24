@@ -160,11 +160,11 @@ def confirm_commit(commit_message: str) -> bool:
     # Create a nice preview box
     box_width = min(len(commit_message) + 6, TERM_WIDTH - 4)
 
-    print(f"{GREEN}┌{'─' * box_width}┐{RESET}")
-    print(f"{GREEN}│{' ' * box_width}│{RESET}")
+    print(f"{WHITE}┌{'─' * box_width}┐{RESET}")
+    print(f"{WHITE}│{' ' * box_width}│{RESET}")
     print(f"{WHITE}│  {BOLD}{commit_message}{RESET}{WHITE}{' ' * (box_width - len(commit_message) - 2)}│{RESET}")
-    print(f"{GREEN}│{' ' * box_width}│{RESET}")
-    print(f"{GREEN}└{'─' * box_width}┘{RESET}")
+    print(f"{WHITE}│{' ' * box_width}│{RESET}")
+    print(f"{WHITE}└{'─' * box_width}┘{RESET}")
 
     while True:
         confirm = read_input(f"{YELLOW}Confirm this commit message? (y/n){RESET}").lower()
