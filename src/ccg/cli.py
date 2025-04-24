@@ -12,7 +12,7 @@ from ccg.git import (
     check_is_git_repo, check_has_changes, check_remote_access,
     get_current_branch, branch_exists_on_remote, discard_local_changes,
     pull_from_remote, create_tag, push_tag, get_recent_commits,
-    get_commit_by_hash, edit_commit_message
+    get_commit_by_hash, edit_commit_message, delete_commit
 )
 from ccg.utils import (
     print_header, print_section, print_success, print_error,
@@ -79,14 +79,19 @@ def parse_args(args: Optional[List[str]] = None) -> argparse.Namespace:
         help="Edit an existing commit message",
     )
     parser.add_argument(
+        "--delete",
+        action="store_true",
+        help="Delete an existing commit",
+    )
+    parser.add_argument(
         "--list",
         type=int,
-        help="Number of recent commits to display when using --edit",
+        help="Number of recent commits to display when using --edit or --delete",
         metavar="N",
     )
     parser.add_argument(
         "--commit",
-        help="Hash of the specific commit to edit",
+        help="Hash of the specific commit to edit or delete",
         metavar="HASH",
     )
     parser.add_argument(
@@ -174,18 +179,45 @@ def handle_edit(commit_hash: Optional[str] = None, list_count: Optional[int] = 5
         return edit_specific_commit(commit_hash)
     else:
         # Show list of commits
-        return show_commit_list(list_count)
+        return show_commit_list(list_count, edit_mode=True)
 
 
-def show_commit_list(count: int = 5) -> int:
-    """Show a list of recent commits and let the user select one to edit.
+def handle_delete(commit_hash: Optional[str] = None, list_count: Optional[int] = 5) -> int:
+    """Handle deleting a commit.
 
     Args:
-        count: Number of recent commits to display
+        commit_hash: Hash of the specific commit to delete
+        list_count: Number of recent commits to display
 
     Returns:
         int: Exit code (0 for success, non-zero for error)
     """
+    print_section("Delete Commit")
+
+    # Check if we're in a git repository
+    if not check_is_git_repo():
+        print_error("Not a git repository. Please initialize one with 'git init'.")
+        return 1
+
+    if commit_hash:
+        # Delete specific commit
+        return delete_specific_commit(commit_hash)
+    else:
+        # Show list of commits
+        return show_commit_list(list_count, edit_mode=False)
+
+
+def show_commit_list(count: int = 5, edit_mode: bool = True) -> int:
+    """Show a list of recent commits and let the user select one to edit or delete.
+
+    Args:
+        count: Number of recent commits to display
+        edit_mode: If True, edit commit, otherwise delete commit
+
+    Returns:
+        int: Exit code (0 for success, non-zero for error)
+    """
+    action = "edit" if edit_mode else "delete"
 
     # Get recent commits
     commits = get_recent_commits(count)
@@ -207,28 +239,123 @@ def show_commit_list(count: int = 5) -> int:
     # Ask user to select a commit
     while True:
         selection = read_input(
-            f"{YELLOW}Enter commit number or hash to edit (or 'q' to quit){RESET}"
+            f"{YELLOW}Enter commit number or hash to {action} (or 'q' to quit){RESET}"
         )
 
         if selection.lower() in ('q', 'quit', 'exit'):
-            print_info("Edit operation cancelled")
+            print_info(f"{action.capitalize()} operation cancelled")
             return 0
 
         # Check if selection is a number
         if selection.isdigit() and 1 <= int(selection) <= len(commits):
             idx = int(selection) - 1
             selected_hash = commits[idx][0]  # Get full hash
-            return edit_specific_commit(selected_hash)
+            if edit_mode:
+                return edit_specific_commit(selected_hash)
+            else:
+                return delete_specific_commit(selected_hash)
 
         # Check if selection is a hash (partial or full)
         matching_commits = [c for c in commits if c[0].startswith(selection)]
         if len(matching_commits) == 1:
-            return edit_specific_commit(matching_commits[0][0])
+            if edit_mode:
+                return edit_specific_commit(matching_commits[0][0])
+            else:
+                return delete_specific_commit(matching_commits[0][0])
         elif len(matching_commits) > 1:
             print_error("Multiple commits match this hash. Please be more specific.")
             continue
 
         print_error("Invalid selection. Please try again.")
+
+
+def delete_specific_commit(commit_hash: str) -> int:
+    """Delete a specific commit.
+
+    Args:
+        commit_hash: Hash of the commit to delete
+
+    Returns:
+        int: Exit code (0 for success, non-zero for error)
+    """
+    # Get the commit details
+    commit_details = get_commit_by_hash(commit_hash)
+    if not commit_details:
+        print_error(f"Commit with hash '{commit_hash}' not found.")
+        return 1
+
+    hash_full, hash_short, subject, body, author, date = commit_details
+    print(f"Hash: {hash_full}")
+    print(f"Author: {author}")
+    print(f"Date: {date}")
+    print(f"Subject: {subject}")
+    if body:
+        print(f"Body:\n{body}")
+
+    print()
+    print_warning("Deleting a commit can potentially cause conflicts and data loss.")
+    print_warning("This operation will rewrite git history.")
+
+    # Confirm the deletion
+    print_section("Confirm Deletion")
+    print_error("This action CANNOT be undone!")
+
+    while True:
+        confirm = read_input(
+            f"{YELLOW}Are you ABSOLUTELY sure you want to delete this commit? (y/n){RESET}"
+        ).lower()
+
+        if not confirm:
+            print_warning("Please enter 'y' or 'n'")
+            continue
+
+        if confirm in ("y", "yes"):
+            break
+        elif confirm in ("n", "no"):
+            print_info("Delete cancelled. Commit remains unchanged.")
+            return 0
+
+        print_error("Invalid choice. Please enter 'y' or 'n'.")
+
+    # Delete the commit
+    if not delete_commit(hash_full):
+        print_error("Failed to delete commit.")
+        return 1
+
+    print_success(f"Commit '{hash_short}' has been successfully deleted")
+
+    # Ask to push changes
+    print_warning("Force push is required to update the remote repository.")
+    print_warning("This will permanently alter git history and may affect other users.")
+
+    while True:
+        force_confirm = read_input(
+            f"{YELLOW}Force push these changes to remote? (y/n){RESET}"
+        ).lower()
+
+        if not force_confirm:
+            print_warning("Please enter 'y' or 'n'")
+            continue
+
+        if force_confirm in ("y", "yes"):
+            # Get current branch name
+            branch_name = get_current_branch()
+            if not branch_name:
+                print_error("Failed to determine current branch name")
+                return 1
+
+            # Force push to remote
+            if not git_push(force=True):
+                print_error("Failed to force push changes to remote")
+                return 1
+            break
+        elif force_confirm in ("n", "no"):
+            print_info("Changes remain local only")
+            break
+
+        print_error("Invalid choice. Please enter 'y' or 'n'.")
+
+    return 0
 
 
 def edit_specific_commit(commit_hash: str) -> int:
@@ -657,6 +784,15 @@ def main(args: Optional[List[str]] = None) -> int:
             commit_hash = parsed_args.commit
 
             return handle_edit(commit_hash, list_count)
+
+        # Delete commit mode
+        if parsed_args.delete:
+            # Get list count (default 5)
+            list_count = parsed_args.list or 5
+            # Get commit hash (if provided)
+            commit_hash = parsed_args.commit
+
+            return handle_delete(commit_hash, list_count)
 
         # Just push mode
         if parsed_args.push:
