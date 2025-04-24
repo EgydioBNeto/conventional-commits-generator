@@ -1,6 +1,5 @@
 """Command-line interface for Conventional Commits Generator."""
 
-
 import argparse
 import sys
 import traceback
