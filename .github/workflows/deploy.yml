@@ -15,12 +15,18 @@ on:
 env:
   PYTHON_VERSION: "3.11"
 
+permissions:
+  contents: write
+  actions: read
+  packages: read
+
 jobs:
   release:
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.version.outputs.version }}
       version_changed: ${{ steps.version.outputs.changed }}
+      commit_hash: ${{ steps.commit_info.outputs.hash }}
 
     steps:
     - name: Checkout code
@@ -51,10 +57,10 @@ jobs:
       run: |
         COMMIT_MSG=$(git log -1 --pretty=%B)
         echo "Commit message: $COMMIT_MSG"
-        if [[ $COMMIT_MSG =~ ^.*\!:.*$ ]] || [[ $COMMIT_MSG =~ BREAKING[[:space:]]CHANGE ]]; then
+        if [[ $COMMIT_MSG =~ ^.*\!:.*$ ]] || [[ $COMMIT_MSG =~ BREAKING[[:space:]]CHANGE ]] || [[ $COMMIT_MSG =~ "BREAKING CHANGE" ]]; then
           echo "type=major" >> $GITHUB_OUTPUT
           echo "Detected BREAKING CHANGE - will bump MAJOR version"
-        elif [[ $COMMIT_MSG =~ ^feat(\(.+\))?:.*$ ]]; then
+        elif [[ $COMMIT_MSG =~ feat(\(.+\))?[!]?:[[:space:]] ]] || [[ $COMMIT_MSG =~ "feat:" ]] || [[ $COMMIT_MSG =~ ^feat(\(.+\))?:.*$ ]]; then
           echo "type=minor" >> $GITHUB_OUTPUT
           echo "Detected feature - will bump MINOR version"
         else
@@ -78,9 +84,15 @@ jobs:
 
     - name: Commit version changes
       if: steps.version.outputs.changed == 'true'
+      id: commit_info
       run: |
         git add -A
         git commit -m "🔧 chore: bump version to ${{ steps.version.outputs.version }}"
+
+        COMMIT_HASH=$(git rev-parse HEAD)
+        echo "hash=$COMMIT_HASH" >> $GITHUB_OUTPUT
+        echo "Created commit: $COMMIT_HASH"
+
         CURRENT_BRANCH="${{ steps.branch.outputs.branch }}"
         echo "Pushing to branch: $CURRENT_BRANCH"
         git push origin "$CURRENT_BRANCH"
@@ -119,7 +131,25 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
       with:
-        ref: main
+        ref: ${{ needs.release.outputs.commit_hash }}
+        fetch-depth: 0
+
+    - name: Verify correct version
+      run: |
+        CURRENT_VERSION=$(python -c "import sys; sys.path.insert(0, 'src'); from ccg import __version__; print(__version__)")
+        EXPECTED_VERSION="${{ needs.release.outputs.version }}"
+
+        echo "Current version in code: $CURRENT_VERSION"
+        echo "Expected version: $EXPECTED_VERSION"
+
+        if [ "$CURRENT_VERSION" != "$EXPECTED_VERSION" ]; then
+          echo "❌ ERROR: Version mismatch!"
+          echo "Expected: $EXPECTED_VERSION"
+          echo "Got: $CURRENT_VERSION"
+          exit 1
+        else
+          echo "✅ Version verified: $CURRENT_VERSION"
+        fi
 
     - name: Set up Python
       uses: actions/setup-python@v4
@@ -133,17 +163,31 @@ jobs:
 
     - name: Build package
       run: |
+        echo "Building package with version ${{ needs.release.outputs.version }}"
         python -m build
 
     - name: Verify build
       run: |
         python -m twine check dist/*
         ls -la dist/
+
+        WHEEL_FILE=$(ls dist/*.whl | head -1)
+        echo "Built wheel: $WHEEL_FILE"
+
+        if [[ $WHEEL_FILE == *"${{ needs.release.outputs.version }}"* ]]; then
+          echo "✅ Wheel file has correct version"
+        else
+          echo "❌ ERROR: Wheel file doesn't contain expected version"
+          echo "Expected version in filename: ${{ needs.release.outputs.version }}"
+          exit 1
+        fi
+
     - name: Publish to PyPI
       env:
         TWINE_USERNAME: __token__
         TWINE_PASSWORD: ${{ secrets.PYPI_TOKEN }}
       run: |
+        echo "Publishing version ${{ needs.release.outputs.version }} to PyPI"
         python -m twine upload dist/*
 
     - name: Verify PyPI deployment
