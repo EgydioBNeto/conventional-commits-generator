@@ -4,7 +4,9 @@ Script to extract only the changelog section of the current version.
 Used to create the release body on GitHub.
 """
 
+import os
 import re
+import subprocess
 import sys
 from pathlib import Path
 
@@ -22,11 +24,43 @@ def get_current_version() -> str:
     return match.group(1) if match else "0.0.0"
 
 
+def get_repository_name() -> str:
+    """Get repository name from git remote or environment variables."""
+    github_repo = os.environ.get("GITHUB_REPOSITORY")
+    if github_repo:
+        return github_repo
+
+    try:
+        result = subprocess.run(
+            ["git", "remote", "get-url", "origin"], capture_output=True, text=True, check=True
+        )
+        remote_url = result.stdout.strip()
+
+        if "github.com" in remote_url:
+            if remote_url.startswith("git@github.com:"):
+                repo_part = remote_url.split("git@github.com:")[1]
+            elif "github.com/" in remote_url:
+                repo_part = remote_url.split("github.com/")[1]
+            else:
+                return "EgydioBNeto/conventional-commits-generator"
+
+            if repo_part.endswith(".git"):
+                repo_part = repo_part[:-4]
+
+            return repo_part
+    except subprocess.CalledProcessError:
+        pass
+
+    return "EgydioBNeto/conventional-commits-generator"
+
+
 def extract_current_version_changelog(changelog_content: str, version: str) -> str:
     """Extract changelog section for current version."""
     version_pattern = rf"## \[{re.escape(version)}\].*?(?=## \[|\Z)"
 
     match = re.search(version_pattern, changelog_content, re.DOTALL)
+
+    repo_name = get_repository_name()
 
     if not match:
         return f"""## What's Changed in v{version}
@@ -38,7 +72,13 @@ This release includes various improvements and fixes.
 - Enhanced CI/CD pipeline
 - Version consistency improvements
 
-**Full Changelog**: https://github.com/${{{{ github.repository }}}}/compare/v{get_previous_version(changelog_content)}...v{version}
+### Installation
+
+```bash
+pip install --upgrade conventional-commits-generator
+```
+
+**Full Changelog**: https://github.com/{repo_name}/compare/{get_previous_version_tag()}...v{version}
 """
 
     section = match.group(0)
@@ -74,7 +114,7 @@ pip install --upgrade conventional-commits-generator
 ccg --version
 ```
 
-**Full Changelog**: https://github.com/${{{{ github.repository }}}}/compare/{get_previous_version_tag()}...v{version}
+**Full Changelog**: https://github.com/{repo_name}/compare/{get_previous_version_tag()}...v{version}
 """
         return enhanced_content
 
@@ -88,7 +128,7 @@ ccg --version
 pip install --upgrade conventional-commits-generator
 ```
 
-**Full Changelog**: https://github.com/${{{{ github.repository }}}}/compare/{get_previous_version_tag()}...v{version}
+**Full Changelog**: https://github.com/{repo_name}/compare/{get_previous_version_tag()}...v{version}
 """
 
     return enhanced_content
@@ -96,8 +136,6 @@ pip install --upgrade conventional-commits-generator
 
 def get_previous_version_tag() -> str:
     """Get previous version tag for comparison link."""
-    import subprocess
-
     try:
         result = subprocess.run(
             ["git", "tag", "--sort=-version:refname", "-l", "v*"],
@@ -107,25 +145,32 @@ def get_previous_version_tag() -> str:
         )
 
         tags = result.stdout.strip().split("\n")
+        tags = [tag for tag in tags if tag.strip()]
 
         if len(tags) >= 2:
             return tags[1]
         elif len(tags) == 1:
-            first_commit = subprocess.run(
-                ["git", "rev-list", "--max-parents=0", "HEAD"],
-                capture_output=True,
-                text=True,
-                check=True,
-            ).stdout.strip()
-            return first_commit[:7] if first_commit else tags[0]
+            try:
+                first_commit = subprocess.run(
+                    ["git", "rev-list", "--max-parents=0", "HEAD"],
+                    capture_output=True,
+                    text=True,
+                    check=True,
+                ).stdout.strip()
+                return first_commit[:7] if first_commit else tags[0]
+            except subprocess.CalledProcessError:
+                return tags[0]
         else:
-            first_commit = subprocess.run(
-                ["git", "rev-list", "--max-parents=0", "HEAD"],
-                capture_output=True,
-                text=True,
-                check=True,
-            ).stdout.strip()
-            return first_commit[:7] if first_commit else "HEAD"
+            try:
+                first_commit = subprocess.run(
+                    ["git", "rev-list", "--max-parents=0", "HEAD"],
+                    capture_output=True,
+                    text=True,
+                    check=True,
+                ).stdout.strip()
+                return first_commit[:7] if first_commit else "HEAD"
+            except subprocess.CalledProcessError:
+                return "HEAD"
 
     except subprocess.CalledProcessError:
         return "HEAD"
@@ -159,6 +204,7 @@ def main():
     """Extract and output current version changelog."""
     try:
         current_version = get_current_version()
+        repo_name = get_repository_name()
 
         changelog_file = Path("CHANGELOG.md")
 
@@ -186,7 +232,7 @@ pip install conventional-commits-generator
 ccg
 ```
 
-**Full Changelog**: https://github.com/${{{{ github.repository }}}}/releases/tag/v{current_version}
+**Full Changelog**: https://github.com/{repo_name}/releases/tag/v{current_version}
 """
             )
             return
@@ -201,6 +247,8 @@ ccg
         print(f"Error extracting changelog: {e}", file=sys.stderr)
 
         current_version = get_current_version()
+        repo_name = get_repository_name()
+
         print(
             f"""## What's Changed in v{current_version}
 
@@ -217,6 +265,8 @@ pip install --upgrade conventional-commits-generator
 ```bash
 ccg --version
 ```
+
+**Full Changelog**: https://github.com/{repo_name}/compare/HEAD...v{current_version}
 """
         )
 
