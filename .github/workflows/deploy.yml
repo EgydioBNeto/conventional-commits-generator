@@ -73,8 +73,10 @@ jobs:
       if: steps.version.outputs.changed == 'true'
       run: |
         git add -A
-        git commit -m "🔖 chore: bump version to ${{ steps.version.outputs.version }}"
-        git push origin main
+        git commit -m "🔧 chore: bump version to ${{ steps.version.outputs.version }}"
+        CURRENT_BRANCH="${{ steps.branch.outputs.branch }}"
+        echo "Pushing to branch: $CURRENT_BRANCH"
+        git push origin "$CURRENT_BRANCH"
 
     - name: Create Git tag
       if: steps.version.outputs.changed == 'true'
