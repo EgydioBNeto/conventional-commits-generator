@@ -39,6 +39,13 @@ jobs:
         git config --local user.email "action@github.com"
         git config --local user.name "GitHub Action"
 
+    - name: Get current branch
+      id: branch
+      run: |
+        CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
+        echo "branch=$CURRENT_BRANCH" >> $GITHUB_OUTPUT
+        echo "Current branch: $CURRENT_BRANCH"
+
     - name: Determine version bump type
       id: bump_type
       run: |
