@@ -123,7 +123,7 @@ jobs:
       id: commit_info
       run: |
         git add -A
-        git commit -m "🔧 chore: bump version to ${{ steps.version.outputs.version }}"
+        git commit -m ":wrench: chore: bump version to ${{ steps.version.outputs.version }}"
 
         COMMIT_HASH=$(git rev-parse HEAD)
         echo "hash=$COMMIT_HASH" >> $GITHUB_OUTPUT
