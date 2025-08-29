@@ -1,8 +1,6 @@
 """Utilities and styling for the Conventional Commits Generator."""
 
-import os
 import shutil
-import sys
 from typing import Dict, List, Optional
 
 ASCII_LOGO = r"""
@@ -87,6 +85,7 @@ INPUT_LIMITS = {
     "message": 64,
     "body": 512,
     "tag": 32,
+    "tag_message": 512,
     "confirmation": 3,
 }
 
