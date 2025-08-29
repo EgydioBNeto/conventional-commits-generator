@@ -1,3 +1,3 @@
 """Conventional Commits Generator - A CLI tool for standardized commit messages."""
 
-__version__ = "2.1.2"
+__version__ = "2.2.0"
