@@ -101,7 +101,7 @@ def categorize_commits(commits: List[Tuple[str, str, str, str]]) -> Dict[str, Li
         if (
             subject.startswith("Merge ")
             or "bump version" in subject.lower()
-            or subject.startswith("🔧 chore: bump version")
+            or subject.startswith(":wrench: chore: bump version")
         ):
             continue
 
