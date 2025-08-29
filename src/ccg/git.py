@@ -3,7 +3,6 @@
 import os
 import subprocess
 import tempfile
-import time
 from typing import Any, List, Optional, Tuple
 
 from ccg.utils import (
@@ -201,7 +200,6 @@ def discard_local_changes() -> bool:
     success, _ = run_git_command(
         ["git", "reset", "HEAD"],
         "Error while unstaging changes",
-        "Unstaged all changes successfully",
     )
 
     if not success:
@@ -210,7 +208,6 @@ def discard_local_changes() -> bool:
     success, _ = run_git_command(
         ["git", "checkout", "."],
         "Error while discarding local changes",
-        "Discarded all tracked file changes",
     )
 
     if not success:
@@ -245,7 +242,6 @@ def pull_from_remote() -> bool:
     success, _ = run_git_command(
         ["git", "pull", remote_name, branch_name],
         f"Error pulling from {remote_name}/{branch_name}",
-        f"Successfully pulled latest changes from {remote_name}/{branch_name}",
         timeout=120,
     )
 

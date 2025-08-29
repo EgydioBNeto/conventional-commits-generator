@@ -427,8 +427,8 @@ def handle_tag() -> int:
     if annotated:
         tag_message = read_input(
             f"{YELLOW}Enter the tag message{RESET}",
-            history_type="message",
-            max_length=INPUT_LIMITS["message"],
+            history_type="tag_message",
+            max_length=INPUT_LIMITS["tag_message"],
         )
         if not tag_message:
             print_error("Tag message cannot be empty for annotated tags. Aborting.")
@@ -455,7 +455,6 @@ def handle_reset() -> int:
         return 1
 
     if not check_has_changes():
-        print_info("No local changes detected.")
         pull_anyway = confirm_user_action(
             f"{YELLOW}No changes to discard. Do you still want to pull latest changes? (y/n){RESET}",
             success_message=None,

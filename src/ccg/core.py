@@ -1,14 +1,12 @@
 """Core functionality for the Conventional Commits Generator."""
 
 import sys
-from typing import Dict, List, Optional, Tuple
+from typing import Optional, Tuple
 
 from ccg.utils import (
     BOLD,
     BULLET,
     COMMIT_TYPES,
-    GREEN,
-    INPUT_LIMITS,
     RESET,
     TERM_WIDTH,
     WHITE,
@@ -19,7 +17,6 @@ from ccg.utils import (
     print_info,
     print_section,
     print_success,
-    print_warning,
     read_input,
 )
 
