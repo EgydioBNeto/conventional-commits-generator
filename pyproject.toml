@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "conventional-commits-generator"
-version = "2.2.1"
+version = "2.2.2"
 description = "Interactive CLI tool for creating standardized commit messages following conventional commits"
 readme = "README.md"
 requires-python = ">=3.8"

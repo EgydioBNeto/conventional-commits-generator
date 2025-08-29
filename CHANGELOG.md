@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.2.2] - 2025-08-29
+
+### 🔧 Maintenance
+
+- change emoji to code ([5954188])
+
+
 ## [2.2.1] - 2025-08-29
 
 ### 🐛 Fixed
