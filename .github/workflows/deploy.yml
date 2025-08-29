@@ -1,0 +1,146 @@
+name: Deploy to PyPI
+
+on:
+  push:
+    branches: [ test ]
+    paths-ignore:
+      - 'README.md'
+      - 'docs/**'
+      - '.github/ISSUE_TEMPLATE/**'
+      - '.github/PULL_REQUEST_TEMPLATE.md'
+      - '.github/CODE_OF_CONDUCT.md'
+      - '.github/CONTRIBUTING.md'
+      - '.github/SECURITY.md'
+
+env:
+  PYTHON_VERSION: "3.11"
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      version_changed: ${{ steps.version.outputs.changed }}
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        token: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+
+    - name: Configure Git
+      run: |
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+
+    - name: Determine version bump type
+      id: bump_type
+      run: |
+        COMMIT_MSG=$(git log -1 --pretty=%B)
+        echo "Commit message: $COMMIT_MSG"
+        if [[ $COMMIT_MSG =~ ^.*\!:.*$ ]] || [[ $COMMIT_MSG =~ BREAKING[[:space:]]CHANGE ]]; then
+          echo "type=major" >> $GITHUB_OUTPUT
+          echo "Detected BREAKING CHANGE - will bump MAJOR version"
+        elif [[ $COMMIT_MSG =~ ^feat(\(.+\))?:.*$ ]]; then
+          echo "type=minor" >> $GITHUB_OUTPUT
+          echo "Detected feature - will bump MINOR version"
+        else
+          echo "type=patch" >> $GITHUB_OUTPUT
+          echo "Default - will bump PATCH version"
+        fi
+
+    - name: Bump version and update files
+      id: version
+      run: |
+        python scripts/bump_version.py --type ${{ steps.bump_type.outputs.type }}
+        NEW_VERSION=$(python -c "import sys; sys.path.insert(0, 'src'); from ccg import __version__; print(__version__)")
+        echo "version=$NEW_VERSION" >> $GITHUB_OUTPUT
+        if git diff --quiet; then
+          echo "changed=false" >> $GITHUB_OUTPUT
+          echo "No version changes detected"
+        else
+          echo "changed=true" >> $GITHUB_OUTPUT
+          echo "Version bumped to: $NEW_VERSION"
+        fi
+
+    - name: Commit version changes
+      if: steps.version.outputs.changed == 'true'
+      run: |
+        git add -A
+        git commit -m "🔖 chore: bump version to ${{ steps.version.outputs.version }}"
+        git push origin main
+
+    - name: Create Git tag
+      if: steps.version.outputs.changed == 'true'
+      run: |
+        git tag -a "v${{ steps.version.outputs.version }}" -m "Release v${{ steps.version.outputs.version }}"
+        git push origin "v${{ steps.version.outputs.version }}"
+
+    - name: Generate changelog
+      if: steps.version.outputs.changed == 'true'
+      id: changelog
+      run: |
+        python scripts/generate_changelog.py > CHANGELOG.md
+        python scripts/extract_current_changelog.py > CURRENT_CHANGELOG.md
+
+    - name: Create GitHub Release
+      if: steps.version.outputs.changed == 'true'
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: v${{ steps.version.outputs.version }}
+        release_name: Release v${{ steps.version.outputs.version }}
+        body_path: CURRENT_CHANGELOG.md
+        draft: false
+        prerelease: false
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: release
+    if: needs.release.outputs.version_changed == 'true'
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        ref: main
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+
+    - name: Install build dependencies
+      run: |
+        python -m pip install --upgrade pip
+        python -m pip install build twine
+
+    - name: Build package
+      run: |
+        python -m build
+
+    - name: Verify build
+      run: |
+        python -m twine check dist/*
+        ls -la dist/
+        ccg --version
+
+    - name: Publish to PyPI
+      env:
+        TWINE_USERNAME: __token__
+        TWINE_PASSWORD: ${{ secrets.PYPI_TOKEN }}
+      run: |
+        python -m twine upload dist/*
+
+    - name: Verify PyPI deployment
+      run: |
+        sleep 60
+        pip install --upgrade conventional-commits-generator==${{ needs.release.outputs.version }}
+        ccg --version
