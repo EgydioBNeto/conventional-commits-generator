@@ -139,8 +139,6 @@ jobs:
       run: |
         python -m twine check dist/*
         ls -la dist/
-        ccg --version
-
     - name: Publish to PyPI
       env:
         TWINE_USERNAME: __token__
