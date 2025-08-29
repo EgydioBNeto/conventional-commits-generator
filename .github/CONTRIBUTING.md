@@ -1,49 +1,79 @@
-# Contribution to the Project
+# Contributing to the Project
 
-## Welcome!
-
-Thank you for considering contributing to this project! We encourage everyone to participate.
-
-Before you begin, please take a moment to review the following guidelines.
+Thank you for considering contributing to this project! We encourage participation from everyone.
 
 ## How to Contribute
 
-1. **Create an Issue**
-    - Before starting work on a new feature or fix, create an issue to discuss and get feedback.
+### 1. Create an Issue
+Before starting work on a new feature or fix, create an issue for discussion and feedback.
 
-2. **Fork the Repository**
-    - Fork the repository to your account.
+### 2. Fork the Repository
+Fork the repository to your account.
 
-3. **Create a Branch**
-    - Create a branch for your contribution.
+### 3. Create a Branch
+Create a branch for your contribution:
+```bash
+git checkout -b feature/new-feature
+```
 
-4. **Make Changes**
-    - Implement the desired changes. Make sure to follow existing coding conventions.
+### 4. Make Changes
+Implement the desired changes following existing coding conventions.
 
-5. **Test Your Changes**
-    - Ensure that your changes do not break the project. Run relevant tests.
+### 5. Test Your Changes
+Make sure your changes don't break the project
 
-6. **Submit Changes**
-    - Commit your changes and push them to your forked repository.
+### 6. Commit Changes
+Use CCG itself to create standardized commits:
+```bash
+ccg
+```
 
-7. **Create a Pull Request (PR)**
-    - Create a PR to the main branch of this repository.
+### 7. Push to Your Fork
+```bash
+git push origin feature/new-feature
+```
 
-8. **Review**
-    - Await the review of your PR. Be willing to make adjustments as requested.
+### 8. Create Pull Request
+Create a PR to the main branch of this repository.
 
-9. **Merge**
-    - Once approved, your PR will be merged into the main branch.
+### 9. Await Review
+Be willing to make adjustments as requested.
 
-10. **Done**
-    - Be Happy!
+## Development Standards
+
+### Project Structure
+```
+src/ccg/
+├── __init__.py      # Version and exports
+├── cli.py          # Command line interface
+├── core.py         # Core logic
+├── git.py          # Git operations
+└── utils.py        # Utilities and formatting
+```
+
+### Code Conventions
+- Use type hints whenever possible
+- Docstrings for public functions
+- Descriptive names for variables and functions
+- Maximum 100 characters per line
+- Use f-strings for string formatting
+
+### Pre-commit Hooks
+The project uses pre-commit to ensure quality:
+- `trailing-whitespace`: Remove trailing whitespace
+- `end-of-file-fixer`: Ensure newline at end of files
+- `check-toml`: Validate TOML files
+- `debug-statements`: Remove debug statements
+- `check-added-large-files`: Prevent large files
 
 ## Code of Conduct
 
-This project follows the [Code of Conduct](https://github.com/EgydioBNeto/conventional-commits-generator/blob/main/.github/CODE_OF_CONDUCT.md). By participating, it is expected that all contributors and maintainers adhere to this code.
+This project follows our [Code of Conduct](CODE_OF_CONDUCT.md). By participating, all contributors and maintainers are expected to uphold this code.
 
-## Help
+## Need Help?
 
-If you need assistance or have questions, create an issue or contact [egydiobolonhezi@gmail.com].
+If you need assistance:
+- Create an issue with the "question" tag
+- Contact us: egydiobolonhezi@gmail.com
 
-Thank you for your support!
+Thank you for your interest in contributing! 🚀

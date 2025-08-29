@@ -1,18 +1,47 @@
-## Pull Request
+## Summary of Changes
+Describe your changes clearly and concisely.
 
-### Description
-Describe your changes in detail.
+## Type of Change
+- [ ] ✨ New feature
+- [ ] 🐛 Bug fix
+- [ ] 🔧 Chore (maintenance/routine tasks)
+- [ ] ♻️ Code refactoring
+- [ ] 💄 Style (formatting/cosmetic improvements)
+- [ ] 📚 Documentation changes
+- [ ] 🧪 Tests addition/modification
+- [ ] 📦 Build system changes
+- [ ] ⏪ Revert previous commit
+- [ ] 👷 CI/CD changes
+- [ ] ⚡ Performance improvement
 
-### Type of Change
-- [ ] Bug fix
-- [ ] New feature
-- [ ] Performance improvement
-- [ ] Other
+## Motivation and Context
+Why is this change necessary? What problem does it solve?
 
-### Checklist
-- [ ] I have tested the changes locally.
-- [ ] My code follows the coding style conventions.
-- [ ] I have added tests for my changes.
+Fixes # (issue number)
 
-### Additional Notes
-Any additional information or context about the Pull Request.
+## How to Test
+Describe how reviewers can test these changes:
+
+1. Run `ccg --version` to verify installation
+2. Test the `ccg` command with new changes
+3. Verify that tests still pass
+
+## Screenshots (if applicable)
+Add screenshots for UI changes.
+
+## Checklist
+- [ ] My code follows the style guidelines of this project
+- [ ] I have performed a self-review of my own code
+- [ ] I have commented my code in hard-to-understand areas
+- [ ] My changes generate no new warnings
+- [ ] I have run `pre-commit run --all-files` successfully
+- [ ] I have tested the changes in different scenarios
+- [ ] I have updated the documentation where necessary
+
+## Breaking Changes
+- [ ] This change breaks compatibility with previous versions
+
+If yes, describe what changes:
+
+## Review Notes
+Additional information for code reviewers.
