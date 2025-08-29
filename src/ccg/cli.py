@@ -129,7 +129,7 @@ def handle_commit_operation(operation_type: str) -> int:
     print()
 
     for i, commit in enumerate(commits, start=1):
-        full_hash, short_hash, subject, author, date = commit
+        short_hash, subject, author, date = commit
         print(f"{i}. [{short_hash}] {subject} - {author} ({date})")
     print()
 
