@@ -1,102 +1,219 @@
 #!/bin/bash
-# Script to set up a virtual environment for CCG development on Linux/macOS
 
-# Set the virtual environment name
-VENV_NAME=.venv
+# Conventional Commits Generator - Setup Script
+# Version with detailed logs and visual feedback
 
-# Set colors for output
-GREEN='\033[0;32m'
-YELLOW='\033[0;33m'
+set -e  # Exit on any error
+
+# Colors for output
 RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+PURPLE='\033[0;35m'
+CYAN='\033[0;36m'
 NC='\033[0m' # No Color
 
-# Check for reinstall flag
-REINSTALL=0
-if [ "$1" = "--reinstall" ] || [ "$1" = "-r" ]; then
-    REINSTALL=1
-fi
+# Configurations
+PYTHON_VERSION="3.8"
+VENV_DIR=".venv"
 
-# Check if venv exists
-if [ -d "$VENV_NAME" ]; then
-    echo -e "${YELLOW}Virtual environment already exists.${NC}"
+# Function for logs with timestamp
+log() {
+    local level=$1
+    shift
+    local message="$@"
+    local timestamp=$(date "+%H:%M:%S")
 
-    if [ $REINSTALL -eq 1 ]; then
-        echo -e "${GREEN}Reinstalling CCG within existing virtual environment...${NC}"
+    case $level in
+        "INFO")
+            echo -e "${BLUE}[${timestamp}] ℹ️  ${message}${NC}"
+            ;;
+        "SUCCESS")
+            echo -e "${GREEN}[${timestamp}] ✅ ${message}${NC}"
+            ;;
+        "WARNING")
+            echo -e "${YELLOW}[${timestamp}] ⚠️  ${message}${NC}"
+            ;;
+        "ERROR")
+            echo -e "${RED}[${timestamp}] ❌ ${message}${NC}"
+            ;;
+        "STEP")
+            echo -e "${PURPLE}[${timestamp}] 🔄 ${message}${NC}"
+            ;;
+    esac
+}
 
-        # Activate the virtual environment
-        source $VENV_NAME/bin/activate
+# Function to show progress
+show_progress() {
+    local message="$1"
+    local command="$2"
 
-        # Reinstall the package in development mode
-        echo -e "${YELLOW}Reinstalling CCG in development mode...${NC}"
-        pip uninstall -y ccg
-        pip install -e .[dev]
+    log "STEP" "$message"
 
-        echo -e "${GREEN}CCG has been reinstalled successfully.${NC}"
+    echo -n "   "
+    eval "$command" &
+    local pid=$!
 
-        # Show completion message and exit
-        echo
-        echo -e "${GREEN}Setup complete! Virtual environment is ready.${NC}"
-        echo
-        echo -e "To activate the virtual environment:"
-        echo -e "  source $VENV_NAME/bin/activate"
-        echo -e "To reinstall after changes:"
-        echo -e "  $0 --reinstall"
-        echo -e "To deactivate:"
-        echo -e "  deactivate"
+    # Progress spinner
+    local spin='-\|/'
+    local i=0
+    while kill -0 $pid 2>/dev/null; do
+        i=$(( (i+1) %4 ))
+        printf "\r   ${spin:$i:1} Processing... \r"
+        sleep 0.2
+    done
 
-        exit 0
-    else
-        echo -e "${YELLOW}Use '--reinstall' or '-r' flag to reinstall CCG without recreating the venv.${NC}"
-        echo -e "Example: $0 --reinstall"
+    wait $pid
+    local exit_code=$?
 
-        # Ask if user wants to continue with full setup
-        read -p "Do you want to continue with full setup? (y/n): " CONTINUE
-        if [[ $CONTINUE =~ ^[Nn]$ ]]; then
-            exit 0
-        fi
+    if [[ $exit_code -eq 1 ]]; then
+        printf "\r   ❌ Error!           \n"
+        return $exit_code
     fi
-fi
+}
 
-echo -e "${GREEN}Setting up a virtual environment for CCG development...${NC}"
+# Help function
+show_help() {
+    cat << EOF
+🔧 Conventional Commits Generator - Setup Script
 
-# Check if Python is installed
+USAGE:
+    $0 [OPTIONS]
+
+OPTIONS:
+    -p, --python     Minimum Python version (default: 3.8)
+    -h, --help       Show this help
+
+EXAMPLES:
+    $0                # Normal installation
+    $0 -p 3.9         # With Python 3.9+
+
+EOF
+}
+
+# Parse command line arguments
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        -p|--python)
+            PYTHON_VERSION="$2"
+            shift 2
+            ;;
+        -h|--help)
+            show_help
+            exit 0
+            ;;
+        *)
+            log "ERROR" "Unknown argument: $1"
+            show_help
+            exit 1
+            ;;
+    esac
+done
+
+# Banner
+cat << 'EOF'
+
+ ________      ________      ________
+|\   ____\    |\   ____\    |\   ____\
+\ \  \___|    \ \  \___|    \ \  \___|
+ \ \  \        \ \  \        \ \  \  ___
+  \ \  \____    \ \  \____    \ \  \|\  \
+   \ \_______\   \ \_______\   \ \_______\
+    \|_______|    \|_______|    \|_______|
+
+🚀 Setting up development environment...
+
+EOF
+
+# 1. Check Python
+log "STEP" "Checking Python installation..."
+
 if ! command -v python3 &> /dev/null; then
-    echo -e "${RED}Python 3 is not installed or not in PATH. Please install Python first.${NC}"
+    log "ERROR" "Python 3 not found. Please install Python 3.${PYTHON_VERSION}+"
     exit 1
 fi
 
-# Create the virtual environment if it doesn't exist
-if [ ! -d "$VENV_NAME" ]; then
-    echo -e "${YELLOW}Creating virtual environment...${NC}"
-    python3 -m venv $VENV_NAME
-else
-    echo -e "${YELLOW}Using existing virtual environment.${NC}"
+CURRENT_PYTHON_VERSION=$(python3 -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')")
+log "INFO" "Python found: v${CURRENT_PYTHON_VERSION}"
+
+# Check minimum version
+if ! python3 -c "import sys; exit(0 if sys.version_info >= tuple(map(int, '${PYTHON_VERSION}'.split('.'))) else 1)"; then
+    log "ERROR" "Python ${PYTHON_VERSION}+ is required. Current version: ${CURRENT_PYTHON_VERSION}"
+    exit 1
 fi
 
-# Activate the virtual environment
-echo -e "${YELLOW}Activating virtual environment...${NC}"
-source $VENV_NAME/bin/activate
+log "SUCCESS" "Python ${CURRENT_PYTHON_VERSION} is compatible"
 
-# Upgrade pip
-echo -e "${YELLOW}Upgrading pip...${NC}"
-python -m pip install --upgrade pip
+# 2. Remove existing virtual environment
+if [[ -d "$VENV_DIR" ]]; then
+    log "WARNING" "Existing virtual environment found at $VENV_DIR"
+    read -p "Do you want to remove and recreate? (Y/n): " -r
+    echo
+    if [[ -z "$REPLY" || $REPLY =~ ^[Yy]$ ]]; then
+        log "STEP" "Removing previous virtual environment..."
+        rm -rf "$VENV_DIR"
+        log "SUCCESS" "Previous environment removed"
+    else
+        log "INFO" "Keeping existing environment"
+    fi
+fi
 
-# Install the package in development mode with dev dependencies
-echo -e "${YELLOW}Installing CCG in development mode...${NC}"
-pip install -e .[dev]
+# 3. Create virtual environment
+if [[ ! -d "$VENV_DIR" ]]; then
+    show_progress "Creating virtual environment" "python3 -m venv $VENV_DIR"
+    log "SUCCESS" "Virtual environment created at $VENV_DIR"
+else
+    log "INFO" "Using existing virtual environment"
+fi
 
-# Install pre-commit hooks
-echo -e "${YELLOW}Setting up pre-commit hooks...${NC}"
-pre-commit install
+# 4. Activate virtual environment
+log "STEP" "Activating virtual environment..."
+source "$VENV_DIR/bin/activate"
+log "SUCCESS" "Virtual environment activated"
 
+# 5. Upgrade pip
+show_progress "Upgrading pip" "python -m pip install --upgrade pip"
+log "SUCCESS" "pip upgraded to version $(pip --version | cut -d' ' -f2)"
+
+# 6. Install project in development mode
+if [[ -f "setup.py" ]] || [[ -f "pyproject.toml" ]]; then
+    show_progress "Installing project in development mode" "pip install -e ."
+    log "SUCCESS" "Project installed in development mode"
+else
+    log "WARNING" "setup.py or pyproject.toml not found"
+fi
+
+# 7. Verify installation
+log "STEP" "Verifying installation..."
+
+if command -v ccg &> /dev/null; then
+    CCG_VERSION=$(ccg --version 2>/dev/null || echo "version not available")
+    log "SUCCESS" "CCG installed successfully - $CCG_VERSION"
+else
+    log "WARNING" "'ccg' command not found in PATH"
+fi
+
+# 8. Final information
 echo
-echo -e "${GREEN}Setup complete! Virtual environment is ready.${NC}"
+log "SUCCESS" "Setup completed!"
 echo
-echo -e "To activate the virtual environment:"
-echo -e "  source $VENV_NAME/bin/activate"
-echo -e "To reinstall after changes:"
-echo -e "  $0 --reinstall"
-echo -e "To deactivate:"
-echo -e "  deactivate"
-
-# Keep the environment active
+echo -e "${GREEN}═══════════════════════════════════════════════════════════════${NC}"
+echo -e "${GREEN}🎉 ENVIRONMENT SUCCESSFULLY CONFIGURED!${NC}"
+echo -e "${GREEN}═══════════════════════════════════════════════════════════════${NC}"
+echo
+echo -e "${YELLOW}📋 NEXT STEPS:${NC}"
+echo
+echo -e "${CYAN}1. Activate the virtual environment:${NC}"
+echo -e "   ${BLUE}source $VENV_DIR/bin/activate${NC}"
+echo
+echo -e "${CYAN}2. Verify installation:${NC}"
+echo -e "   ${BLUE}ccg --version${NC}"
+echo
+echo -e "${CYAN}3. Start using:${NC}"
+echo -e "   ${BLUE}ccg${NC}"
+echo
+echo -e "${CYAN}4. Deactivate the environment (when done):${NC}"
+echo -e "   ${BLUE}deactivate${NC}"
+echo
+echo -e "${GREEN}═══════════════════════════════════════════════════════════════${NC}"

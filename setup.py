@@ -4,5 +4,5 @@
 from setuptools import setup
 
 # This file is for backward compatibility only.
-# We're using pyproject.toml for modern packaging.
+# We're using pyproject.toml.
 setup()
