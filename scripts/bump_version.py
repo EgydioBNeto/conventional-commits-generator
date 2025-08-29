@@ -6,9 +6,11 @@ Updates the necessary files with the new version.
 
 import argparse
 import re
+import subprocess
 import sys
+from collections import defaultdict
 from pathlib import Path
-from typing import Tuple
+from typing import Dict, List, Tuple
 
 
 def parse_version(version_string: str) -> Tuple[int, int, int]:
@@ -53,6 +55,192 @@ def get_current_version() -> str:
         raise ValueError("Version not found in __init__.py")
 
     return match.group(1)
+
+
+def run_git_command(command: List[str]) -> str:
+    """Execute git command and return output."""
+    try:
+        result = subprocess.run(command, capture_output=True, text=True, check=True)
+        return result.stdout.strip()
+    except subprocess.CalledProcessError as e:
+        print(f"Git command failed: {' '.join(command)}")
+        print(f"Error: {e.stderr}")
+        return ""
+
+
+def get_latest_tag() -> str:
+    """Get the latest git tag."""
+    output = run_git_command(["git", "describe", "--tags", "--abbrev=0"])
+    return output if output else "HEAD"
+
+
+def get_commits_since_tag(tag: str) -> List[Tuple[str, str, str, str]]:
+    """Get commits since the given tag."""
+    if tag == "HEAD":
+        command = ["git", "log", "--pretty=format:%H|%s|%b|%aI"]
+    else:
+        command = ["git", "log", f"{tag}..HEAD", "--pretty=format:%H|%s|%b|%aI"]
+
+    output = run_git_command(command)
+
+    if not output:
+        return []
+
+    commits = []
+    for line in output.split("\n"):
+        if line.strip():
+            parts = line.split("|", 3)
+            if len(parts) >= 4:
+                hash_val, subject, body, date = parts
+                commits.append((hash_val, subject, body, date))
+
+    return commits
+
+
+def parse_commit_message(subject: str, body: str) -> Dict[str, str]:
+    """Parse conventional commit message."""
+    pattern = r"^(?P<emoji>:\w+:\s+)?(?P<type>\w+)(?P<scope>\([^)]+\))?(?P<breaking>!)?:\s*(?P<description>.+)$"
+
+    match = re.match(pattern, subject)
+
+    if not match:
+        return {
+            "type": "other",
+            "scope": "",
+            "breaking": False,
+            "description": subject,
+            "body": body,
+        }
+
+    groups = match.groupdict()
+
+    return {
+        "type": groups["type"],
+        "scope": groups["scope"] or "",
+        "breaking": bool(groups["breaking"]),
+        "description": groups["description"],
+        "body": body,
+        "emoji": groups["emoji"] or "",
+    }
+
+
+def categorize_commits(commits: List[Tuple[str, str, str, str]]) -> Dict[str, List[Dict]]:
+    """Categorize commits by type."""
+    categories = defaultdict(list)
+
+    for commit_hash, subject, body, date in commits:
+        if (
+            subject.startswith("Merge ")
+            or "bump version" in subject.lower()
+            or subject.startswith("🔧 chore: bump version")
+        ):
+            continue
+
+        parsed = parse_commit_message(subject, body)
+
+        commit_type = parsed["type"]
+
+        if parsed["breaking"]:
+            category = "breaking"
+        elif commit_type in ["feat", "feature"]:
+            category = "added"
+        elif commit_type == "fix":
+            category = "fixed"
+        elif commit_type in ["docs", "doc"]:
+            category = "documentation"
+        elif commit_type in ["style", "refactor", "perf"]:
+            category = "changed"
+        elif commit_type in ["test", "tests"]:
+            category = "tests"
+        elif commit_type in ["chore", "build", "ci"]:
+            category = "maintenance"
+        elif commit_type == "revert":
+            category = "reverted"
+        else:
+            category = "other"
+
+        categories[category].append(
+            {
+                "hash": commit_hash[:7],
+                "description": parsed["description"],
+                "scope": parsed["scope"],
+                "body": parsed["body"],
+                "type": commit_type,
+                "original": subject,
+            }
+        )
+
+    return categories
+
+
+def format_changelog_section(version: str, categories: Dict[str, List[Dict]]) -> str:
+    """Format changelog section for a version."""
+    from datetime import datetime
+
+    today = datetime.now().strftime("%Y-%m-%d")
+
+    lines = [f"## [{version}] - {today}", ""]
+
+    section_order = [
+        ("breaking", "💥 BREAKING CHANGES"),
+        ("added", "✨ Added"),
+        ("changed", "♻️ Changed"),
+        ("fixed", "🐛 Fixed"),
+        ("documentation", "📚 Documentation"),
+        ("tests", "🧪 Tests"),
+        ("maintenance", "🔧 Maintenance"),
+        ("reverted", "⏪ Reverted"),
+        ("other", "📦 Other"),
+    ]
+
+    has_changes = any(categories.get(cat, []) for cat, _ in section_order)
+
+    if not has_changes:
+        lines.append("### Added")
+        lines.append(f"- Version {version} release")
+        lines.append("")
+    else:
+        for category, title in section_order:
+            if category in categories and categories[category]:
+                lines.append(f"### {title}")
+                lines.append("")
+
+                for commit in categories[category]:
+                    scope_text = f"**{commit['scope'].strip('()')}**: " if commit["scope"] else ""
+                    lines.append(f"- {scope_text}{commit['description']} ([{commit['hash']}])")
+
+                    if commit["body"] and len(commit["body"]) > 10:
+                        body_lines = commit["body"].split("\n")[:3]
+                        for body_line in body_lines:
+                            if body_line.strip():
+                                lines.append(f"  {body_line.strip()}")
+
+                lines.append("")
+
+    return "\n".join(lines)
+
+
+def generate_changelog_content(new_version: str) -> str:
+    """Generate changelog content based on actual commits."""
+    latest_tag = get_latest_tag()
+    commits = get_commits_since_tag(latest_tag)
+
+    if not commits:
+        from datetime import datetime
+
+        today = datetime.now().strftime("%Y-%m-%d")
+        return f"""## [{new_version}] - {today}
+
+### Added
+- Version {new_version} release
+
+### Changed
+
+### Fixed
+"""
+
+    categories = categorize_commits(commits)
+    return format_changelog_section(new_version, categories)
 
 
 def update_init_file(new_version: str) -> None:
@@ -114,9 +302,11 @@ def update_security_md(new_version: str) -> None:
     print(f"✅ Updated {security_file} with version {new_version}")
 
 
-def update_changelog_placeholder(new_version: str) -> None:
-    """Update changelog with new version placeholder."""
+def update_changelog_with_real_content(new_version: str) -> None:
+    """Update changelog with real content based on commits."""
     changelog_file = Path("CHANGELOG.md")
+
+    new_section_content = generate_changelog_content(new_version)
 
     if not changelog_file.exists():
         changelog_content = f"""# Changelog
@@ -128,32 +318,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [{new_version}] - {get_current_date()}
-
-### Added
-- Automatic version bumping and release process
-
-### Changed
-- Improved CI/CD pipeline with automated PyPI deployment
-
-### Fixed
-- Version consistency across all project files
+{new_section_content}
 """
     else:
         content = changelog_file.read_text()
 
         unreleased_section = "## [Unreleased]"
-        new_section = f"""## [Unreleased]
-
-## [{new_version}] - {get_current_date()}
-
-### Added
-- Version {new_version} release
-
-### Changed
-
-### Fixed
-"""
+        new_section = f"## [Unreleased]\n\n{new_section_content}"
 
         if unreleased_section in content:
             updated_content = content.replace(unreleased_section, new_section, 1)
@@ -166,9 +337,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
                     break
 
             if header_end > 0:
-                lines.insert(header_end, f"\n## [{new_version}] - {get_current_date()}")
-                lines.insert(header_end + 1, "\n### Added")
-                lines.insert(header_end + 2, f"- Version {new_version} release\n")
+                lines.insert(header_end, "")
+                lines.insert(header_end + 1, new_section_content.strip())
+                lines.insert(header_end + 1, "")
 
             updated_content = "\n".join(lines)
 
@@ -176,13 +347,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
     changelog_file.write_text(changelog_content)
     print(f"✅ Updated {changelog_file} with version {new_version}")
-
-
-def get_current_date() -> str:
-    """Get current date in YYYY-MM-DD format."""
-    from datetime import datetime
-
-    return datetime.now().strftime("%Y-%m-%d")
 
 
 def main():
@@ -209,13 +373,18 @@ def main():
         if args.dry_run:
             print("🔍 Dry run mode - no files will be modified")
             print(f"Would update version from {current_version} to {new_version}")
+            print("\n📝 Changelog content that would be generated:")
+            changelog_content = generate_changelog_content(new_version)
+            print("=" * 50)
+            print(changelog_content)
+            print("=" * 50)
             return
 
         print("\n📝 Updating files...")
         update_init_file(new_version)
         update_pyproject_toml(new_version)
         update_security_md(new_version)
-        update_changelog_placeholder(new_version)
+        update_changelog_with_real_content(new_version)
 
         print(f"\n🎉 Successfully bumped version to {new_version}")
 

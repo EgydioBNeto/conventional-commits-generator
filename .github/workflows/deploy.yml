@@ -68,18 +68,54 @@ jobs:
           echo "Default - will bump PATCH version"
         fi
 
+    - name: Show current state before bump
+      run: |
+        echo "=== Before version bump ==="
+        echo "Current version in __init__.py:"
+        python -c "import sys; sys.path.insert(0, 'src'); from ccg import __version__; print(__version__)"
+        echo "Latest git tag:"
+        git describe --tags --abbrev=0 || echo "No tags found"
+        echo "Recent commits since last tag:"
+        LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "HEAD")
+        if [ "$LATEST_TAG" != "HEAD" ]; then
+          git log --oneline $LATEST_TAG..HEAD
+        else
+          git log --oneline -5
+        fi
+
     - name: Bump version and update files
       id: version
       run: |
+        echo "Running version bump with type: ${{ steps.bump_type.outputs.type }}"
         python scripts/bump_version.py --type ${{ steps.bump_type.outputs.type }}
         NEW_VERSION=$(python -c "import sys; sys.path.insert(0, 'src'); from ccg import __version__; print(__version__)")
         echo "version=$NEW_VERSION" >> $GITHUB_OUTPUT
+
+        echo "=== After version bump ==="
+        echo "New version: $NEW_VERSION"
+        echo "Git status:"
+        git status --porcelain
+
         if git diff --quiet; then
           echo "changed=false" >> $GITHUB_OUTPUT
           echo "No version changes detected"
         else
           echo "changed=true" >> $GITHUB_OUTPUT
           echo "Version bumped to: $NEW_VERSION"
+          echo "Files changed:"
+          git diff --name-only
+        fi
+
+    - name: Show generated changelog content
+      if: steps.version.outputs.changed == 'true'
+      run: |
+        echo "=== Generated CHANGELOG.md content ==="
+        if [ -f "CHANGELOG.md" ]; then
+          echo "First 50 lines of CHANGELOG.md:"
+          head -50 CHANGELOG.md
+          echo "..."
+        else
+          echo "CHANGELOG.md not found"
         fi
 
     - name: Commit version changes
@@ -103,12 +139,14 @@ jobs:
         git tag -a "v${{ steps.version.outputs.version }}" -m "Release v${{ steps.version.outputs.version }}"
         git push origin "v${{ steps.version.outputs.version }}"
 
-    - name: Generate changelog
+    - name: Generate release changelog from current version
       if: steps.version.outputs.changed == 'true'
       id: changelog
       run: |
-        python scripts/generate_changelog.py > CHANGELOG.md
+        echo "=== Extracting current version changelog ==="
         python scripts/extract_current_changelog.py > CURRENT_CHANGELOG.md
+        echo "Generated CURRENT_CHANGELOG.md:"
+        cat CURRENT_CHANGELOG.md
 
     - name: Create GitHub Release
       if: steps.version.outputs.changed == 'true'

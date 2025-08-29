@@ -67,11 +67,6 @@ def extract_current_version_changelog(changelog_content: str, version: str) -> s
 
 This release includes various improvements and fixes.
 
-### Highlights
-- Automated release process with GitHub Actions
-- Enhanced CI/CD pipeline
-- Version consistency improvements
-
 ### Installation
 
 ```bash
@@ -96,11 +91,31 @@ pip install --upgrade conventional-commits-generator
         content_lines.pop()
 
     content = "\n".join(content_lines).strip()
+    if content:
+        meaningful_content = content and not (
+            content == f"Version {version} release"
+            or "Version " in content
+            and " release" in content
+            and len(content) < 30
+        )
 
-    if len(content) < 50:
-        enhanced_content = f"""## What's Changed in v{version}
+        if meaningful_content:
+            enhanced_content = f"""## What's Changed in v{version}
 
-{content if content else 'This release includes various improvements and bug fixes.'}
+{content}
+
+### Installation
+
+```bash
+pip install --upgrade conventional-commits-generator
+```
+
+**Full Changelog**: https://github.com/{repo_name}/compare/{get_previous_version_tag()}...v{version}
+"""
+        else:
+            enhanced_content = f"""## What's Changed in v{version}
+
+This release includes various improvements and bug fixes.
 
 ### Installation
 
@@ -116,11 +131,10 @@ ccg --version
 
 **Full Changelog**: https://github.com/{repo_name}/compare/{get_previous_version_tag()}...v{version}
 """
-        return enhanced_content
+    else:
+        enhanced_content = f"""## What's Changed in v{version}
 
-    enhanced_content = f"""## What's Changed in v{version}
-
-{content}
+This release includes various improvements and bug fixes.
 
 ### Installation
 
@@ -212,7 +226,7 @@ def main():
             print(
                 f"""## What's Changed in v{current_version}
 
-This is the initial automated release of the Conventional Commits Generator.
+This is an automated release of the Conventional Commits Generator.
 
 ### Features
 - Interactive CLI for creating conventional commits
