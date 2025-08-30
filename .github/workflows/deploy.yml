@@ -21,8 +21,45 @@ permissions:
   packages: read
 
 jobs:
+  check-release:
+    runs-on: ubuntu-latest
+    outputs:
+      should_release: ${{ steps.check.outputs.should_release }}
+      commit_hash: ${{ steps.commit_info.outputs.hash }}
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        token: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Check if should skip release
+      id: check
+      run: |
+        COMMIT_MSG=$(git log -1 --pretty=%B)
+        echo "Commit message: $COMMIT_MSG"
+
+        # Check for skip release indicators
+        if [[ $COMMIT_MSG =~ \[skip-release\] ]] || [[ $COMMIT_MSG =~ \[skip-deploy\] ]]; then
+          echo "should_release=false" >> $GITHUB_OUTPUT
+          echo "🚫 Release skipped due to [skip-release] flag in commit message"
+        else
+          echo "should_release=true" >> $GITHUB_OUTPUT
+          echo "✅ Will proceed with release process"
+        fi
+
+    - name: Get commit info
+      id: commit_info
+      run: |
+        COMMIT_HASH=$(git rev-parse HEAD)
+        echo "hash=$COMMIT_HASH" >> $GITHUB_OUTPUT
+        echo "Current commit: $COMMIT_HASH"
+
   release:
     runs-on: ubuntu-latest
+    needs: check-release
+    if: needs.check-release.outputs.should_release == 'true'
     outputs:
       version: ${{ steps.version.outputs.version }}
       version_changed: ${{ steps.version.outputs.changed }}
@@ -233,3 +270,17 @@ jobs:
         sleep 60
         pip install --upgrade conventional-commits-generator==${{ needs.release.outputs.version }}
         ccg --version
+
+  skip-release-notification:
+    runs-on: ubuntu-latest
+    needs: check-release
+    if: needs.check-release.outputs.should_release == 'false'
+
+    steps:
+    - name: Skip Release Notification
+      run: |
+        echo "🚫 Release and deployment skipped"
+        echo "The commit message contains [skip-release], [no-release], or [skip-deploy]"
+        echo "Only the code changes were pushed to main without creating a new release"
+        echo ""
+        echo "To create a release in the future, push commits without these flags"
