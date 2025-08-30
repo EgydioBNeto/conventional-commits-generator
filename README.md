@@ -9,7 +9,7 @@
 Interactive CLI tool for creating standardized commit messages following the [conventional commits](https://www.conventionalcommits.org/) format. Includes support for commit body, emojis, and advanced commit management features.
 
 ## Installation
-FAZENDO UM TEST
+
 ### Using pipx (recommended)
 ```bash
 pipx install conventional-commits-generator
