@@ -1,19 +1,134 @@
-name: Labeler
-on: [pull_request_target]
+# Automatic labeling configuration for CCG project
+# Based on file paths and patterns
 
-permissions:
-  contents: read
-  pull-requests: write
+# Core functionality changes
+'area: core':
+  - changed-files:
+    - any-glob-to-any-file: 'src/ccg/core.py'
 
-jobs:
-  label:
-    name: Auto-label Pull Requests
-    runs-on: ubuntu-latest
-    steps:
-    - name: checkout
-      uses: actions/checkout@v5
-    - name: labeler
-      uses: actions/labeler@v5
-      with:
-        repo-token: ${{ secrets.GITHUB_TOKEN }}
-        sync-labels: true
+# CLI interface changes  
+'area: cli':
+  - changed-files:
+    - any-glob-to-any-file: 'src/ccg/cli.py'
+    - any-glob-to-any-file: 'src/ccg/__main__.py'
+
+# Git operations changes
+'area: git':
+  - changed-files:
+    - any-glob-to-any-file: 'src/ccg/git.py'
+
+# Utilities changes
+'area: utils':
+  - changed-files:
+    - any-glob-to-any-file: 'src/ccg/utils.py'
+
+# Package initialization changes
+'area: package':
+  - changed-files:
+    - any-glob-to-any-file: 'src/ccg/__init__.py'
+
+# Script changes
+'area: scripts':
+  - changed-files:
+    - any-glob-to-any-file: 'scripts/**'
+
+# Documentation changes
+'type: documentation':
+  - changed-files:
+    - any-glob-to-any-file: '*.md'
+    - any-glob-to-any-file: 'docs/**'
+    - any-glob-to-any-file: '.github/*.md'
+    - any-glob-to-any-file: '.github/ISSUE_TEMPLATE/**'
+
+# Configuration changes
+'area: config':
+  - changed-files:
+    - any-glob-to-any-file: 'pyproject.toml'
+    - any-glob-to-any-file: 'setup.py'
+    - any-glob-to-any-file: '.pre-commit-config.yaml'
+    - any-glob-to-any-file: '.gitignore'
+
+# GitHub Actions and CI changes
+'area: ci':
+  - changed-files:
+    - any-glob-to-any-file: '.github/workflows/**'
+    - any-glob-to-any-file: '.github/dependabot.yml'
+
+# Dependencies changes
+'type: dependencies':
+  - changed-files:
+    - any-glob-to-any-file: 'pyproject.toml'
+    - any-glob-to-any-file: 'requirements*.txt'
+
+# Version and release changes
+'type: release':
+  - changed-files:
+    - any-glob-to-any-file: 'CHANGELOG.md'
+    - any-glob-to-any-file: 'src/ccg/__init__.py'
+
+# Build and packaging changes
+'type: build':
+  - changed-files:
+    - any-glob-to-any-file: 'pyproject.toml'
+    - any-glob-to-any-file: 'setup.py'
+    - any-glob-to-any-file: 'scripts/bump_version.py'
+
+# Security related changes
+'area: security':
+  - changed-files:
+    - any-glob-to-any-file: '.github/SECURITY.md'
+
+# Community and contribution changes
+'area: community':
+  - changed-files:
+    - any-glob-to-any-file: '.github/CODE_OF_CONDUCT.md'
+    - any-glob-to-any-file: '.github/CONTRIBUTING.md'
+    - any-glob-to-any-file: '.github/PULL_REQUEST_TEMPLATE.md'
+    - any-glob-to-any-file: '.github/FUNDING.yml'
+
+# Large changes (multiple files)
+'size: large':
+  - changed-files:
+    - count: '>10'
+
+# Medium changes
+'size: medium':
+  - changed-files:
+    - count: '5..10'
+
+# Small changes  
+'size: small':
+  - changed-files:
+    - count: '<5'
+
+# Breaking changes (look for breaking change indicators)
+'type: breaking':
+  - title: ['^.*!:', 'BREAKING CHANGE', 'BREAKING:', '^feat!:', '^fix!:', '^refactor!:']
+
+# Feature branches
+'type: feature':
+  - title: ['^feat:', '^feature:']
+
+# Bug fix branches
+'type: bug':
+  - title: ['^fix:', '^bug:']
+
+# Chore branches
+'type: chore':
+  - title: ['^chore:']
+
+# Refactor branches
+'type: refactor':
+  - title: ['^refactor:']
+
+# Style changes
+'type: style':
+  - title: ['^style:']
+
+# Performance improvements
+'type: performance':
+  - title: ['^perf:']
+
+# High priority (security, critical bugs)
+'priority: high':
+  - title: ['security', 'critical', 'urgent', 'hotfix']
