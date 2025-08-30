@@ -86,21 +86,6 @@
     - any-glob-to-any-file: '.github/PULL_REQUEST_TEMPLATE.md'
     - any-glob-to-any-file: '.github/FUNDING.yml'
 
-# Large changes (multiple files)
-'size: large':
-  - changed-files:
-    - count: '>10'
-
-# Medium changes
-'size: medium':
-  - changed-files:
-    - count: '5..10'
-
-# Small changes  
-'size: small':
-  - changed-files:
-    - count: '<5'
-
 # Breaking changes (look for breaking change indicators)
 'type: breaking':
   - title: ['^.*!:', 'BREAKING CHANGE', 'BREAKING:', '^feat!:', '^fix!:', '^refactor!:']
