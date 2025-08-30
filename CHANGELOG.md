@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.2.3] - 2025-08-30
+
+### 📦 Other
+
+- Update FUNDING.yml ([e455c2f])
+- Create FUNDING.yml ([1d9bfb5])
+
+
 ## [2.2.2] - 2025-08-29
 
 ### 🔧 Maintenance
