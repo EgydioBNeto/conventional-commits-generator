@@ -270,17 +270,3 @@ jobs:
         sleep 60
         pip install --upgrade conventional-commits-generator==${{ needs.release.outputs.version }}
         ccg --version
-
-  skip-release-notification:
-    runs-on: ubuntu-latest
-    needs: check-release
-    if: needs.check-release.outputs.should_release == 'false'
-
-    steps:
-    - name: Skip Release Notification
-      run: |
-        echo "🚫 Release and deployment skipped"
-        echo "The commit message contains [skip-release], [no-release], or [skip-deploy]"
-        echo "Only the code changes were pushed to main without creating a new release"
-        echo ""
-        echo "To create a release in the future, push commits without these flags"

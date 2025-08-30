@@ -136,8 +136,8 @@ def handle_commit_operation(operation_type: str) -> int:
     print_section("Commit Selection")
     while True:
         selection = read_input(
-            f"{YELLOW}Enter commit number or hash to {operation_type} (or 'q' to quit){RESET}",
-            max_length=40,
+            f"{YELLOW}Enter commit number or hash to {operation_type}{RESET}",
+            max_length=7,
         )
 
         if selection.lower() in ("q", "quit", "exit"):
@@ -181,7 +181,6 @@ def display_commit_details(commit_details: Tuple[str, str, str, str, str, str]) 
     print(f"Subject: {subject}")
     if body:
         print(f"Body:\n{body}")
-    print()
 
 
 def handle_commit_edit_input(
@@ -193,7 +192,7 @@ def handle_commit_edit_input(
     )
 
     new_message = read_input(
-        f"{YELLOW}New commit message{RESET}", history_type="message", default_text=subject
+        f"{YELLOW}New commit message{RESET}", history_type="edit_message", default_text=subject
     )
 
     if not new_message:
@@ -217,7 +216,6 @@ def handle_commit_edit_input(
             return handle_commit_edit_input(subject, original_body)
         return None, None
 
-    print_info("Edit the commit body below. Leave empty to remove body, or keep unchanged.")
     new_body = read_input(
         f"{YELLOW}New commit body (optional){RESET}",
         history_type="body",
