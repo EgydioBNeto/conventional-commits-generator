@@ -6,7 +6,7 @@
   - changed-files:
     - any-glob-to-any-file: 'src/ccg/core.py'
 
-# CLI interface changes  
+# CLI interface changes
 'cli':
   - changed-files:
     - any-glob-to-any-file: 'src/ccg/cli.py'
@@ -39,6 +39,7 @@
     - any-glob-to-any-file: 'docs/**'
     - any-glob-to-any-file: '.github/*.md'
     - any-glob-to-any-file: '.github/ISSUE_TEMPLATE/**'
+    - any-glob-to-any-file: 'index.html'
 
 # Configuration changes
 'config':
