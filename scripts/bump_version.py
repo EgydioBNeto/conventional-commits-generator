@@ -12,7 +12,6 @@ from collections import defaultdict
 from pathlib import Path
 from typing import Dict, List, Tuple
 
-
 def parse_version(version_string: str) -> Tuple[int, int, int]:
     """Parse version string into major.minor.patch tuple."""
     match = re.match(r"^(\d+)\.(\d+)\.(\d+)$", version_string)
@@ -20,7 +19,6 @@ def parse_version(version_string: str) -> Tuple[int, int, int]:
         raise ValueError(f"Invalid version format: {version_string}")
 
     return tuple(map(int, match.groups()))
-
 
 def bump_version(current_version: str, bump_type: str) -> str:
     """Bump version based on type."""
@@ -40,7 +38,6 @@ def bump_version(current_version: str, bump_type: str) -> str:
 
     return f"{major}.{minor}.{patch}"
 
-
 def get_current_version() -> str:
     """Get current version from __init__.py."""
     init_file = Path("src/ccg/__init__.py")
@@ -56,7 +53,6 @@ def get_current_version() -> str:
 
     return match.group(1)
 
-
 def run_git_command(command: List[str]) -> str:
     """Execute git command and return output."""
     try:
@@ -67,12 +63,10 @@ def run_git_command(command: List[str]) -> str:
         print(f"Error: {e.stderr}")
         return ""
 
-
 def get_latest_tag() -> str:
     """Get the latest git tag."""
     output = run_git_command(["git", "describe", "--tags", "--abbrev=0"])
     return output if output else "HEAD"
-
 
 def get_commits_since_tag(tag: str) -> List[Tuple[str, str, str, str]]:
     """Get commits since the given tag."""
@@ -95,7 +89,6 @@ def get_commits_since_tag(tag: str) -> List[Tuple[str, str, str, str]]:
                 commits.append((hash_val, subject, body, date))
 
     return commits
-
 
 def parse_commit_message(subject: str, body: str) -> Dict[str, str]:
     """Parse conventional commit message."""
@@ -122,7 +115,6 @@ def parse_commit_message(subject: str, body: str) -> Dict[str, str]:
         "body": body,
         "emoji": groups["emoji"] or "",
     }
-
 
 def categorize_commits(commits: List[Tuple[str, str, str, str]]) -> Dict[str, List[Dict]]:
     """Categorize commits by type."""
@@ -172,7 +164,6 @@ def categorize_commits(commits: List[Tuple[str, str, str, str]]) -> Dict[str, Li
 
     return categories
 
-
 def format_changelog_section(version: str, categories: Dict[str, List[Dict]]) -> str:
     """Format changelog section for a version."""
     from datetime import datetime
@@ -219,7 +210,6 @@ def format_changelog_section(version: str, categories: Dict[str, List[Dict]]) ->
 
     return "\n".join(lines)
 
-
 def generate_changelog_content(new_version: str) -> str:
     """Generate changelog content based on actual commits."""
     latest_tag = get_latest_tag()
@@ -242,7 +232,6 @@ def generate_changelog_content(new_version: str) -> str:
     categories = categorize_commits(commits)
     return format_changelog_section(new_version, categories)
 
-
 def update_init_file(new_version: str) -> None:
     """Update version in __init__.py."""
     init_file = Path("src/ccg/__init__.py")
@@ -254,7 +243,6 @@ def update_init_file(new_version: str) -> None:
 
     init_file.write_text(updated_content)
     print(f"✅ Updated {init_file} with version {new_version}")
-
 
 def update_pyproject_toml(new_version: str) -> None:
     """Update version in pyproject.toml."""
@@ -300,7 +288,6 @@ def update_security_md(new_version: str) -> None:
 
     security_file.write_text(updated_content)
     print(f"✅ Updated {security_file} with version {new_version}")
-
 
 def update_changelog_with_real_content(new_version: str) -> None:
     """Update changelog with real content based on commits."""
@@ -348,7 +335,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     changelog_file.write_text(changelog_content)
     print(f"✅ Updated {changelog_file} with version {new_version}")
 
-
 def main():
     parser = argparse.ArgumentParser(description="Bump version in CCG project")
     parser.add_argument(
@@ -391,7 +377,6 @@ def main():
     except Exception as e:
         print(f"❌ Error: {e}", file=sys.stderr)
         sys.exit(1)
-
 
 if __name__ == "__main__":
     main()
