@@ -1,0 +1,92 @@
+name: Mark stale issues and pull requests
+
+on:
+  schedule:
+    - cron: '0 0 * * FRI'
+
+jobs:
+  stale:
+    runs-on: ubuntu-latest
+    permissions:
+      actions: write
+      issues: write
+      pull-requests: write
+    steps:
+    - uses: actions/stale@v9
+      with:
+        repo-token: ${{ secrets.GITHUB_TOKEN }}
+        
+        # Issues configuration
+        stale-issue-message: |
+          ## 🕰️ This issue has been marked as stale
+          
+          This issue has been automatically marked as stale because it has not had recent activity for **60 days**. 
+          
+          **To keep this issue open:**
+          - 💬 Add a comment with updates or additional information
+          - 🏷️ Add the `pinned` label to prevent auto-closure
+          
+          **If no activity occurs within the next 7 days, this issue will be automatically closed.**
+          
+          Thank you for your contributions to Conventional Commits Generator! 🚀
+          
+        stale-pr-message: |
+          ## 🕰️ This pull request has been marked as stale
+          
+          This pull request has been automatically marked as stale because it has not had recent activity for **30 days**.
+          
+          **To keep this PR open:**
+          - 💬 Add a comment with updates or address pending review comments
+          - 🔄 Push new commits if changes are needed
+          - 🏷️ Add the `pinned` label to prevent auto-closure
+          
+          **If no activity occurs within the next 7 days, this PR will be automatically closed.**
+          
+          We appreciate your contribution to CCG! If you need help completing this PR, please let us know. 🚀
+          
+        close-issue-message: |
+          ## 🔒 Issue closed due to inactivity
+          
+          This issue has been automatically closed due to no activity for an extended period.
+          
+          **Don't worry! You can always:**
+          - 🔓 Reopen this issue if it's still relevant
+          - 🆕 Create a new issue with updated information
+          - 💬 Reference this issue in related discussions
+          
+          Thanks for contributing to Conventional Commits Generator! 🚀
+          
+        close-pr-message: |
+          ## 🔒 Pull request closed due to inactivity
+          
+          This pull request has been automatically closed due to no activity for an extended period.
+          
+          **Don't worry! You can always:**
+          - 🔓 Reopen this PR if you want to continue working on it
+          - 🆕 Create a fresh PR with updated changes
+          - 💬 Reach out if you need help or guidance
+          
+          We appreciate your contribution to CCG! 🚀
+          
+        # Labels
+        stale-issue-label: 'stale'
+        stale-pr-label: 'stale'
+        close-issue-label: 'auto-closed'
+        close-pr-label: 'auto-closed'
+        exempt-issue-labels: 'pinned'
+        exempt-pr-labels: 'pinned'
+        
+        # Timing (in days)
+        days-before-issue-stale: 60
+        days-before-pr-stale: 30
+        days-before-issue-close: 7
+        days-before-pr-close: 7
+        
+        # Additional settings
+        remove-stale-when-updated: true
+        delete-branch: false
+        operations-per-run: 50
+        
+        # Only run on issues/PRs, not drafts
+        only-labels: ''
+        exempt-draft-pr: true
