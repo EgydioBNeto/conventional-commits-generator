@@ -2,38 +2,38 @@
 # Based on file paths and patterns
 
 # Core functionality changes
-'area: core':
+'core':
   - changed-files:
     - any-glob-to-any-file: 'src/ccg/core.py'
 
 # CLI interface changes  
-'area: cli':
+'cli':
   - changed-files:
     - any-glob-to-any-file: 'src/ccg/cli.py'
     - any-glob-to-any-file: 'src/ccg/__main__.py'
 
 # Git operations changes
-'area: git':
+'git':
   - changed-files:
     - any-glob-to-any-file: 'src/ccg/git.py'
 
 # Utilities changes
-'area: utils':
+'utils':
   - changed-files:
     - any-glob-to-any-file: 'src/ccg/utils.py'
 
 # Package initialization changes
-'area: package':
+'package':
   - changed-files:
     - any-glob-to-any-file: 'src/ccg/__init__.py'
 
 # Script changes
-'area: scripts':
+'scripts':
   - changed-files:
     - any-glob-to-any-file: 'scripts/**'
 
 # Documentation changes
-'type: documentation':
+'documentation':
   - changed-files:
     - any-glob-to-any-file: '*.md'
     - any-glob-to-any-file: 'docs/**'
@@ -41,7 +41,7 @@
     - any-glob-to-any-file: '.github/ISSUE_TEMPLATE/**'
 
 # Configuration changes
-'area: config':
+'config':
   - changed-files:
     - any-glob-to-any-file: 'pyproject.toml'
     - any-glob-to-any-file: 'setup.py'
@@ -49,37 +49,37 @@
     - any-glob-to-any-file: '.gitignore'
 
 # GitHub Actions and CI changes
-'area: ci':
+'ci':
   - changed-files:
     - any-glob-to-any-file: '.github/workflows/**'
     - any-glob-to-any-file: '.github/dependabot.yml'
 
 # Dependencies changes
-'type: dependencies':
+'dependencies':
   - changed-files:
     - any-glob-to-any-file: 'pyproject.toml'
     - any-glob-to-any-file: 'requirements*.txt'
 
 # Version and release changes
-'type: release':
+'release':
   - changed-files:
     - any-glob-to-any-file: 'CHANGELOG.md'
     - any-glob-to-any-file: 'src/ccg/__init__.py'
 
 # Build and packaging changes
-'type: build':
+'build':
   - changed-files:
     - any-glob-to-any-file: 'pyproject.toml'
     - any-glob-to-any-file: 'setup.py'
     - any-glob-to-any-file: 'scripts/bump_version.py'
 
 # Security related changes
-'area: security':
+'security':
   - changed-files:
     - any-glob-to-any-file: '.github/SECURITY.md'
 
 # Community and contribution changes
-'area: community':
+'community':
   - changed-files:
     - any-glob-to-any-file: '.github/CODE_OF_CONDUCT.md'
     - any-glob-to-any-file: '.github/CONTRIBUTING.md'
@@ -87,33 +87,29 @@
     - any-glob-to-any-file: '.github/FUNDING.yml'
 
 # Breaking changes (look for breaking change indicators)
-'type: breaking':
+'breaking':
   - title: ['^.*!:', 'BREAKING CHANGE', 'BREAKING:', '^feat!:', '^fix!:', '^refactor!:']
 
 # Feature branches
-'type: feature':
+'feature':
   - title: ['^feat:', '^feature:']
 
 # Bug fix branches
-'type: bug':
+'bug':
   - title: ['^fix:', '^bug:']
 
 # Chore branches
-'type: chore':
+'chore':
   - title: ['^chore:']
 
 # Refactor branches
-'type: refactor':
+'refactor':
   - title: ['^refactor:']
 
 # Style changes
-'type: style':
+'style':
   - title: ['^style:']
 
 # Performance improvements
-'type: performance':
+'performance':
   - title: ['^perf:']
-
-# High priority (security, critical bugs)
-'priority: high':
-  - title: ['security', 'critical', 'urgent', 'hotfix']
