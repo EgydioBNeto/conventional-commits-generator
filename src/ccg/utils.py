@@ -86,6 +86,7 @@ INPUT_LIMITS = {
     "body": 512,
     "tag": 32,
     "tag_message": 512,
+    "edit_message": 128,
     "confirmation": 3,
 }
 
@@ -540,8 +541,6 @@ def read_multiline_input(
         try:
             from prompt_toolkit import prompt
 
-            if default_text:
-                print(f"Current content:\n{default_text}")
             print(f"{BLUE}Press Ctrl+D or Escape+Enter to finish. Press Enter for new line.{RESET}")
             print(f"{BLUE}Maximum {max_length} characters allowed{RESET}")
 
@@ -575,7 +574,6 @@ def read_multiline_input(
             pass
 
     if default_text:
-        print(f"Current content:\n{default_text}")
         print(f"{BLUE}Enter new content (or press Enter twice to finish):{RESET}")
     else:
         print(f"{BLUE}Enter additional details (or press Enter twice to finish):{RESET}")
