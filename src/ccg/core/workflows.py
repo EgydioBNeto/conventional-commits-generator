@@ -36,9 +36,7 @@ def confirm_create_branch() -> bool:
     print_section("Create Remote Branch")
     print_info("This branch doesn't exist on the remote repository yet")
     return confirm_user_action(
-        f"{COLORS['YELLOW']}Create and push this branch to remote? [Y/n]{COLORS['RESET']}",
-        success_message="Branch will be created on remote",
-        cancel_message="Not creating branch on remote",
+        f"{COLORS['YELLOW']}Create and push this branch to remote? [Y/n]{COLORS['RESET']}"
     )
 
 
