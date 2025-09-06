@@ -28,14 +28,19 @@ git clone https://github.com/EgydioBNeto/conventional-commits-generator.git
 # Navigate into the project directory
 cd conventional-commits-generator
 
-# Grant execute permission to the virtual environment setup script
+# Option 1: Use the automated installer (recommended)
+chmod +x scripts/install_local.sh
+./scripts/install_local.sh
+
+# Option 2: Manual virtual environment setup
 chmod +x scripts/setup_venv.sh
-
-# Run the script to create and set up the virtual environment
 ./scripts/setup_venv.sh
-
-# Activate the virtual environment
 source .venv/bin/activate
+
+# Option 3: Direct local installation
+pipx install . --force
+# or
+pip install . --user
 ```
 
 ## Usage
@@ -46,25 +51,42 @@ source .venv/bin/activate
 # Create interactive commit
 ccg
 
-# Generate commit message without committing
+# Generate and preview commit message without committing
 ccg --commit
 
-# Push only without creating commit
+# Push committed changes to remote without creating new commit
 ccg --push
 
-# Edit existing commit
+# Fetch and pull latest changes from remote repository
+ccg --pull
+
+# Edit existing commit message (recent or by hash)
 ccg --edit
 
-# Delete existing commit
-ccg --delete
+# Compare two commits and show detailed differences
+ccg --diff
 
-# Create and push tag
+# Show detailed working directory status
+ccg --status
+
+# Create annotated or lightweight Git tag and push to remote
 ccg --tag
 
-# Reset local and pull from remote
+# Discard all local changes, reset to HEAD, and pull from remote
 ccg --reset
 
-# Show version
+# Run CCG in a specific directory
+ccg --dir /path/to/repository
+
+# Add specific file or directory to staging before committing
+ccg --add file.py
+ccg --add src/
+
+# Combine options for complex workflows
+ccg --commit --add src/main.py
+ccg --dir /path/to/repo --add docs/
+
+# Show version information
 ccg --version
 ```
 
@@ -90,7 +112,7 @@ $ ccg
 1. ✨ feat     - A new feature
 2. 🐛 fix      - A bug fix
 3. 🔧 chore    - Maintenance tasks
-4. ♻️ refactor - Code refactoring
+4. 🔨 refactor - Code refactoring
 5. 💄 style    - Style changes
 6. 📚 docs     - Documentation
 ...
@@ -150,7 +172,7 @@ Do you want to push these changes? (y/n): y
 | `feat` | ✨ | A new feature |
 | `fix` | 🐛 | A bug fix |
 | `chore` | 🔧 | Maintenance tasks |
-| `refactor` | ♻️ | Code refactoring |
+| `refactor` | 🔨 | Code refactoring |
 | `style` | 💄 | Style/formatting changes |
 | `docs` | 📚 | Documentation changes |
 | `test` | 🧪 | Adding or modifying tests |
@@ -159,10 +181,38 @@ Do you want to push these changes? (y/n): y
 | `ci` | 👷 | CI/CD changes |
 | `perf` | ⚡ | Performance improvements |
 
+## Advanced Features
+
+### Repository Management
+
+- **Directory Support**: Use `--dir` to run CCG in any git repository without changing your current directory
+- **File/Folder Selection**: Use `--add` to stage and commit one specific file or folder (path must be within the working directory)
+- **Status Checking**: Use `--status` to view detailed working directory status
+- **Remote Operations**: Pull changes with `--pull`, reset with `--reset`
+
+### Commit Operations
+
+- **Commit Editing**: Edit any commit message with `--edit` (supports both recent and historical commits)
+- **Interactive Diff**: Compare commits with `--diff` for detailed change analysis
+
+### Tag Management
+
+- **Tag Creation**: Create annotated or lightweight tags with `--tag`
+- **Automatic Push**: Tags are automatically pushed to remote repository
+- **Message Support**: Add custom messages to annotated tags
+
+### Interactive Features
+
+- **Multi-line Support**: Full support for commit body with multi-line input
+- **History**: Command history for faster input (type, scope, message, body)
+- **Visual Feedback**: Real-time character count and validation
+- **Smart Validation**: Conventional commit format validation
+
 ## Requirements
 
-- Python 3.8+
-- Git
+- Python 3.8+ (recommended: Python 3.10+)
+- Git 2.0+
+- Terminal with Unicode support (for emojis and symbols)
 
 ## Contributing
 

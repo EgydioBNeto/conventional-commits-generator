@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Conventional Commits Generator (CCG)</title>
-    <meta name="description" content="Interactive CLI tool for creating standardized commit messages following the conventional commits format.">
+    <meta name="description" content="Modern, secure interactive CLI tool for creating standardized commit messages following the conventional commits format. Features enhanced security, better error handling, comprehensive Git workflow support, and automated code quality improvements.">
     <meta name="author" content="EgydioBNeto">
 
     <!-- Favicon -->
@@ -824,7 +824,7 @@
                 <div class="logo animate-fadeInUp">
                     <img src="https://github.com/EgydioBNeto/conventional-commits-generator/assets/84047984/53f38934-16bb-40f6-aff7-a5800c4bd706" alt="CCG Logo">
                 </div>
-                <p class="tagline animate-fadeInUp">Interactive CLI tool for creating standardized commit messages following the conventional commits format</p>
+                <p class="tagline animate-fadeInUp">Modern, secure interactive CLI tool for creating standardized commit messages following the conventional commits format with enhanced Git workflow support</p>
                 <div class="btn-group animate-fadeInUp">
                     <a href="https://github.com/EgydioBNeto/conventional-commits-generator" class="btn btn-primary" target="_blank" rel="noopener noreferrer">
                         🚀 View on GitHub
@@ -870,7 +870,17 @@
                     <div class="card animate-fadeInUp">
                         <div class="feature-icon">🔄</div>
                         <h3 class="feature-title">Git Integration</h3>
-                        <p>Complete Git workflow support including staging, committing, and pushing.</p>
+                        <p>Complete Git workflow support including staging, committing, pushing, and repository management.</p>
+                    </div>
+                    <div class="card animate-fadeInUp">
+                        <div class="feature-icon">📁</div>
+                        <h3 class="feature-title">Directory Support</h3>
+                        <p>Work in any git repository directory without changing your current location.</p>
+                    </div>
+                    <div class="card animate-fadeInUp">
+                        <div class="feature-icon">🛡️</div>
+                        <h3 class="feature-title">Security & Validation</h3>
+                        <p>Safe git operations with input validation and secure subprocess handling.</p>
                     </div>
                 </div>
             </div>
@@ -1024,20 +1034,20 @@ Do you want to push these changes? (y/n): y
                         <p style="margin-top: 1rem;">Create a commit with interactive prompts</p>
                     </div>
                     <div class="card animate-fadeInUp">
-                        <h3 class="feature-title">💬 Generate Message Only</h3>
+                        <h3 class="feature-title">💬 Preview Message Only</h3>
                         <div class="code-block">
                             ccg --commit
                             <button class="copy-button" onclick="copyCode(this, 'ccg --commit')">📋 Copy</button>
                         </div>
-                        <p style="margin-top: 1rem;">Generate commit message without committing</p>
+                        <p style="margin-top: 1rem;">Generate and preview commit message without actually committing changes</p>
                     </div>
                     <div class="card animate-fadeInUp">
-                        <h3 class="feature-title">📤 Push Only</h3>
+                        <h3 class="feature-title">📤 Push Changes</h3>
                         <div class="code-block">
                             ccg --push
                             <button class="copy-button" onclick="copyCode(this, 'ccg --push')">📋 Copy</button>
                         </div>
-                        <p style="margin-top: 1rem;">Push existing commits to remote</p>
+                        <p style="margin-top: 1rem;">Push committed changes to remote repository without creating new commit</p>
                     </div>
                     <div class="card animate-fadeInUp">
                         <h3 class="feature-title">✏️ Edit Commit</h3>
@@ -1045,15 +1055,15 @@ Do you want to push these changes? (y/n): y
                             ccg --edit
                             <button class="copy-button" onclick="copyCode(this, 'ccg --edit')">📋 Copy</button>
                         </div>
-                        <p style="margin-top: 1rem;">Edit an existing commit message</p>
+                        <p style="margin-top: 1rem;">Edit existing commit message (recent or by hash selection)</p>
                     </div>
                     <div class="card animate-fadeInUp">
-                        <h3 class="feature-title">🗑️ Delete Commit</h3>
+                        <h3 class="feature-title">🔍 Compare Commits</h3>
                         <div class="code-block">
-                            ccg --delete
-                            <button class="copy-button" onclick="copyCode(this, 'ccg --delete')">📋 Copy</button>
+                            ccg --diff
+                            <button class="copy-button" onclick="copyCode(this, 'ccg --diff')">📋 Copy</button>
                         </div>
-                        <p style="margin-top: 1rem;">Delete an existing commit</p>
+                        <p style="margin-top: 1rem;">Compare two commits and show detailed differences between them</p>
                     </div>
                     <div class="card animate-fadeInUp">
                         <h3 class="feature-title">🏷️ Create Tag</h3>
@@ -1061,23 +1071,47 @@ Do you want to push these changes? (y/n): y
                             ccg --tag
                             <button class="copy-button" onclick="copyCode(this, 'ccg --tag')">📋 Copy</button>
                         </div>
-                        <p style="margin-top: 1rem;">Create and push a new tag</p>
+                        <p style="margin-top: 1rem;">Create annotated or lightweight Git tag and push to remote</p>
                     </div>
                     <div class="card animate-fadeInUp">
-                        <h3 class="feature-title">🔄 Reset Changes</h3>
+                        <h3 class="feature-title">🔄 Reset & Pull</h3>
                         <div class="code-block">
                             ccg --reset
                             <button class="copy-button" onclick="copyCode(this, 'ccg --reset')">📋 Copy</button>
                         </div>
-                        <p style="margin-top: 1rem;">Discard local changes and pull from remote</p>
+                        <p style="margin-top: 1rem;">Discard all local changes, reset to HEAD, and pull latest from remote</p>
                     </div>
                     <div class="card animate-fadeInUp">
-                        <h3 class="feature-title">📁 Specific Paths</h3>
+                        <h3 class="feature-title">📁 Add Specific Files</h3>
                         <div class="code-block">
-                            ccg --path src/ docs/
-                            <button class="copy-button" onclick="copyCode(this, 'ccg --path src/ docs/')">📋 Copy</button>
+                            ccg --add src/main.py
+                            <button class="copy-button" onclick="copyCode(this, 'ccg --add src/main.py')">📋 Copy</button>
                         </div>
-                        <p style="margin-top: 1rem;">Stage specific paths instead of all changes</p>
+                        <p style="margin-top: 1rem;">Add specific file or directory to staging area before committing</p>
+                    </div>
+                    <div class="card animate-fadeInUp">
+                        <h3 class="feature-title">📊 Status Check</h3>
+                        <div class="code-block">
+                            ccg --status
+                            <button class="copy-button" onclick="copyCode(this, 'ccg --status')">📋 Copy</button>
+                        </div>
+                        <p style="margin-top: 1rem;">Show detailed working directory status with staged/unstaged changes</p>
+                    </div>
+                    <div class="card animate-fadeInUp">
+                        <h3 class="feature-title">📥 Pull Changes</h3>
+                        <div class="code-block">
+                            ccg --pull
+                            <button class="copy-button" onclick="copyCode(this, 'ccg --pull')">📋 Copy</button>
+                        </div>
+                        <p style="margin-top: 1rem;">Fetch and pull latest changes from remote repository to current branch</p>
+                    </div>
+                    <div class="card animate-fadeInUp">
+                        <h3 class="feature-title">📁 Work Directory</h3>
+                        <div class="code-block">
+                            ccg --dir /path/to/repo
+                            <button class="copy-button" onclick="copyCode(this, 'ccg --dir /path/to/repo')">📋 Copy</button>
+                        </div>
+                        <p style="margin-top: 1rem;">Specify target directory where CCG will execute git commands</p>
                     </div>
                     <div class="card animate-fadeInUp">
                         <h3 class="feature-title">ℹ️ Version</h3>
@@ -1148,8 +1182,9 @@ Do you want to push these changes? (y/n): y
                 <h2 class="section-title">Requirements</h2>
                 <div class="card" style="max-width: 600px; margin: 0 auto;">
                     <ul style="list-style: none; padding: 0;">
-                        <li style="padding: 0.5rem 0;">✅ Python 3.8 or higher</li>
-                        <li style="padding: 0.5rem 0;">✅ Git installed and configured</li>
+                        <li style="padding: 0.5rem 0;">✅ Python 3.8+ (recommended: Python 3.10+)</li>
+                        <li style="padding: 0.5rem 0;">✅ Git 2.0+ installed and configured</li>
+                        <li style="padding: 0.5rem 0;">✅ Terminal with Unicode support (for emojis and symbols)</li>
                     </ul>
                 </div>
             </div>

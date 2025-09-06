@@ -48,7 +48,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - some updates ([f45fd74])
 - some updates ([f14189a])
 
-### ♻️ Changed
+### 🔨 Changed
 
 - **ux**: sanitizing and adapting ([a9ca921])
 
@@ -65,4 +65,3 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### 🔧 Maintenance
 
 - some updates ([816c778])
-

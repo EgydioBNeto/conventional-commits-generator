@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Script to extract only the changelog section of the current version.
-Used to create the release body on GitHub.
+Used to create the release body on GitHub with enhanced formatting.
 """
 
 import os
@@ -10,22 +10,28 @@ import subprocess
 import sys
 from pathlib import Path
 
+from common_logging import get_logger
+from shared_utils import VersionUtils
 
-def get_current_version() -> str:
-    """Get current version from __init__.py."""
-    init_file = Path("src/ccg/__init__.py")
-
-    if not init_file.exists():
-        return "0.0.0"
-
-    content = init_file.read_text()
-    match = re.search(r'__version__ = ["\']([^"\']+)["\']', content)
-
-    return match.group(1) if match else "0.0.0"
+logger = get_logger("extract_changelog")
 
 
 def get_repository_name() -> str:
-    """Get repository name from git remote or environment variables."""
+    """
+    Get repository name from git remote or environment variables.
+
+    Attempts to determine the GitHub repository name from various sources:
+    1. GITHUB_REPOSITORY environment variable (in CI)
+    2. Git remote URL parsing
+    3. Fallback to default repository name
+
+    Returns:
+        Repository name in format "owner/repo"
+
+    Example:
+        repo_name = get_repository_name()
+        # Returns "EgydioBNeto/conventional-commits-generator"
+    """
     github_repo = os.environ.get("GITHUB_REPOSITORY")
     if github_repo:
         return github_repo
@@ -55,9 +61,24 @@ def get_repository_name() -> str:
 
 
 def extract_current_version_changelog(changelog_content: str, version: str) -> str:
-    """Extract changelog section for current version."""
-    version_pattern = rf"## \[{re.escape(version)}\].*?(?=## \[|\Z)"
+    """
+    Extract changelog section for current version and format for GitHub release.
 
+    Takes the full changelog content and extracts only the section for the
+    specified version, then enhances it with installation instructions and
+    comparison links for GitHub release notes.
+
+    Args:
+        changelog_content: Full CHANGELOG.md content
+        version: Version to extract (e.g., "2.2.4")
+
+    Returns:
+        Formatted release notes content for GitHub
+
+    Example:
+        release_notes = extract_current_version_changelog(changelog, "2.2.4")
+    """
+    version_pattern = rf"## \[{re.escape(version)}\].*?(?=## \[|\Z)"
     match = re.search(version_pattern, changelog_content, re.DOTALL)
 
     repo_name = get_repository_name()
@@ -79,6 +100,7 @@ pip install --upgrade conventional-commits-generator
     section = match.group(0)
     lines = section.split("\n")
 
+    # Find where actual content starts (after the version header)
     content_start = 0
     for i, line in enumerate(lines):
         if line.strip() and not line.startswith("## ["):
@@ -87,11 +109,14 @@ pip install --upgrade conventional-commits-generator
 
     content_lines = lines[content_start:]
 
+    # Remove trailing empty lines
     while content_lines and not content_lines[-1].strip():
         content_lines.pop()
 
     content = "\n".join(content_lines).strip()
+
     if content:
+        # Check if content is meaningful (not just a generic version release message)
         meaningful_content = content and not (
             content == f"Version {version} release"
             or "Version " in content
@@ -149,7 +174,18 @@ pip install --upgrade conventional-commits-generator
 
 
 def get_previous_version_tag() -> str:
-    """Get previous version tag for comparison link."""
+    """
+    Get previous version tag for comparison link.
+
+    Attempts to find the previous git tag to create proper comparison links
+    in GitHub release notes. Uses various fallback strategies.
+
+    Returns:
+        Previous version tag or commit hash for comparison
+
+    Example:
+        prev_tag = get_previous_version_tag()  # "v2.2.3" or commit hash
+    """
     try:
         result = subprocess.run(
             ["git", "tag", "--sort=-version:refname", "-l", "v*"],
@@ -191,7 +227,21 @@ def get_previous_version_tag() -> str:
 
 
 def get_previous_version(changelog_content: str) -> str:
-    """Get previous version from changelog for fallback."""
+    """
+    Get previous version from changelog for fallback comparison.
+
+    Extracts the second most recent version from the changelog content
+    as a fallback when git tags are not available.
+
+    Args:
+        changelog_content: Full changelog content to parse
+
+    Returns:
+        Previous version string or calculated fallback
+
+    Example:
+        prev_version = get_previous_version(changelog_content)
+    """
     version_matches = re.findall(r"## \[(\d+\.\d+\.\d+)\]", changelog_content)
 
     if len(version_matches) >= 2:
@@ -215,9 +265,18 @@ def get_previous_version(changelog_content: str) -> str:
 
 
 def main():
-    """Extract and output current version changelog."""
+    """
+    Extract and output changelog section for the current version.
+
+    Main entry point that extracts the changelog section for the current
+    version and formats it for GitHub release notes. The output includes
+    installation instructions and comparison links.
+
+    Example usage:
+        python extract_current_changelog.py > release_notes.md
+    """
     try:
-        current_version = get_current_version()
+        current_version = VersionUtils.get_current_version(raise_on_error=False)
         repo_name = get_repository_name()
 
         changelog_file = Path("CHANGELOG.md")
@@ -252,15 +311,13 @@ ccg
             return
 
         changelog_content = changelog_file.read_text()
-
         current_changelog = extract_current_version_changelog(changelog_content, current_version)
-
         print(current_changelog)
 
     except Exception as e:
-        print(f"Error extracting changelog: {e}", file=sys.stderr)
+        logger.error(f"Error extracting changelog: {e}")
 
-        current_version = get_current_version()
+        current_version = VersionUtils.get_current_version(raise_on_error=False)
         repo_name = get_repository_name()
 
         print(

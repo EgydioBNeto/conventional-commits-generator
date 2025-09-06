@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "conventional-commits-generator"
-version = "2.2.4"
+dynamic = ["version"]
 description = "Interactive CLI tool for creating standardized commit messages following conventional commits"
 readme = "README.md"
 requires-python = ">=3.8"
@@ -31,13 +31,12 @@ classifiers = [
     "Topic :: Utilities",
 ]
 dependencies = [
-    "prompt_toolkit >= 3.0.20"
+    "prompt_toolkit >= 3.0.36"
 ]
 
 [project.optional-dependencies]
 dev = [
     "pre-commit >= 3.5.0",
-    "prompt_toolkit >= 3.0.20"
 ]
 
 [project.urls]
@@ -53,4 +52,5 @@ ccg = "ccg.cli:main"
 packages = ["src/ccg"]
 
 [tool.hatch.version]
-path = "src/ccg/__init__.py"
+path = "src/ccg/_version.py"
+pattern = "^__version__ = ['\"](?P<version>[^'\"]*)['\"]"

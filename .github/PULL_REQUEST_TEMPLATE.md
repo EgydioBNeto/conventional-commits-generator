@@ -5,7 +5,7 @@ Describe your changes clearly and concisely.
 - [ ] ✨ New feature
 - [ ] 🐛 Bug fix
 - [ ] 🔧 Chore (maintenance/routine tasks)
-- [ ] ♻️ Code refactoring
+- [ ] 🔨 Code refactoring
 - [ ] 💄 Style (formatting/cosmetic improvements)
 - [ ] 📚 Documentation changes
 - [ ] 🧪 Tests addition/modification

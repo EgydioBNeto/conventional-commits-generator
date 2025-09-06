@@ -5,6 +5,7 @@
 'core':
   - changed-files:
     - any-glob-to-any-file: 'src/ccg/core.py'
+    - any-glob-to-any-file: 'src/ccg/core/**'
 
 # CLI interface changes
 'cli':
@@ -16,11 +17,18 @@
 'git':
   - changed-files:
     - any-glob-to-any-file: 'src/ccg/git.py'
+    - any-glob-to-any-file: 'src/ccg/git/**'
 
-# Utilities changes
+# UI changes
+'ui':
+  - changed-files:
+    - any-glob-to-any-file: 'src/ccg/ui/**'
+
+# Common utilities changes
 'utils':
   - changed-files:
     - any-glob-to-any-file: 'src/ccg/utils.py'
+    - any-glob-to-any-file: 'src/ccg/common/**'
 
 # Package initialization changes
 'package':
@@ -65,7 +73,7 @@
 'release':
   - changed-files:
     - any-glob-to-any-file: 'CHANGELOG.md'
-    - any-glob-to-any-file: 'src/ccg/__init__.py'
+    - any-glob-to-any-file: 'src/ccg/_version.py'
 
 # Build and packaging changes
 'build':

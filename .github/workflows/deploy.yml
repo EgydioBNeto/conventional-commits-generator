@@ -108,8 +108,8 @@ jobs:
     - name: Show current state before bump
       run: |
         echo "=== Before version bump ==="
-        echo "Current version in __init__.py:"
-        python -c "import sys; sys.path.insert(0, 'src'); from ccg import __version__; print(__version__)"
+        echo "Current version in _version.py:"
+        python -c "import sys; sys.path.insert(0, 'src'); from ccg._version import __version__; print(__version__)"
         echo "Latest git tag:"
         git describe --tags --abbrev=0 || echo "No tags found"
         echo "Recent commits since last tag:"
@@ -125,7 +125,7 @@ jobs:
       run: |
         echo "Running version bump with type: ${{ steps.bump_type.outputs.type }}"
         python scripts/bump_version.py --type ${{ steps.bump_type.outputs.type }}
-        NEW_VERSION=$(python -c "import sys; sys.path.insert(0, 'src'); from ccg import __version__; print(__version__)")
+        NEW_VERSION=$(python -c "import sys; sys.path.insert(0, 'src'); from ccg._version import __version__; print(__version__)")
         echo "version=$NEW_VERSION" >> $GITHUB_OUTPUT
 
         echo "=== After version bump ==="
@@ -211,7 +211,7 @@ jobs:
 
     - name: Verify correct version
       run: |
-        CURRENT_VERSION=$(python -c "import sys; sys.path.insert(0, 'src'); from ccg import __version__; print(__version__)")
+        CURRENT_VERSION=$(python -c "import sys; sys.path.insert(0, 'src'); from ccg._version import __version__; print(__version__)")
         EXPECTED_VERSION="${{ needs.release.outputs.version }}"
 
         echo "Current version in code: $CURRENT_VERSION"

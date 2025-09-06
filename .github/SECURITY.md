@@ -66,6 +66,7 @@ Contributors who report valid vulnerabilities will be:
 
 ## Security History
 
+- **2025-08**: Release of v2.2.4 with security improvements and bug fixes
 - **2025-08**: Release of v2.1.0 with security improvements
 - **2023-12**: Implementation of security policy
 
