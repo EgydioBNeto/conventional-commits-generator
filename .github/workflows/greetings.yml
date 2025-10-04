@@ -16,48 +16,48 @@ jobs:
     steps:
       - uses: actions/first-interaction@v3
         with:
-          issue-message: |
+          issue_message: |
             # 🎉 Welcome to Conventional Commits Generator!
-            
+
             Thank you for opening your first issue! We're excited to have you as part of our community.
-            
+
             ## Before we get started:
             - 📋 Please make sure you've filled out the issue template completely
             - 🔍 Check if a similar issue already exists in our [issue tracker](https://github.com/EgydioBNeto/conventional-commits-generator/issues)
             - 📚 Review our [documentation](https://github.com/EgydioBNeto/conventional-commits-generator/blob/main/README.md) if you haven't already
-            
+
             ## Need help?
             - 💬 Feel free to ask questions - we're here to help!
             - 📖 Check our [Contributing Guide](https://github.com/EgydioBNeto/conventional-commits-generator/blob/main/.github/CONTRIBUTING.md)
             - 🔒 Review our [Code of Conduct](https://github.com/EgydioBNeto/conventional-commits-generator/blob/main/.github/CODE_OF_CONDUCT.md)
-            
+
             A maintainer will review your issue soon. Thanks for contributing to CCG! 🚀
-          pr-message: |
+          pr_message: |
             # 🎉 Welcome to Conventional Commits Generator!
-            
+
             Thank you for submitting your first pull request! We appreciate your contribution to making git commits more standardized and beautiful.
-            
+
             ## What happens next:
             - ✅ Our automated checks will run on your PR
             - 👀 A maintainer will review your changes
             - 💬 We might suggest some improvements or ask questions
-            
+
             ## Please make sure:
             - 📋 You've filled out the PR template completely
             - ✨ Your code follows our [style guidelines](https://github.com/EgydioBNeto/conventional-commits-generator/blob/main/.github/CONTRIBUTING.md#code-conventions)
             - 🧪 You've tested your changes thoroughly
             - 📚 Documentation is updated if needed
             - 🔧 Pre-commit hooks pass successfully
-            
+
             ## Tips for a smooth review:
             - Use conventional commit messages (you can use CCG itself! 😉)
             - Keep changes focused and atomic
             - Add tests for new functionality
             - Update the changelog if appropriate
-            
+
             ## Need help?
             - 📖 Check our [Contributing Guide](https://github.com/EgydioBNeto/conventional-commits-generator/blob/main/.github/CONTRIBUTING.md)
             - 🔒 Review our [Code of Conduct](https://github.com/EgydioBNeto/conventional-commits-generator/blob/main/.github/CODE_OF_CONDUCT.md)
             - 💬 Don't hesitate to ask questions in the PR comments
-            
+
             Thanks for helping make CCG even better! 🚀 We're excited to review your contribution.
