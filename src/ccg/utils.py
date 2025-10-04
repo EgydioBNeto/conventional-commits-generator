@@ -45,11 +45,46 @@ try:
         }
     )
 
+    class ConfirmationValidator(Validator):
+        def __init__(self, default_yes: bool = True):
+            self.default_yes = default_yes
+
+        def validate(self, document):
+            text = document.text
+
+            if not text:
+                return
+
+            result = validate_confirmation_input(text, self.default_yes)
+            if result is None:
+                if len(text) > 3:
+                    raise ValidationError(message="Please enter 'y' or 'n'", cursor_position=3)
+                else:
+                    raise ValidationError(
+                        message="Please enter 'y' or 'n'", cursor_position=len(text)
+                    )
+
+    class RealTimeCounterValidator(Validator):
+        def __init__(self, max_length: int):
+            self.max_length = max_length
+
+        def validate(self, document):
+            text = document.text
+            length = len(text)
+
+            if length > self.max_length:
+                raise ValidationError(
+                    message=f"CHARACTER LIMIT REACHED ({self.max_length}/{self.max_length})",
+                    cursor_position=self.max_length,
+                )
+
     PROMPT_TOOLKIT_AVAILABLE = True
 except ImportError:
     PROMPT_TOOLKIT_AVAILABLE = False
     HISTORIES = {}
     PROMPT_STYLE = None
+    ConfirmationValidator = None
+    RealTimeCounterValidator = None
 
 # ANSI color codes
 RED = "\033[91m"
@@ -77,17 +112,22 @@ BULLET = "•"
 try:
     TERM_WIDTH, TERM_HEIGHT = shutil.get_terminal_size()
 except Exception:
-    TERM_WIDTH, TERM_HEIGHT = 80, 24
+    from ccg.config import UI_CONFIG
+
+    TERM_WIDTH, TERM_HEIGHT = UI_CONFIG.DEFAULT_TERM_WIDTH, UI_CONFIG.DEFAULT_TERM_HEIGHT
+
+# Import configuration - backward compatibility dict
+from ccg.config import INPUT_LIMITS as INPUT_LIMITS_CONFIG
 
 INPUT_LIMITS = {
-    "type": 8,
-    "scope": 16,
-    "message": 64,
-    "body": 512,
-    "tag": 32,
-    "tag_message": 512,
-    "edit_message": 128,
-    "confirmation": 3,
+    "type": INPUT_LIMITS_CONFIG.TYPE,
+    "scope": INPUT_LIMITS_CONFIG.SCOPE,
+    "message": INPUT_LIMITS_CONFIG.MESSAGE,
+    "body": INPUT_LIMITS_CONFIG.BODY,
+    "tag": INPUT_LIMITS_CONFIG.TAG,
+    "tag_message": INPUT_LIMITS_CONFIG.TAG_MESSAGE,
+    "edit_message": INPUT_LIMITS_CONFIG.EDIT_MESSAGE,
+    "confirmation": INPUT_LIMITS_CONFIG.CONFIRMATION,
 }
 
 COMMIT_TYPES: List[Dict[str, str]] = [
@@ -182,6 +222,22 @@ def print_logo() -> None:
     print(f"{WHITE}{BOLD}{ASCII_LOGO}{RESET}")
 
 
+def strip_color_codes(text: str) -> str:
+    """Remove ANSI color codes from text.
+
+    Args:
+        text: Text containing ANSI color codes
+
+    Returns:
+        Text with all color codes removed
+    """
+    color_codes = [RED, GREEN, YELLOW, BLUE, MAGENTA, CYAN, WHITE, BOLD, UNDERLINE, RESET]
+    result = text
+    for code in color_codes:
+        result = result.replace(code, "")
+    return result
+
+
 def print_section(text: str) -> None:
     print()
     print(f"{BLUE}{BOLD}┌{'─' * (len(text) + 2)}┐{RESET}")
@@ -216,9 +272,13 @@ def print_warning(message: str) -> None:
     print_message(MAGENTA, WARNING, message)
 
 
-def validate_confirmation_input(user_input: str) -> Optional[bool]:
-    if not user_input or len(user_input) > 3:
+def validate_confirmation_input(user_input: str, default_yes: bool = True) -> Optional[bool]:
+    if len(user_input) > 3:
         return None
+
+    # Empty input uses default
+    if not user_input:
+        return default_yes
 
     normalized = user_input.lower().strip()
     if normalized in ["y", "yes"]:
@@ -229,37 +289,7 @@ def validate_confirmation_input(user_input: str) -> Optional[bool]:
         return None
 
 
-class ConfirmationValidator(Validator):
-    def validate(self, document):
-        text = document.text
-
-        if not text:
-            return
-
-        result = validate_confirmation_input(text)
-        if result is None:
-            if len(text) > 3:
-                raise ValidationError(message="Please enter 'y' or 'n'", cursor_position=3)
-            else:
-                raise ValidationError(message="Please enter 'y' or 'n'", cursor_position=len(text))
-
-
-class RealTimeCounterValidator(Validator):
-    def __init__(self, max_length: int):
-        self.max_length = max_length
-
-    def validate(self, document):
-        text = document.text
-        length = len(text)
-
-        if length > self.max_length:
-            raise ValidationError(
-                message=f"CHARACTER LIMIT REACHED ({self.max_length}/{self.max_length})",
-                cursor_position=self.max_length,
-            )
-
-
-def create_counter_toolbar(max_length: int, is_confirmation: bool = False):
+def create_counter_toolbar(max_length: int, is_confirmation: bool = False) -> Optional[callable]:
     def get_toolbar_tokens():
         try:
             from prompt_toolkit.application.current import get_app
@@ -300,8 +330,11 @@ def create_counter_toolbar(max_length: int, is_confirmation: bool = False):
 
 
 def create_input_key_bindings(
-    max_length: int = 0, is_confirmation: bool = False, multiline: bool = False
-):
+    max_length: int = 0,
+    is_confirmation: bool = False,
+    multiline: bool = False,
+    default_yes: bool = True,
+) -> Optional[object]:
     kb = KeyBindings()
 
     if not multiline:
@@ -309,7 +342,7 @@ def create_input_key_bindings(
         @kb.add(Keys.ControlM)
         def _(event):
             if is_confirmation and not event.app.current_buffer.text.strip():
-                event.app.current_buffer.text = "y"
+                event.app.current_buffer.text = "y" if default_yes else "n"
             event.app.current_buffer.validate_and_handle()
 
     else:
@@ -373,9 +406,7 @@ def read_input(
 
     if PROMPT_TOOLKIT_AVAILABLE:
         try:
-            clean_prompt = prompt_text
-            for code in [RED, GREEN, YELLOW, BLUE, MAGENTA, CYAN, WHITE, BOLD, UNDERLINE, RESET]:
-                clean_prompt = clean_prompt.replace(code, "")
+            clean_prompt = strip_color_codes(prompt_text)
 
             history = HISTORIES.get(history_type) if history_type else None
             validator = RealTimeCounterValidator(max_length) if max_length else None
@@ -405,6 +436,9 @@ def read_input(
                     print(f"    {WHITE}{INFO} {current_length}/{max_length} characters used{RESET}")
 
             return result
+        except (EOFError, KeyboardInterrupt):
+            print()
+            raise
         except Exception:
             return read_input_fallback(prompt_text, max_length, default_text)
     else:
@@ -414,9 +448,7 @@ def read_input(
 def read_input_fallback(
     prompt_text: str, max_length: Optional[int] = None, default_text: Optional[str] = None
 ) -> str:
-    clean_prompt = prompt_text
-    for code in [RED, GREEN, YELLOW, BLUE, MAGENTA, CYAN, WHITE, BOLD, UNDERLINE, RESET]:
-        clean_prompt = clean_prompt.replace(code, "")
+    clean_prompt = strip_color_codes(prompt_text)
 
     if default_text:
         print(f"Default: {default_text}")
@@ -449,23 +481,32 @@ def read_input_fallback(
 
             return user_input
 
-        except KeyboardInterrupt:
+        except (EOFError, KeyboardInterrupt):
+            print()
             raise
 
 
 def confirm_user_action(
-    prompt_text: str, success_message: Optional[str] = None, cancel_message: Optional[str] = None
+    prompt_text: str,
+    success_message: Optional[str] = None,
+    cancel_message: Optional[str] = None,
+    default_yes: bool = True,
 ) -> bool:
     user_input = ""
 
+    # Replace (y/n) with (Y/n) or (y/N) based on default
+    prompt_display = prompt_text
+    if default_yes:
+        prompt_display = prompt_display.replace("(y/n)", "(Y/n)")
+    else:
+        prompt_display = prompt_display.replace("(y/n)", "(y/N)")
+
     if PROMPT_TOOLKIT_AVAILABLE:
         try:
-            clean_prompt = prompt_text
-            for code in [RED, GREEN, YELLOW, BLUE, MAGENTA, CYAN, WHITE, BOLD, UNDERLINE, RESET]:
-                clean_prompt = clean_prompt.replace(code, "")
+            clean_prompt = strip_color_codes(prompt_display)
 
-            validator = ConfirmationValidator()
-            key_bindings = create_input_key_bindings(is_confirmation=True)
+            validator = ConfirmationValidator(default_yes)
+            key_bindings = create_input_key_bindings(is_confirmation=True, default_yes=default_yes)
             bottom_toolbar = create_counter_toolbar(3, is_confirmation=True)
 
             user_input = prompt(
@@ -476,53 +517,55 @@ def confirm_user_action(
                 style=PROMPT_STYLE,
                 bottom_toolbar=bottom_toolbar,
             ).strip()
+        except (EOFError, KeyboardInterrupt):
+            print()
+            raise
         except Exception:
             while True:
-                clean_prompt = prompt_text
-                for code in [
-                    RED,
-                    GREEN,
-                    YELLOW,
-                    BLUE,
-                    MAGENTA,
-                    CYAN,
-                    WHITE,
-                    BOLD,
-                    UNDERLINE,
-                    RESET,
-                ]:
-                    clean_prompt = clean_prompt.replace(code, "")
+                try:
+                    clean_prompt = strip_color_codes(prompt_display)
 
-                print(f"{WHITE}{INFO} Maximum 3 characters allowed (y/yes or n/no){RESET}")
+                    default_hint = "Y/n" if default_yes else "y/N"
+                    print(
+                        f"{WHITE}{INFO} Press Enter for default ({default_hint}) or type y/yes or n/no{RESET}"
+                    )
+                    user_input = input(f"{clean_prompt}: ").strip()
+
+                    if len(user_input) > 3:
+                        print_error("CHARACTER LIMIT EXCEEDED! (3 characters maximum)")
+                        continue
+
+                    result = validate_confirmation_input(user_input, default_yes)
+                    if result is not None:
+                        break
+                    print_error("Please enter 'y' or 'n'")
+                except (EOFError, KeyboardInterrupt):
+                    print()
+                    raise
+    else:
+        while True:
+            try:
+                clean_prompt = strip_color_codes(prompt_display)
+
+                default_hint = "Y/n" if default_yes else "y/N"
+                print(
+                    f"{WHITE}{INFO} Press Enter for default ({default_hint}) or type y/yes or n/no{RESET}"
+                )
                 user_input = input(f"{clean_prompt}: ").strip()
 
                 if len(user_input) > 3:
                     print_error("CHARACTER LIMIT EXCEEDED! (3 characters maximum)")
                     continue
 
-                result = validate_confirmation_input(user_input)
+                result = validate_confirmation_input(user_input, default_yes)
                 if result is not None:
                     break
                 print_error("Please enter 'y' or 'n'")
-    else:
-        while True:
-            clean_prompt = prompt_text
-            for code in [RED, GREEN, YELLOW, BLUE, MAGENTA, CYAN, WHITE, BOLD, UNDERLINE, RESET]:
-                clean_prompt = clean_prompt.replace(code, "")
+            except (EOFError, KeyboardInterrupt):
+                print()
+                raise
 
-            print(f"{WHITE}{INFO} Maximum 3 characters allowed (y/yes or n/no){RESET}")
-            user_input = input(f"{clean_prompt}: ").strip()
-
-            if len(user_input) > 3:
-                print_error("CHARACTER LIMIT EXCEEDED! (3 characters maximum)")
-                continue
-
-            result = validate_confirmation_input(user_input)
-            if result is not None:
-                break
-            print_error("Please enter 'y' or 'n'")
-
-    result = validate_confirmation_input(user_input)
+    result = validate_confirmation_input(user_input, default_yes)
 
     if result:
         if success_message:
@@ -570,6 +613,9 @@ def read_multiline_input(
 
             return result
 
+        except (EOFError, KeyboardInterrupt):
+            print()
+            raise
         except Exception:
             pass
 
@@ -637,14 +683,12 @@ def read_multiline_input(
                     lines.append(line)
                     total_chars += len(line) + (1 if lines else 0)
 
-            except EOFError:
+            except (EOFError, KeyboardInterrupt):
                 break
-            except KeyboardInterrupt:
-                raise
 
     except KeyboardInterrupt:
-        print("\nSkipping...")
-        return ""
+        print()
+        raise
 
     while lines and not lines[-1]:
         lines.pop()

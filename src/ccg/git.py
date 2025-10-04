@@ -137,6 +137,7 @@ def git_push(set_upstream: bool = False, force: bool = False) -> bool:
         )
         return success
     else:
+        print_process("Pushing changes...")
         success, error_output = run_git_command(
             ["git", "push"],
             "Error during 'git push'",
@@ -149,7 +150,6 @@ def git_push(set_upstream: bool = False, force: bool = False) -> bool:
                 return git_push(set_upstream=True)
             return False
 
-        print()
         return success
 
 
@@ -384,6 +384,63 @@ def get_current_branch() -> Optional[str]:
     if success and output:
         return output
     return None
+
+
+def get_repository_name() -> Optional[str]:
+    """Get the name of the current git repository.
+
+    Returns:
+        Repository name or None if unable to determine
+    """
+    success, output = run_git_command(
+        ["git", "rev-parse", "--show-toplevel"],
+        "Failed to get repository root",
+        show_output=True,
+    )
+
+    if success and output:
+        return os.path.basename(output)
+    return None
+
+
+def get_repository_root() -> Optional[str]:
+    """Get the root directory of the current git repository.
+
+    Returns:
+        Absolute path to repository root or None if unable to determine
+    """
+    success, output = run_git_command(
+        ["git", "rev-parse", "--show-toplevel"],
+        "Failed to get repository root",
+        show_output=True,
+    )
+
+    if success and output:
+        return output
+    return None
+
+
+def is_path_in_repository(path: str, repo_root: str) -> bool:
+    """Check if a path is within the git repository.
+
+    Args:
+        path: Path to check
+        repo_root: Root directory of the git repository
+
+    Returns:
+        True if path is within repository, False otherwise
+    """
+    abs_path = os.path.abspath(path)
+    abs_repo_root = os.path.abspath(repo_root)
+
+    try:
+        # Check if path is relative to repo_root
+        os.path.relpath(abs_path, abs_repo_root)
+        # Check if the path actually starts with repo_root
+        return abs_path.startswith(abs_repo_root)
+    except ValueError:
+        # On Windows, relpath raises ValueError if paths are on different drives
+        return False
 
 
 def branch_exists_on_remote(branch_name: str) -> bool:

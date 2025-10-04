@@ -7,6 +7,7 @@ from ccg.utils import (
     BOLD,
     BULLET,
     COMMIT_TYPES,
+    CYAN,
     RESET,
     TERM_WIDTH,
     WHITE,
@@ -91,6 +92,7 @@ def is_breaking_change() -> bool:
         f"{YELLOW}Is this a BREAKING CHANGE? (y/n){RESET}",
         success_message=f"Marked as {BOLD}BREAKING CHANGE{RESET}",
         cancel_message="Not a breaking change",
+        default_yes=False,
     )
 
 
@@ -185,61 +187,18 @@ def get_visual_width(text: str) -> int:
 def confirm_commit(commit_message_header: str, commit_body: Optional[str] = None) -> bool:
     print_section("Review")
 
+    # Display commit message with emoji conversion
     display_header = convert_emoji_codes_to_real(commit_message_header)
-    lines = [display_header]
+    print(f"{CYAN}Commit:{RESET} {BOLD}{display_header}{RESET}")
+
+    # Display body if present
     if commit_body:
-        lines.append("")
-        lines.extend(commit_body.split("\n"))
+        print()
+        print(f"{CYAN}Body:{RESET}")
+        for line in commit_body.split("\n"):
+            print(line)
 
-    max_visual_width = max(get_visual_width(line) for line in lines)
-    left_padding = 4
-    right_padding = 4
-    content_width = max_visual_width
-    inner_width = content_width + left_padding + right_padding
-    box_width = inner_width + 2
-    min_width = 50
-    max_width = min(TERM_WIDTH - 4, 100)
-    box_width = max(min_width, min(box_width, max_width))
-    final_inner_width = box_width - 2
-    final_content_width = final_inner_width - left_padding - right_padding
-
-    print(f"{WHITE}┌{'─' * (box_width - 2)}┐{RESET}")
-    print(f"{WHITE}│{' ' * (box_width - 2)}│{RESET}")
-
-    for line in lines:
-        if not line:
-            print(f"{WHITE}│{' ' * (box_width - 2)}│{RESET}")
-            continue
-
-        line_visual_width = get_visual_width(line)
-        if line_visual_width > final_content_width:
-            truncated = ""
-            for char in line:
-                test_line = truncated + char + "..."
-                if get_visual_width(test_line) <= final_content_width:
-                    truncated += char
-                else:
-                    break
-            display_line = truncated + "..."
-            display_visual_width = get_visual_width(display_line)
-        else:
-            display_line = line
-            display_visual_width = line_visual_width
-
-        remaining_space = final_content_width - display_visual_width
-        formatted_line = (
-            f"{WHITE}│"
-            f"{' ' * left_padding}"
-            f"{BOLD}{display_line}{RESET}"
-            f"{WHITE}{' ' * remaining_space}"
-            f"{' ' * right_padding}"
-            f"│{RESET}"
-        )
-        print(formatted_line)
-
-    print(f"{WHITE}│{' ' * (box_width - 2)}│{RESET}")
-    print(f"{WHITE}└{'─' * (box_width - 2)}┘{RESET}")
-
+    print()
     return confirm_user_action(
         f"{YELLOW}Confirm this commit message? (y/n){RESET}",
         success_message="Commit message confirmed!",

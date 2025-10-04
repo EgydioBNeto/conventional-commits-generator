@@ -1,9 +1,11 @@
 """Command-line interface for Conventional Commits Generator."""
 
 import argparse
+import os
 import sys
 import traceback
-from typing import List, Optional, Tuple
+from functools import wraps
+from typing import Callable, List, Optional, Tuple
 
 from ccg import __version__
 from ccg.core import confirm_commit, confirm_push, generate_commit_message, validate_commit_message
@@ -20,9 +22,12 @@ from ccg.git import (
     get_commit_by_hash,
     get_current_branch,
     get_recent_commits,
+    get_repository_name,
+    get_repository_root,
     git_add,
     git_commit,
     git_push,
+    is_path_in_repository,
     pull_from_remote,
     push_tag,
 )
@@ -42,6 +47,40 @@ from ccg.utils import (
 )
 
 
+def show_repository_info() -> None:
+    """Display current repository and branch information."""
+    from ccg.utils import BOLD, CYAN, RESET
+
+    repo_name = get_repository_name()
+    branch_name = get_current_branch()
+
+    if repo_name and branch_name:
+        print(
+            f"{CYAN}Repository:{RESET} {BOLD}{repo_name}{RESET}  {CYAN}Branch:{RESET} {BOLD}{branch_name}{RESET}"
+        )
+
+
+def require_git_repo(func: Callable) -> Callable:
+    """Decorator to ensure function runs in a git repository.
+
+    Args:
+        func: Function to wrap
+
+    Returns:
+        Wrapped function that checks for git repository first
+    """
+
+    @wraps(func)
+    def wrapper(*args, **kwargs) -> int:
+        if not check_is_git_repo():
+            print_error("Not a git repository. Please initialize one with 'git init'.")
+            return 1
+        show_repository_info()
+        return func(*args, **kwargs)
+
+    return wrapper
+
+
 class CustomHelpFormatter(argparse.HelpFormatter):
     def __init__(self, prog):
         super().__init__(prog, max_help_position=50, width=100)
@@ -59,21 +98,42 @@ def parse_args(args: Optional[List[str]] = None) -> argparse.Namespace:
     )
     parser.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
     parser.add_argument(
-        "--push", action="store_true", help="Just run git push without creating a new commit"
+        "--push",
+        action="store_true",
+        help="Just run git push without creating a new commit",
     )
     parser.add_argument(
-        "--commit", action="store_true", help="Generate commit message without actually committing"
+        "--commit",
+        action="store_true",
+        help="Generate commit message without actually committing",
     )
     parser.add_argument(
-        "--reset", action="store_true", help="Discard all local changes and pull latest from remote"
+        "--reset",
+        action="store_true",
+        help="Discard all local changes and pull latest from remote",
     )
     parser.add_argument(
         "--tag", action="store_true", help="Create a new Git tag and push it to remote"
     )
     parser.add_argument("--edit", action="store_true", help="Edit an existing commit message")
     parser.add_argument("--delete", action="store_true", help="Delete an existing commit")
-    parser.add_argument("--path", nargs="+", help="Specify path(s) to stage instead of all changes")
-    return parser.parse_args(args)
+    parser.add_argument(
+        "--path",
+        nargs="+",
+        help="Specify path(s) to stage or directory to work in",
+    )
+
+    # Parse args and catch unknown arguments
+    parsed_args, unknown = parser.parse_known_args(args)
+
+    # If there are unknown arguments, show error
+    if unknown:
+        print_logo()
+        print_error(f"Unrecognized arguments: {' '.join(unknown)}")
+        print_info("Run 'ccg --help' to see available options")
+        sys.exit(1)
+
+    return parsed_args
 
 
 def confirm_create_branch() -> bool:
@@ -99,7 +159,8 @@ def confirm_reset() -> bool:
 def get_commit_count_input() -> Optional[int]:
     while True:
         count_input = read_input(
-            f"{YELLOW}How many recent commits to display? (Enter or 0 for all){RESET}", max_length=6
+            f"{YELLOW}How many recent commits to display? (Enter or 0 for all){RESET}",
+            max_length=6,
         )
         if not count_input or count_input == "0":
             return None
@@ -108,12 +169,9 @@ def get_commit_count_input() -> Optional[int]:
         print_error("Please enter a valid positive number, 0, or press Enter for all commits.")
 
 
+@require_git_repo
 def handle_commit_operation(operation_type: str) -> int:
     print_section(f"{operation_type.capitalize()} Commit")
-
-    if not check_is_git_repo():
-        print_error("Not a git repository. Please initialize one with 'git init'.")
-        return 1
 
     count = get_commit_count_input()
     commits = get_recent_commits(count)
@@ -192,7 +250,9 @@ def handle_commit_edit_input(
     )
 
     new_message = read_input(
-        f"{YELLOW}New commit message{RESET}", history_type="edit_message", default_text=subject
+        f"{YELLOW}New commit message{RESET}",
+        history_type="edit_message",
+        default_text=subject,
     )
 
     if not new_message:
@@ -229,72 +289,27 @@ def handle_commit_edit_input(
 
 
 def confirm_commit_edit(
-    original_subject: str, original_body: Optional[str], new_message: str, new_body: Optional[str]
+    original_subject: str,
+    original_body: Optional[str],
+    new_message: str,
+    new_body: Optional[str],
 ) -> bool:
     print_section("Original")
 
-    original_full = original_subject
-    if original_body:
-        original_full += f"\n\n{original_body}"
+    from ccg.core import convert_emoji_codes_to_real
+    from ccg.utils import BOLD, CYAN, RESET
 
-    from ccg.core import convert_emoji_codes_to_real, get_visual_width
-    from ccg.utils import BOLD, RESET, TERM_WIDTH, WHITE
-
+    # Display original commit message
     display_header = convert_emoji_codes_to_real(original_subject)
-    lines = [display_header]
+    print(f"{CYAN}Commit:{RESET} {BOLD}{display_header}{RESET}")
+
     if original_body:
-        lines.append("")
-        lines.extend(original_body.split("\n"))
+        print()
+        print(f"{CYAN}Body:{RESET}")
+        for line in original_body.split("\n"):
+            print(line)
 
-    max_visual_width = max(get_visual_width(line) for line in lines)
-    left_padding = 4
-    right_padding = 4
-    content_width = max_visual_width
-    inner_width = content_width + left_padding + right_padding
-    box_width = inner_width + 2
-    min_width = 50
-    max_width = min(TERM_WIDTH - 4, 100)
-    box_width = max(min_width, min(box_width, max_width))
-    final_inner_width = box_width - 2
-    final_content_width = final_inner_width - left_padding - right_padding
-
-    print(f"{WHITE}┌{'─' * (box_width - 2)}┐{RESET}")
-    print(f"{WHITE}│{' ' * (box_width - 2)}│{RESET}")
-
-    for line in lines:
-        if not line:
-            print(f"{WHITE}│{' ' * (box_width - 2)}│{RESET}")
-            continue
-
-        line_visual_width = get_visual_width(line)
-        if line_visual_width > final_content_width:
-            truncated = ""
-            for char in line:
-                test_line = truncated + char + "..."
-                if get_visual_width(test_line) <= final_content_width:
-                    truncated += char
-                else:
-                    break
-            display_line = truncated + "..."
-            display_visual_width = get_visual_width(display_line)
-        else:
-            display_line = line
-            display_visual_width = line_visual_width
-
-        remaining_space = final_content_width - display_visual_width
-        formatted_line = (
-            f"{WHITE}│"
-            f"{' ' * left_padding}"
-            f"{BOLD}{display_line}{RESET}"
-            f"{WHITE}{' ' * remaining_space}"
-            f"{' ' * right_padding}"
-            f"│{RESET}"
-        )
-        print(formatted_line)
-
-    print(f"{WHITE}│{' ' * (box_width - 2)}│{RESET}")
-    print(f"{WHITE}└{'─' * (box_width - 2)}┘{RESET}")
-
+    print()
     return confirm_commit(new_message, new_body)
 
 
@@ -397,18 +412,16 @@ def delete_specific_commit(commit_hash: str) -> int:
     return 0
 
 
+@require_git_repo
 def handle_tag() -> int:
     print_section("Git Tag Creation")
-
-    if not check_is_git_repo():
-        print_error("Not a git repository. Please initialize one with 'git init'.")
-        return 1
 
     if not check_remote_access():
         return 1
 
     tag_name = read_input(
-        f"{YELLOW}Enter the tag name (e.g., v1.0.0){RESET}", max_length=INPUT_LIMITS["tag"]
+        f"{YELLOW}Enter the tag name (e.g., v1.0.0){RESET}",
+        max_length=INPUT_LIMITS["tag"],
     )
 
     if not tag_name:
@@ -442,12 +455,9 @@ def handle_tag() -> int:
     return 0
 
 
+@require_git_repo
 def handle_reset() -> int:
     print_section("Reset Local Changes")
-
-    if not check_is_git_repo():
-        print_error("Not a git repository. Please initialize one with 'git init'.")
-        return 1
 
     if not check_remote_access():
         return 1
@@ -482,6 +492,8 @@ def handle_push_only() -> int:
         print_error("Not a git repository. Please initialize one with 'git init'.")
         return 1
 
+    show_repository_info()
+
     if not check_remote_access():
         return 1
 
@@ -509,6 +521,8 @@ def validate_repository_state(commit_only: bool = False, paths: Optional[List[st
     if not check_is_git_repo():
         print_error("Not a git repository. Please initialize one with 'git init'.")
         return False
+
+    show_repository_info()
 
     print_section("Repository Validation")
     if not check_remote_access():
@@ -576,12 +590,118 @@ def handle_git_workflow(commit_only: bool = False, paths: Optional[List[str]] = 
     return 0
 
 
+def validate_paths_exist(paths: List[str]) -> None:
+    """Validate that all provided paths exist.
+
+    Args:
+        paths: List of paths to validate
+
+    Raises:
+        SystemExit: If any path does not exist
+    """
+    invalid_paths = []
+    for path in paths:
+        if not os.path.exists(path):
+            invalid_paths.append(path)
+
+    if invalid_paths:
+        print_error(f"Invalid path(s): {', '.join(invalid_paths)}")
+        print_info("All paths must be valid files or directories")
+        print_info("Usage:")
+        print_info("  • ccg --path <directory>")
+        print_info("  • ccg --path <directory> --flag")
+        print_info("  • ccg --path <file1> <file2> ... (for staging specific files)")
+        sys.exit(1)
+
+
+def validate_paths_in_repository(paths: List[str]) -> None:
+    """Validate that all paths are within the current git repository.
+
+    Args:
+        paths: List of paths to validate
+
+    Raises:
+        SystemExit: If any path is outside the repository
+    """
+    # Get current repository root
+    repo_root = get_repository_root()
+    if not repo_root:
+        print_error("Failed to determine git repository root")
+        sys.exit(1)
+
+    # Check each path
+    paths_outside_repo = []
+    for path in paths:
+        if not is_path_in_repository(path, repo_root):
+            paths_outside_repo.append(path)
+
+    if paths_outside_repo:
+        print_error(f"Path(s) outside repository: {', '.join(paths_outside_repo)}")
+        print_info(f"Repository root: {repo_root}")
+        print_info("All paths must be within the same git repository")
+        sys.exit(1)
+
+
+def change_to_working_directory(paths: Optional[List[str]]) -> Optional[List[str]]:
+    """Change to working directory if specified in paths.
+
+    If paths contains a single directory, change to it and return None.
+    Otherwise, return paths as-is for staging.
+
+    Args:
+        paths: List of paths from command line
+
+    Returns:
+        Paths to stage, or None if directory change was performed
+    """
+    if not paths:
+        return None
+
+    # Validate all paths exist first
+    validate_paths_exist(paths)
+
+    # If there's only one path and it's a directory, change to it
+    if len(paths) == 1 and os.path.isdir(paths[0]):
+        target_dir = os.path.abspath(paths[0])
+        try:
+            os.chdir(target_dir)
+            return None
+        except Exception as e:
+            print_error(f"Failed to change to directory '{paths[0]}': {e}")
+            sys.exit(1)
+
+    # For multiple paths or files, validate they're all in the same repository
+    # This must be done AFTER we've changed directory if needed
+    validate_paths_in_repository(paths)
+
+    # Otherwise, treat as paths to stage
+    return paths
+
+
 def main(args: Optional[List[str]] = None) -> int:
     try:
         parsed_args = parse_args(args)
 
         if not any(help_flag in sys.argv for help_flag in ["-h", "--help"]):
             print_logo()
+
+        # Handle directory change if --path points to a single directory
+        # This works for all operations
+        stage_paths = parsed_args.path
+        working_dir_changed = False
+
+        if parsed_args.path and any(
+            [
+                parsed_args.push,
+                parsed_args.edit,
+                parsed_args.delete,
+                parsed_args.reset,
+                parsed_args.tag,
+            ]
+        ):
+            # For these operations, --path should change directory
+            stage_paths = change_to_working_directory(parsed_args.path)
+            working_dir_changed = True
 
         if parsed_args.edit:
             return handle_edit()
@@ -594,9 +714,12 @@ def main(args: Optional[List[str]] = None) -> int:
         elif parsed_args.tag:
             return handle_tag()
         else:
-            return handle_git_workflow(commit_only=parsed_args.commit, paths=parsed_args.path)
+            # For normal workflow, --path can either change directory OR specify files to stage
+            if not working_dir_changed and parsed_args.path:
+                stage_paths = change_to_working_directory(parsed_args.path)
+            return handle_git_workflow(commit_only=parsed_args.commit, paths=stage_paths)
 
-    except KeyboardInterrupt:
+    except (EOFError, KeyboardInterrupt):
         print()
         print_warning("Operation cancelled by user")
         return 130
