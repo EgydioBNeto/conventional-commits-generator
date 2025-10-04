@@ -64,6 +64,15 @@ ccg --tag
 # Reset local and pull from remote
 ccg --reset
 
+# Stage specific files or directories
+ccg --path src/ tests/
+
+# Work in a different repository directory
+ccg --path /path/to/repo
+
+# Combine --path with other flags
+ccg --path /path/to/repo --push
+
 # Show version
 ccg --version
 ```
@@ -82,6 +91,8 @@ $ ccg
     \|_______|    \|_______|    \|_______|
 
  Conventional Commits Generator
+
+Repository: my-project  Branch: main
 
 ┌──────────────────────┐
 │ Commit Types         │

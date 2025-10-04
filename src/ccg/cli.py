@@ -23,9 +23,11 @@ from ccg.git import (
     get_current_branch,
     get_recent_commits,
     get_repository_name,
+    get_repository_root,
     git_add,
     git_commit,
     git_push,
+    is_path_in_repository,
     pull_from_remote,
     push_tag,
 )
@@ -56,7 +58,6 @@ def show_repository_info() -> None:
         print(
             f"{CYAN}Repository:{RESET} {BOLD}{repo_name}{RESET}  {CYAN}Branch:{RESET} {BOLD}{branch_name}{RESET}"
         )
-        print()
 
 
 def require_git_repo(func: Callable) -> Callable:
@@ -97,21 +98,42 @@ def parse_args(args: Optional[List[str]] = None) -> argparse.Namespace:
     )
     parser.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
     parser.add_argument(
-        "--push", action="store_true", help="Just run git push without creating a new commit"
+        "--push",
+        action="store_true",
+        help="Just run git push without creating a new commit",
     )
     parser.add_argument(
-        "--commit", action="store_true", help="Generate commit message without actually committing"
+        "--commit",
+        action="store_true",
+        help="Generate commit message without actually committing",
     )
     parser.add_argument(
-        "--reset", action="store_true", help="Discard all local changes and pull latest from remote"
+        "--reset",
+        action="store_true",
+        help="Discard all local changes and pull latest from remote",
     )
     parser.add_argument(
         "--tag", action="store_true", help="Create a new Git tag and push it to remote"
     )
     parser.add_argument("--edit", action="store_true", help="Edit an existing commit message")
     parser.add_argument("--delete", action="store_true", help="Delete an existing commit")
-    parser.add_argument("--path", nargs="+", help="Specify path(s) to stage instead of all changes")
-    return parser.parse_args(args)
+    parser.add_argument(
+        "--path",
+        nargs="+",
+        help="Specify path(s) to stage or directory to work in",
+    )
+
+    # Parse args and catch unknown arguments
+    parsed_args, unknown = parser.parse_known_args(args)
+
+    # If there are unknown arguments, show error
+    if unknown:
+        print_logo()
+        print_error(f"Unrecognized arguments: {' '.join(unknown)}")
+        print_info("Run 'ccg --help' to see available options")
+        sys.exit(1)
+
+    return parsed_args
 
 
 def confirm_create_branch() -> bool:
@@ -137,7 +159,8 @@ def confirm_reset() -> bool:
 def get_commit_count_input() -> Optional[int]:
     while True:
         count_input = read_input(
-            f"{YELLOW}How many recent commits to display? (Enter or 0 for all){RESET}", max_length=6
+            f"{YELLOW}How many recent commits to display? (Enter or 0 for all){RESET}",
+            max_length=6,
         )
         if not count_input or count_input == "0":
             return None
@@ -227,7 +250,9 @@ def handle_commit_edit_input(
     )
 
     new_message = read_input(
-        f"{YELLOW}New commit message{RESET}", history_type="edit_message", default_text=subject
+        f"{YELLOW}New commit message{RESET}",
+        history_type="edit_message",
+        default_text=subject,
     )
 
     if not new_message:
@@ -264,7 +289,10 @@ def handle_commit_edit_input(
 
 
 def confirm_commit_edit(
-    original_subject: str, original_body: Optional[str], new_message: str, new_body: Optional[str]
+    original_subject: str,
+    original_body: Optional[str],
+    new_message: str,
+    new_body: Optional[str],
 ) -> bool:
     print_section("Original")
 
@@ -392,7 +420,8 @@ def handle_tag() -> int:
         return 1
 
     tag_name = read_input(
-        f"{YELLOW}Enter the tag name (e.g., v1.0.0){RESET}", max_length=INPUT_LIMITS["tag"]
+        f"{YELLOW}Enter the tag name (e.g., v1.0.0){RESET}",
+        max_length=INPUT_LIMITS["tag"],
     )
 
     if not tag_name:
@@ -561,6 +590,58 @@ def handle_git_workflow(commit_only: bool = False, paths: Optional[List[str]] = 
     return 0
 
 
+def validate_paths_exist(paths: List[str]) -> None:
+    """Validate that all provided paths exist.
+
+    Args:
+        paths: List of paths to validate
+
+    Raises:
+        SystemExit: If any path does not exist
+    """
+    invalid_paths = []
+    for path in paths:
+        if not os.path.exists(path):
+            invalid_paths.append(path)
+
+    if invalid_paths:
+        print_error(f"Invalid path(s): {', '.join(invalid_paths)}")
+        print_info("All paths must be valid files or directories")
+        print_info("Usage:")
+        print_info("  • ccg --path <directory>")
+        print_info("  • ccg --path <directory> --flag")
+        print_info("  • ccg --path <file1> <file2> ... (for staging specific files)")
+        sys.exit(1)
+
+
+def validate_paths_in_repository(paths: List[str]) -> None:
+    """Validate that all paths are within the current git repository.
+
+    Args:
+        paths: List of paths to validate
+
+    Raises:
+        SystemExit: If any path is outside the repository
+    """
+    # Get current repository root
+    repo_root = get_repository_root()
+    if not repo_root:
+        print_error("Failed to determine git repository root")
+        sys.exit(1)
+
+    # Check each path
+    paths_outside_repo = []
+    for path in paths:
+        if not is_path_in_repository(path, repo_root):
+            paths_outside_repo.append(path)
+
+    if paths_outside_repo:
+        print_error(f"Path(s) outside repository: {', '.join(paths_outside_repo)}")
+        print_info(f"Repository root: {repo_root}")
+        print_info("All paths must be within the same git repository")
+        sys.exit(1)
+
+
 def change_to_working_directory(paths: Optional[List[str]]) -> Optional[List[str]]:
     """Change to working directory if specified in paths.
 
@@ -576,6 +657,9 @@ def change_to_working_directory(paths: Optional[List[str]]) -> Optional[List[str
     if not paths:
         return None
 
+    # Validate all paths exist first
+    validate_paths_exist(paths)
+
     # If there's only one path and it's a directory, change to it
     if len(paths) == 1 and os.path.isdir(paths[0]):
         target_dir = os.path.abspath(paths[0])
@@ -585,6 +669,10 @@ def change_to_working_directory(paths: Optional[List[str]]) -> Optional[List[str
         except Exception as e:
             print_error(f"Failed to change to directory '{paths[0]}': {e}")
             sys.exit(1)
+
+    # For multiple paths or files, validate they're all in the same repository
+    # This must be done AFTER we've changed directory if needed
+    validate_paths_in_repository(paths)
 
     # Otherwise, treat as paths to stage
     return paths
@@ -598,9 +686,9 @@ def main(args: Optional[List[str]] = None) -> int:
             print_logo()
 
         # Handle directory change if --path points to a single directory
-        # This is only used when NOT in normal workflow (which uses paths for staging)
-        working_dir_changed = False
+        # This works for all operations
         stage_paths = parsed_args.path
+        working_dir_changed = False
 
         if parsed_args.path and any(
             [
