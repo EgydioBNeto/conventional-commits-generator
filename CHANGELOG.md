@@ -7,6 +7,43 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.2.5] - 2025-10-04
+
+### ✨ Added
+
+- feat(cli): add repository/branch display and path validation ([46368f4])
+- **cli**: add repository/branch display and path validation ([f1ab585])
+
+### ♻️ Changed
+
+- change workflows name [skip-release] ([999a730])
+
+### 🐛 Fixed
+
+- greet workflow ([1bac8bd])
+
+### 🔧 Maintenance
+
+- add ccg page and clean up workflows [skip-release] ([6d6124d])
+
+### 📦 Other
+
+- Update labeler.yml [skip-release] ([9b6d175])
+- Update labeler.yml [skip-release] ([35a6574])
+- hotfix ([d1a71b2])
+- Update README.md ([b0d6cf1])
+- add labeler file ([71f349f])
+- Update labeler.yml [skip-release] ([f4c2a46])
+- Update and rename label.yml to labeler.yml [skip-release] ([647aa68])
+- Create label.yml [skip-release] ([ca5611a])
+- Create stale.yml [skip-release] ([7445957])
+- Update greetings.yml [skip-release] ([3936f31])
+- Create summary.yml [skip-release] ([9ef8374])
+- Create greetings.yml [skip-release] ([800a1fe])
+- Update SECURITY.md [skip-release] ([c08867f])
+- Update issue templates [skip-release] ([26998c4])
+
+
 ## [2.2.4] - 2025-08-30
 
 ### 🔧 Maintenance
