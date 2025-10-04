@@ -105,12 +105,12 @@ Enter the scope (optional): auth
 ┌──────────────────────┐
 │ Breaking Change      │
 └──────────────────────┘
-Is this a BREAKING CHANGE? (y/n): n
+Is this a BREAKING CHANGE? (y/N): n
 
 ┌──────────────────────┐
 │ Emoji                │
 └──────────────────────┘
-Include emoji in commit message? (y/n): n
+Include emoji in commit message? (Y/n): n
 
 ┌──────────────────────┐
 │ Commit Message       │
@@ -126,20 +126,19 @@ Integration with existing user system
 ┌──────────────────────┐
 │ Review               │
 └──────────────────────┘
+Commit: feat(auth): implement OAuth login
 
-┌─────────────────────────────────────────────────────────┐
-│                                                         │
-│  feat(auth): implement OAuth login                      │
-│                                                         │
-│  Added Google OAuth 2.0 support                         │
-│  Integration with existing user system                  │
-│                                                         │
-└─────────────────────────────────────────────────────────┘
+Body:
+Added Google OAuth 2.0 support
+Integration with existing user system
 
-Confirm this commit message? (y/n): y
-✓ New commit successfully created!
+Confirm this commit message? (Y/n): y
+✓ Commit message confirmed!
 
-Do you want to push these changes? (y/n): y
+┌──────────────────────┐
+│ Push Changes         │
+└──────────────────────┘
+Do you want to push these changes? (Y/n): y
 ✓ Changes pushed successfully!
 ```
 

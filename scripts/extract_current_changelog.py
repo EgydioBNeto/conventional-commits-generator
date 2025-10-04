@@ -10,18 +10,8 @@ import subprocess
 import sys
 from pathlib import Path
 
-
-def get_current_version() -> str:
-    """Get current version from __init__.py."""
-    init_file = Path("src/ccg/__init__.py")
-
-    if not init_file.exists():
-        return "0.0.0"
-
-    content = init_file.read_text()
-    match = re.search(r'__version__ = ["\']([^"\']+)["\']', content)
-
-    return match.group(1) if match else "0.0.0"
+# Import shared utilities
+from changelog_utils import get_current_version
 
 
 def get_repository_name() -> str:

@@ -137,6 +137,7 @@ def git_push(set_upstream: bool = False, force: bool = False) -> bool:
         )
         return success
     else:
+        print_process("Pushing changes...")
         success, error_output = run_git_command(
             ["git", "push"],
             "Error during 'git push'",
@@ -149,7 +150,6 @@ def git_push(set_upstream: bool = False, force: bool = False) -> bool:
                 return git_push(set_upstream=True)
             return False
 
-        print()
         return success
 
 
@@ -383,6 +383,23 @@ def get_current_branch() -> Optional[str]:
 
     if success and output:
         return output
+    return None
+
+
+def get_repository_name() -> Optional[str]:
+    """Get the name of the current git repository.
+
+    Returns:
+        Repository name or None if unable to determine
+    """
+    success, output = run_git_command(
+        ["git", "rev-parse", "--show-toplevel"],
+        "Failed to get repository root",
+        show_output=True,
+    )
+
+    if success and output:
+        return os.path.basename(output)
     return None
 
 
