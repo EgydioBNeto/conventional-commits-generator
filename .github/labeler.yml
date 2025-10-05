@@ -22,10 +22,22 @@
   - changed-files:
     - any-glob-to-any-file: 'src/ccg/utils.py'
 
+# Configuration module changes
+'config':
+  - changed-files:
+    - any-glob-to-any-file: 'src/ccg/config.py'
+
 # Package initialization changes
 'package':
   - changed-files:
     - any-glob-to-any-file: 'src/ccg/__init__.py'
+
+# Test changes
+'tests':
+  - changed-files:
+    - any-glob-to-any-file: 'tests/**'
+    - any-glob-to-any-file: 'pytest.ini'
+    - any-glob-to-any-file: 'conftest.py'
 
 # Script changes
 'scripts':
@@ -40,20 +52,22 @@
     - any-glob-to-any-file: '.github/*.md'
     - any-glob-to-any-file: '.github/ISSUE_TEMPLATE/**'
     - any-glob-to-any-file: 'index.html'
+    - any-glob-to-any-file: 'CLAUDE.md'
 
-# Configuration changes
-'config':
+# Project configuration changes
+'project-config':
   - changed-files:
     - any-glob-to-any-file: 'pyproject.toml'
-    - any-glob-to-any-file: 'setup.py'
     - any-glob-to-any-file: '.pre-commit-config.yaml'
     - any-glob-to-any-file: '.gitignore'
+    - any-glob-to-any-file: 'mypy.ini'
 
 # GitHub Actions and CI changes
 'ci':
   - changed-files:
     - any-glob-to-any-file: '.github/workflows/**'
     - any-glob-to-any-file: '.github/dependabot.yml'
+    - any-glob-to-any-file: '.github/labeler.yml'
 
 # Dependencies changes
 'dependencies':
@@ -66,13 +80,17 @@
   - changed-files:
     - any-glob-to-any-file: 'CHANGELOG.md'
     - any-glob-to-any-file: 'src/ccg/__init__.py'
+    - any-glob-to-any-file: 'scripts/bump_version.py'
+    - any-glob-to-any-file: 'scripts/generate_changelog.py'
+    - any-glob-to-any-file: 'scripts/extract_current_changelog.py'
+    - any-glob-to-any-file: 'scripts/changelog_utils.py'
 
 # Build and packaging changes
 'build':
   - changed-files:
     - any-glob-to-any-file: 'pyproject.toml'
-    - any-glob-to-any-file: 'setup.py'
-    - any-glob-to-any-file: 'scripts/bump_version.py'
+    - any-glob-to-any-file: 'scripts/setup_venv.sh'
+    - any-glob-to-any-file: 'scripts/manage_env.sh'
 
 # Security related changes
 'security':

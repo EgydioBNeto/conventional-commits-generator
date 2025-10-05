@@ -228,19 +228,25 @@ class TestResetWorkflow:
 
     @patch("ccg.cli.pull_from_remote")
     @patch("ccg.cli.discard_local_changes")
-    @patch("ccg.cli.confirm_user_action")
+    @patch("ccg.cli.confirm_reset")
+    @patch("ccg.cli.check_has_changes")
+    @patch("ccg.cli.check_remote_access")
     @patch("ccg.cli.check_is_git_repo")
     @patch("ccg.cli.show_repository_info")
     def test_reset_confirmed(
         self,
         mock_show: Mock,
         mock_check: Mock,
+        mock_remote: Mock,
+        mock_has_changes: Mock,
         mock_confirm: Mock,
         mock_discard: Mock,
         mock_pull: Mock,
     ) -> None:
         """Should reset local changes and pull when confirmed."""
         mock_check.return_value = True
+        mock_remote.return_value = True
+        mock_has_changes.return_value = True
         mock_confirm.return_value = True
         mock_discard.return_value = True
         mock_pull.return_value = True
