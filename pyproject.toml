@@ -39,6 +39,12 @@ dev = [
     "pre-commit >= 3.5.0",
     "prompt_toolkit >= 3.0.20"
 ]
+test = [
+    "pytest >= 7.4.0",
+    "pytest-cov >= 4.1.0",
+    "pytest-mock >= 3.11.0",
+    "hypothesis >= 6.82.0"
+]
 
 [project.urls]
 Homepage = "https://github.com/EgydioBNeto/conventional-commits-generator"
