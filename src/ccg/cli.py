@@ -5,7 +5,7 @@ import os
 import sys
 import traceback
 from functools import wraps
-from typing import Callable, List, Optional, Tuple
+from typing import Any, Callable, List, Optional, Tuple, TypeVar, cast
 
 from ccg import __version__
 from ccg.core import confirm_commit, confirm_push, generate_commit_message, validate_commit_message
@@ -48,7 +48,15 @@ from ccg.utils import (
 
 
 def show_repository_info() -> None:
-    """Display current repository and branch information."""
+    """Display current repository and branch information.
+
+    Retrieves and prints the repository name and current branch in a formatted
+    style with colors. This is shown at the start of most CLI operations to
+    provide context about the working repository.
+
+    Note:
+        Silently returns if repository name or branch cannot be determined
+    """
     from ccg.utils import BOLD, CYAN, RESET
 
     repo_name = get_repository_name()
@@ -60,7 +68,10 @@ def show_repository_info() -> None:
         )
 
 
-def require_git_repo(func: Callable) -> Callable:
+F = TypeVar("F", bound=Callable[..., int])
+
+
+def require_git_repo(func: F) -> F:
     """Decorator to ensure function runs in a git repository.
 
     Args:
@@ -71,26 +82,50 @@ def require_git_repo(func: Callable) -> Callable:
     """
 
     @wraps(func)
-    def wrapper(*args, **kwargs) -> int:
+    def wrapper(*args: Any, **kwargs: Any) -> int:
         if not check_is_git_repo():
             print_error("Not a git repository. Please initialize one with 'git init'.")
             return 1
         show_repository_info()
         return func(*args, **kwargs)
 
-    return wrapper
+    return cast(F, wrapper)
 
 
 class CustomHelpFormatter(argparse.HelpFormatter):
-    def __init__(self, prog):
+    """Custom help formatter that displays ASCII logo before help text.
+
+    Extends ArgumentParser's default formatter to print the CCG logo
+    when --help is invoked, providing better visual branding.
+    """
+
+    def __init__(self, prog: str) -> None:
         super().__init__(prog, max_help_position=50, width=100)
 
-    def _format_usage(self, usage, actions, groups, prefix):
+    def _format_usage(self, usage: Any, actions: Any, groups: Any, prefix: Optional[str]) -> str:
+        """Format usage text with logo prepended."""
         print_logo()
         return super()._format_usage(usage, actions, groups, prefix)
 
 
 def parse_args(args: Optional[List[str]] = None) -> argparse.Namespace:
+    """Parse and validate command-line arguments for CCG.
+
+    Parses all CLI flags and options, validates unknown arguments, and returns
+    a namespace with the parsed values. Shows the ASCII logo and helpful error
+    messages for invalid arguments.
+
+    Args:
+        args: Optional list of arguments to parse (defaults to sys.argv if None)
+
+    Returns:
+        Namespace object containing all parsed command-line arguments with
+        boolean flags (push, commit, reset, tag, edit, delete) and optional
+        path list
+
+    Raises:
+        SystemExit: If unknown/invalid arguments are provided, exits with code 1
+    """
     parser = argparse.ArgumentParser(
         prog="ccg",
         description="Conventional Commits Generator - Create standardized git commits",
@@ -137,6 +172,15 @@ def parse_args(args: Optional[List[str]] = None) -> argparse.Namespace:
 
 
 def confirm_create_branch() -> bool:
+    """Prompt user to confirm creating a new branch on the remote repository.
+
+    Displays an informational section explaining that the current branch doesn't
+    exist remotely and asks the user if they want to create it. Used when pushing
+    commits to a branch that has no upstream tracking.
+
+    Returns:
+        True if user confirms branch creation, False otherwise
+    """
     print_section("Create Remote Branch")
     print_info("This branch doesn't exist on the remote repository yet")
     return confirm_user_action(
@@ -147,6 +191,18 @@ def confirm_create_branch() -> bool:
 
 
 def confirm_reset() -> bool:
+    """Prompt user to confirm a destructive reset operation.
+
+    Displays warning messages about the dangers of resetting (losing all local
+    uncommitted changes) and requires explicit user confirmation before proceeding.
+    Used by the --reset flag workflow.
+
+    Returns:
+        True if user confirms the reset, False to cancel
+
+    Note:
+        This is a destructive operation - all uncommitted work will be lost
+    """
     print_warning("This will discard ALL local changes and pull the latest from remote.")
     print_warning("All uncommitted work will be lost!")
     return confirm_user_action(
@@ -157,6 +213,18 @@ def confirm_reset() -> bool:
 
 
 def get_commit_count_input() -> Optional[int]:
+    """Prompt user for the number of recent commits to display.
+
+    Asks the user how many recent commits they want to see in the commit
+    selection list. Validates input to ensure it's a positive integer, allows
+    0 or empty input to show all commits.
+
+    Returns:
+        Positive integer for specific count, or None to show all commits
+
+    Note:
+        Loops until valid input is provided (positive number, 0, or Enter)
+    """
     while True:
         count_input = read_input(
             f"{YELLOW}How many recent commits to display? (Enter or 0 for all){RESET}",
@@ -171,6 +239,21 @@ def get_commit_count_input() -> Optional[int]:
 
 @require_git_repo
 def handle_commit_operation(operation_type: str) -> int:
+    """Generic handler for commit edit and delete operations.
+
+    Displays recent commits, prompts user to select one by number or hash,
+    then delegates to the appropriate specific handler (edit or delete).
+    Supports partial hash matching and validates selections.
+
+    Args:
+        operation_type: Type of operation ("edit" or "delete")
+
+    Returns:
+        0 on success, 1 on error or if no commits found
+
+    Note:
+        Requires git repository (enforced by @require_git_repo decorator)
+    """
     print_section(f"{operation_type.capitalize()} Commit")
 
     count = get_commit_count_input()
@@ -224,14 +307,46 @@ def handle_commit_operation(operation_type: str) -> int:
 
 
 def handle_edit() -> int:
+    """Handle the --edit flag workflow for editing commit messages.
+
+    Entry point for commit editing. Delegates to handle_commit_operation
+    to display commits and get user selection, then edits the chosen commit.
+
+    Returns:
+        0 on success, 1 on error
+
+    Note:
+        Supports editing both latest commit (amend) and older commits (filter-branch)
+    """
     return handle_commit_operation("edit")
 
 
 def handle_delete() -> int:
+    """Handle the --delete flag workflow for deleting commits.
+
+    Entry point for commit deletion. Delegates to handle_commit_operation
+    to display commits and get user selection, then deletes the chosen commit.
+
+    Returns:
+        0 on success, 1 on error
+
+    Note:
+        Supports deleting latest commit (reset) and older commits (rebase)
+    """
     return handle_commit_operation("delete")
 
 
 def display_commit_details(commit_details: Tuple[str, str, str, str, str, str]) -> None:
+    """Display detailed information about a specific commit.
+
+    Prints formatted commit details including full hash, short hash, author,
+    date, subject, and body (if present). Used before editing or deleting
+    commits to show the user what they're modifying.
+
+    Args:
+        commit_details: Tuple containing (full_hash, short_hash, subject,
+                        body, author, date) from get_commit_by_hash()
+    """
     hash_full, hash_short, subject, body, author, date = commit_details
     print(f"Hash: {hash_full}")
     print(f"Author: {author}")
@@ -244,6 +359,22 @@ def display_commit_details(commit_details: Tuple[str, str, str, str, str, str]) 
 def handle_commit_edit_input(
     subject: str, original_body: Optional[str] = None
 ) -> Tuple[Optional[str], Optional[str]]:
+    """Prompt user to edit commit message and body with validation.
+
+    Displays the current message as default text and allows the user to edit it.
+    Validates the new message against conventional commit format. If invalid,
+    shows examples and offers a retry. Also prompts for optional commit body.
+
+    Args:
+        subject: Current commit subject/message line
+        original_body: Current commit body (if any)
+
+    Returns:
+        Tuple of (new_message, new_body) or (None, None) if cancelled
+
+    Note:
+        Recursively retries if validation fails and user chooses to try again
+    """
     print_info("Edit the commit message below. Leave empty to cancel.")
     print_info(
         "Message must follow conventional commit format: <type>[optional scope][optional !]: <description>"
@@ -276,14 +407,13 @@ def handle_commit_edit_input(
             return handle_commit_edit_input(subject, original_body)
         return None, None
 
-    new_body = read_input(
+    new_body_input = read_input(
         f"{YELLOW}New commit body (optional){RESET}",
         history_type="body",
         default_text=original_body or "",
     )
 
-    if not new_body:
-        new_body = None
+    new_body: Optional[str] = new_body_input if new_body_input else None
 
     return new_message, new_body
 
@@ -294,6 +424,21 @@ def confirm_commit_edit(
     new_message: str,
     new_body: Optional[str],
 ) -> bool:
+    """Display original and new commit messages and confirm the edit.
+
+    Shows a side-by-side comparison of the original commit (with emoji rendering)
+    and the new commit message. Delegates to confirm_commit() for the final
+    user confirmation.
+
+    Args:
+        original_subject: Original commit subject line
+        original_body: Original commit body (if any)
+        new_message: New commit subject line to apply
+        new_body: New commit body to apply (if any)
+
+    Returns:
+        True if user confirms the edit, False otherwise
+    """
     print_section("Original")
 
     from ccg.core import convert_emoji_codes_to_real
@@ -314,6 +459,21 @@ def confirm_commit_edit(
 
 
 def handle_push_after_edit(branch_name: str) -> int:
+    """Handle pushing changes after editing or deleting a commit.
+
+    Determines the appropriate push strategy based on whether the branch exists
+    remotely. For new branches, offers to create upstream. For existing branches,
+    warns about force push requirements and asks for confirmation.
+
+    Args:
+        branch_name: Name of the current branch to push
+
+    Returns:
+        0 on success, 1 on error
+
+    Note:
+        Force push is required when editing/deleting commits that exist remotely
+    """
     if not branch_exists_on_remote(branch_name):
         if confirm_create_branch():
             if not git_push(set_upstream=True):
@@ -341,6 +501,21 @@ def handle_push_after_edit(branch_name: str) -> int:
 
 
 def edit_specific_commit(commit_hash: str) -> int:
+    """Edit a specific commit identified by its hash.
+
+    Retrieves and displays commit details, prompts user for new message/body,
+    validates the changes, confirms with user, then applies the edit. Offers
+    to push changes after successful edit.
+
+    Args:
+        commit_hash: Full or partial hash of commit to edit
+
+    Returns:
+        0 on success or user cancellation, 1 on error
+
+    Note:
+        Latest commits use amend, older commits use filter-branch
+    """
     print_section("Commit Details")
     commit_details = get_commit_by_hash(commit_hash)
     if not commit_details:
@@ -375,6 +550,22 @@ def edit_specific_commit(commit_hash: str) -> int:
 
 
 def delete_specific_commit(commit_hash: str) -> int:
+    """Delete a specific commit identified by its hash.
+
+    Retrieves and displays commit details, shows destructive warning, requires
+    explicit confirmation, then permanently deletes the commit from history.
+    Offers to push changes after successful deletion.
+
+    Args:
+        commit_hash: Full or partial hash of commit to delete
+
+    Returns:
+        0 on success or user cancellation, 1 on error
+
+    Note:
+        This is destructive and irreversible. Latest commits use reset,
+        older commits use interactive rebase
+    """
     print_section("Commit Details")
     commit_details = get_commit_by_hash(commit_hash)
     if not commit_details:
@@ -414,6 +605,18 @@ def delete_specific_commit(commit_hash: str) -> int:
 
 @require_git_repo
 def handle_tag() -> int:
+    """Handle the --tag flag workflow for creating and pushing git tags.
+
+    Prompts user for tag name, asks if they want an annotated tag (with message),
+    creates the tag, and pushes it to the remote repository. Validates remote
+    access before proceeding.
+
+    Returns:
+        0 on success, 1 on error or if inputs are invalid
+
+    Note:
+        Requires git repository (enforced by @require_git_repo decorator)
+    """
     print_section("Git Tag Creation")
 
     if not check_remote_access():
@@ -449,14 +652,35 @@ def handle_tag() -> int:
         print_error("Failed to create tag. Aborting.")
         return 1
 
-    if not push_tag(tag_name):
-        print_error("Failed to push tag to remote.")
-        return 1
+    push = confirm_user_action(
+        f"{YELLOW}Push tag '{tag_name}' to remote? (y/n){RESET}",
+        success_message=None,
+        cancel_message=None,
+    )
+
+    if push:
+        if not push_tag(tag_name):
+            print_error("Failed to push tag to remote.")
+            return 1
+    else:
+        print_info(f"Tag '{tag_name}' created locally only")
     return 0
 
 
 @require_git_repo
 def handle_reset() -> int:
+    """Handle the --reset flag workflow for discarding changes and pulling latest.
+
+    Checks for local changes, warns about data loss, requires confirmation,
+    discards all uncommitted changes, and pulls latest from remote. If no
+    changes exist, offers to pull anyway.
+
+    Returns:
+        0 on success or user cancellation, 1 on error
+
+    Note:
+        This is destructive - all uncommitted work will be lost
+    """
     print_section("Reset Local Changes")
 
     if not check_remote_access():
@@ -486,6 +710,18 @@ def handle_reset() -> int:
 
 
 def handle_push_only() -> int:
+    """Handle the --push flag workflow for pushing without creating a commit.
+
+    Validates repository and remote access, determines current branch, checks
+    if branch exists remotely. For new branches, offers to create upstream.
+    For existing branches, performs a normal push.
+
+    Returns:
+        0 on success or user cancellation, 1 on error
+
+    Note:
+        Does not require @require_git_repo decorator as it does its own validation
+    """
     print_section("Push Only Mode")
 
     if not check_is_git_repo():
@@ -518,6 +754,21 @@ def handle_push_only() -> int:
 
 
 def validate_repository_state(commit_only: bool = False, paths: Optional[List[str]] = None) -> bool:
+    """Validate that the repository is ready for git operations.
+
+    Checks if current directory is a git repository, displays repository info,
+    validates remote access, and optionally checks for changes in specified paths.
+
+    Args:
+        commit_only: If True, skip change validation (used for --commit flag)
+        paths: Optional list of specific paths to check for changes
+
+    Returns:
+        True if repository state is valid and ready, False otherwise
+
+    Note:
+        Exits with code 1 if remote access fails (considered critical)
+    """
     if not check_is_git_repo():
         print_error("Not a git repository. Please initialize one with 'git init'.")
         return False
@@ -540,6 +791,22 @@ def validate_repository_state(commit_only: bool = False, paths: Optional[List[st
 
 
 def handle_git_workflow(commit_only: bool = False, paths: Optional[List[str]] = None) -> int:
+    """Execute the main CCG workflow for creating and pushing commits.
+
+    Orchestrates the complete commit workflow: validate repository state, stage
+    changes, run pre-commit hooks, generate commit message, create commit, and
+    optionally push. Handles branch creation for new remote branches.
+
+    Args:
+        commit_only: If True, generate message without committing (--commit flag)
+        paths: Optional list of specific files/directories to stage
+
+    Returns:
+        0 on success or user cancellation, 1 on error
+
+    Note:
+        This is the core workflow executed when running ccg without flags
+    """
     if not validate_repository_state(commit_only, paths):
         return 1
 
@@ -679,6 +946,30 @@ def change_to_working_directory(paths: Optional[List[str]]) -> Optional[List[str
 
 
 def main(args: Optional[List[str]] = None) -> int:
+    """Main entry point for the CCG CLI application.
+
+    Parses command-line arguments, handles directory changes from --path flag,
+    routes to appropriate workflow handlers based on flags (--edit, --delete,
+    --push, --reset, --tag, --commit), and manages error handling for the
+    entire application.
+
+    Args:
+        args: Optional list of arguments (defaults to sys.argv if None)
+
+    Returns:
+        Exit code: 0 for success, 1 for errors, 130 for user cancellation
+
+    Examples:
+        >>> main()  # Interactive commit workflow
+        0
+        >>> main(['--push'])  # Push only mode
+        0
+        >>> main(['--tag'])  # Tag creation mode
+        0
+
+    Note:
+        Catches EOFError and KeyboardInterrupt for graceful cancellation
+    """
     try:
         parsed_args = parse_args(args)
 

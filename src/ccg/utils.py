@@ -1,7 +1,7 @@
 """Utilities and styling for the Conventional Commits Generator."""
 
 import shutil
-from typing import Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional, Tuple
 
 ASCII_LOGO = r"""
  ________      ________      ________
@@ -23,14 +23,14 @@ try:
     from prompt_toolkit.styles import Style
     from prompt_toolkit.validation import ValidationError, Validator
 
-    HISTORIES = {
+    HISTORIES: Dict[str, Any] = {
         "type": InMemoryHistory(),
         "scope": InMemoryHistory(),
         "message": InMemoryHistory(),
         "body": InMemoryHistory(),
     }
 
-    PROMPT_STYLE = Style.from_dict(
+    PROMPT_STYLE: Any = Style.from_dict(
         {
             "prompt": "#00AFFF bold",
             "command": "#00FF00 bold",
@@ -46,10 +46,20 @@ try:
     )
 
     class ConfirmationValidator(Validator):
-        def __init__(self, default_yes: bool = True):
+        """Validator for yes/no confirmation prompts in prompt_toolkit.
+
+        Validates that user input is a valid confirmation response (y/yes/n/no)
+        or empty (uses default). Shows error message for invalid inputs.
+
+        Args:
+            default_yes: Default value when input is empty
+        """
+
+        def __init__(self, default_yes: bool = True) -> None:
             self.default_yes = default_yes
 
-        def validate(self, document):
+        def validate(self, document: Any) -> None:
+            """Validate the confirmation input."""
             text = document.text
 
             if not text:
@@ -65,10 +75,20 @@ try:
                     )
 
     class RealTimeCounterValidator(Validator):
-        def __init__(self, max_length: int):
+        """Validator for enforcing character limits in prompt_toolkit.
+
+        Prevents user from entering more than the maximum allowed characters
+        by raising a validation error when limit is exceeded.
+
+        Args:
+            max_length: Maximum number of characters allowed
+        """
+
+        def __init__(self, max_length: int) -> None:
             self.max_length = max_length
 
-        def validate(self, document):
+        def validate(self, document: Any) -> None:
+            """Validate input length against maximum."""
             text = document.text
             length = len(text)
 
@@ -78,13 +98,13 @@ try:
                     cursor_position=self.max_length,
                 )
 
-    PROMPT_TOOLKIT_AVAILABLE = True
+    PROMPT_TOOLKIT_AVAILABLE: bool = True
 except ImportError:
     PROMPT_TOOLKIT_AVAILABLE = False
-    HISTORIES = {}
-    PROMPT_STYLE = None
-    ConfirmationValidator = None
-    RealTimeCounterValidator = None
+    HISTORIES: Dict[str, Any] = {}  # type: ignore[no-redef]
+    PROMPT_STYLE: Any = None  # type: ignore[no-redef]
+    ConfirmationValidator = None  # type: ignore[misc, assignment]
+    RealTimeCounterValidator = None  # type: ignore[misc, assignment]
 
 # ANSI color codes
 RED = "\033[91m"
@@ -110,16 +130,21 @@ INFO = "ℹ"
 BULLET = "•"
 
 try:
+    TERM_WIDTH: int
+    TERM_HEIGHT: int
     TERM_WIDTH, TERM_HEIGHT = shutil.get_terminal_size()
 except Exception:
     from ccg.config import UI_CONFIG
 
-    TERM_WIDTH, TERM_HEIGHT = UI_CONFIG.DEFAULT_TERM_WIDTH, UI_CONFIG.DEFAULT_TERM_HEIGHT
+    TERM_WIDTH, TERM_HEIGHT = (
+        UI_CONFIG.DEFAULT_TERM_WIDTH,
+        UI_CONFIG.DEFAULT_TERM_HEIGHT,
+    )
 
 # Import configuration - backward compatibility dict
 from ccg.config import INPUT_LIMITS as INPUT_LIMITS_CONFIG
 
-INPUT_LIMITS = {
+INPUT_LIMITS: Dict[str, int] = {
     "type": INPUT_LIMITS_CONFIG.TYPE,
     "scope": INPUT_LIMITS_CONFIG.SCOPE,
     "message": INPUT_LIMITS_CONFIG.MESSAGE,
@@ -212,6 +237,25 @@ COMMIT_TYPES: List[Dict[str, str]] = [
 
 
 def get_emoji_for_type(commit_type: str, use_code: bool = False) -> str:
+    """Get the emoji or emoji code for a given commit type.
+
+    Looks up the emoji associated with a conventional commit type from the
+    COMMIT_TYPES list. Can return either the actual emoji character or the
+    GitHub-compatible emoji code.
+
+    Args:
+        commit_type: The commit type (e.g., "feat", "fix", "chore")
+        use_code: If True, return emoji code (":sparkles:"), else actual emoji ("✨")
+
+    Returns:
+        Emoji string or emoji code, empty string if type not found
+
+    Examples:
+        >>> get_emoji_for_type("feat")
+        '✨'
+        >>> get_emoji_for_type("feat", use_code=True)
+        ':sparkles:'
+    """
     for type_info in COMMIT_TYPES:
         if type_info["type"] == commit_type:
             return type_info["emoji_code"] if use_code else type_info["emoji"]
@@ -219,6 +263,14 @@ def get_emoji_for_type(commit_type: str, use_code: bool = False) -> str:
 
 
 def print_logo() -> None:
+    """Print the CCG ASCII art logo in bold white.
+
+    Displays the application's branded ASCII logo at the start of operations
+    and in help messages.
+
+    Note:
+        Logo is defined in the ASCII_LOGO constant
+    """
     print(f"{WHITE}{BOLD}{ASCII_LOGO}{RESET}")
 
 
@@ -231,7 +283,18 @@ def strip_color_codes(text: str) -> str:
     Returns:
         Text with all color codes removed
     """
-    color_codes = [RED, GREEN, YELLOW, BLUE, MAGENTA, CYAN, WHITE, BOLD, UNDERLINE, RESET]
+    color_codes = [
+        RED,
+        GREEN,
+        YELLOW,
+        BLUE,
+        MAGENTA,
+        CYAN,
+        WHITE,
+        BOLD,
+        UNDERLINE,
+        RESET,
+    ]
     result = text
     for code in color_codes:
         result = result.replace(code, "")
@@ -239,6 +302,21 @@ def strip_color_codes(text: str) -> str:
 
 
 def print_section(text: str) -> None:
+    """Print a section header with a decorative box border.
+
+    Creates a visually distinct section header surrounded by box-drawing
+    characters in blue/bold style.
+
+    Args:
+        text: Section title to display
+
+    Examples:
+        >>> print_section("Git Staging")
+        # Displays:
+        # ┌─────────────┐
+        # │ Git Staging │
+        # └─────────────┘
+    """
     print()
     print(f"{BLUE}{BOLD}┌{'─' * (len(text) + 2)}┐{RESET}")
     print(f"{BLUE}{BOLD}│ {text} │{RESET}")
@@ -248,31 +326,90 @@ def print_section(text: str) -> None:
 def print_message(
     color: str, symbol: str, message: str, bold: bool = False, end: str = "\n"
 ) -> None:
+    """Print a formatted message with color, symbol, and optional bold.
+
+    Generic message printer used by specialized functions like print_success,
+    print_error, etc. Provides consistent formatting across the application.
+
+    Args:
+        color: ANSI color code (e.g., GREEN, RED, YELLOW)
+        symbol: Symbol to display before message (e.g., CHECK, CROSS, WARNING)
+        message: The message text to display
+        bold: If True, apply bold formatting
+        end: String to append at the end (default: newline)
+
+    Note:
+        Always resets formatting after the message to prevent color bleed
+    """
     bold_code = BOLD if bold else ""
     print(f"{color}{bold_code}{symbol} {message}{RESET}", end=end)
 
 
 def print_success(message: str, end: str = "\n") -> None:
+    """Print a success message in bold green with checkmark symbol.
+
+    Args:
+        message: Success message to display
+        end: String to append at the end (default: newline)
+    """
     print_message(GREEN, CHECK, message, bold=True, end=end)
 
 
 def print_info(message: str, end: str = "\n") -> None:
+    """Print an informational message in white with info symbol.
+
+    Args:
+        message: Information message to display
+        end: String to append at the end (default: newline)
+    """
     print_message(WHITE, INFO, message, end=end)
 
 
 def print_process(message: str) -> None:
+    """Print a process/progress message in yellow with arrow symbol.
+
+    Used to indicate ongoing operations or processes.
+
+    Args:
+        message: Process message to display
+    """
     print_message(YELLOW, ARROW, message)
 
 
 def print_error(message: str) -> None:
+    """Print an error message in bold red with cross symbol.
+
+    Args:
+        message: Error message to display
+    """
     print_message(RED, CROSS, message, bold=True)
 
 
 def print_warning(message: str) -> None:
+    """Print a warning message in magenta with warning symbol.
+
+    Args:
+        message: Warning message to display
+    """
     print_message(MAGENTA, WARNING, message)
 
 
 def validate_confirmation_input(user_input: str, default_yes: bool = True) -> Optional[bool]:
+    """Validate user input for yes/no confirmation prompts.
+
+    Checks if user input is a valid confirmation response (y/yes/n/no) and
+    returns the corresponding boolean. Handles empty input by using the default.
+
+    Args:
+        user_input: User's input string
+        default_yes: Default value when input is empty (True for Yes, False for No)
+
+    Returns:
+        True for yes, False for no, None for invalid input
+
+    Note:
+        Case-insensitive. Maximum 3 characters allowed to prevent accidental long inputs.
+    """
     if len(user_input) > 3:
         return None
 
@@ -289,8 +426,27 @@ def validate_confirmation_input(user_input: str, default_yes: bool = True) -> Op
         return None
 
 
-def create_counter_toolbar(max_length: int, is_confirmation: bool = False) -> Optional[callable]:
-    def get_toolbar_tokens():
+def create_counter_toolbar(
+    max_length: int, is_confirmation: bool = False
+) -> Optional[Callable[[], List[Tuple[str, str]]]]:
+    """Create a bottom toolbar function for prompt_toolkit showing character count.
+
+    Generates a callable that displays a real-time character counter with color
+    coding based on proximity to the limit (green → yellow → red).
+
+    Args:
+        max_length: Maximum character limit to display
+        is_confirmation: If True, use 3-char limit for confirmation prompts
+
+    Returns:
+        Callable that returns toolbar tokens for prompt_toolkit, or None if unavailable
+
+    Note:
+        Color changes at 70% (warning) and 90% (danger) of max_length.
+        Right-aligned with padding calculated from terminal width.
+    """
+
+    def get_toolbar_tokens() -> List[Tuple[str, str]]:
         try:
             from prompt_toolkit.application.current import get_app
 
@@ -334,13 +490,31 @@ def create_input_key_bindings(
     is_confirmation: bool = False,
     multiline: bool = False,
     default_yes: bool = True,
-) -> Optional[object]:
+) -> Any:
+    """Create custom key bindings for prompt_toolkit input handling.
+
+    Configures keyboard shortcuts and input behaviors including character limits,
+    multiline support, confirmation defaults, and navigation keys.
+
+    Args:
+        max_length: Maximum characters allowed (0 = no limit)
+        is_confirmation: If True, auto-fill default on Enter
+        multiline: If True, enable multiline mode with Ctrl+D/Escape+Enter to submit
+        default_yes: Default confirmation value (only used if is_confirmation=True)
+
+    Returns:
+        KeyBindings object for prompt_toolkit, or None if unavailable
+
+    Note:
+        Prevents input beyond max_length with visual bell feedback.
+        Handles standard navigation keys (arrows, home, end, backspace, delete).
+    """
     kb = KeyBindings()
 
     if not multiline:
 
         @kb.add(Keys.ControlM)
-        def _(event):
+        def _(event: Any) -> None:
             if is_confirmation and not event.app.current_buffer.text.strip():
                 event.app.current_buffer.text = "y" if default_yes else "n"
             event.app.current_buffer.validate_and_handle()
@@ -348,15 +522,15 @@ def create_input_key_bindings(
     else:
 
         @kb.add(Keys.ControlD)
-        def _(event):
+        def _(event: Any) -> None:
             event.app.current_buffer.validate_and_handle()
 
         @kb.add(Keys.Escape, Keys.Enter)
-        def _(event):
+        def _(event: Any) -> None:
             event.app.current_buffer.validate_and_handle()
 
     @kb.add(Keys.Any)
-    def _(event):
+    def _(event: Any) -> None:
         current_text = event.app.current_buffer.text
         new_char = event.data
         would_be_text = current_text + new_char
@@ -372,10 +546,17 @@ def create_input_key_bindings(
             return
         event.app.current_buffer.insert_text(new_char)
 
-    for key in [Keys.Backspace, Keys.Delete, Keys.Left, Keys.Right, Keys.Home, Keys.End]:
+    for key in [
+        Keys.Backspace,
+        Keys.Delete,
+        Keys.Left,
+        Keys.Right,
+        Keys.Home,
+        Keys.End,
+    ]:
 
         @kb.add(key)
-        def handle_key(event, key=key):
+        def handle_key(event: Any, key: Any = key) -> None:
             if key == Keys.Backspace:
                 event.app.current_buffer.delete_before_cursor()
             elif key == Keys.Delete:
@@ -398,6 +579,29 @@ def read_input(
     default_text: Optional[str] = None,
     max_length: Optional[int] = None,
 ) -> str:
+    """Read single-line input from user with validation and history.
+
+    Provides an enhanced input experience using prompt_toolkit (if available)
+    with features like history navigation, character limits, real-time validation,
+    and a character counter toolbar. Falls back to basic input if unavailable.
+
+    Args:
+        prompt_text: Prompt message to display (color codes will be stripped)
+        history_type: Type of history to use ("type", "scope", "message", "body", etc.)
+        default_text: Default value to pre-fill in the input
+        max_length: Maximum characters allowed (auto-detected from history_type if not provided)
+
+    Returns:
+        User input string (stripped of leading/trailing whitespace)
+
+    Raises:
+        EOFError: If user presses Ctrl+D
+        KeyboardInterrupt: If user presses Ctrl+C
+
+    Note:
+        For body input (multiline), delegates to read_multiline_input.
+        Displays character usage feedback after input is submitted.
+    """
     if max_length is None and history_type:
         max_length = INPUT_LIMITS.get(history_type, 0)
 
@@ -410,7 +614,7 @@ def read_input(
 
             history = HISTORIES.get(history_type) if history_type else None
             validator = RealTimeCounterValidator(max_length) if max_length else None
-            key_bindings = create_input_key_bindings(max_length)
+            key_bindings = create_input_key_bindings(max_length if max_length else 0)
             bottom_toolbar = create_counter_toolbar(max_length) if max_length else None
 
             result = prompt(
@@ -446,8 +650,30 @@ def read_input(
 
 
 def read_input_fallback(
-    prompt_text: str, max_length: Optional[int] = None, default_text: Optional[str] = None
+    prompt_text: str,
+    max_length: Optional[int] = None,
+    default_text: Optional[str] = None,
 ) -> str:
+    """Fallback input function when prompt_toolkit is unavailable.
+
+    Provides basic input functionality with character limit validation using
+    standard Python input(). Loops until valid input is provided.
+
+    Args:
+        prompt_text: Prompt message to display (color codes will be stripped)
+        max_length: Optional maximum character limit
+        default_text: Optional default value
+
+    Returns:
+        User input string (stripped), or default_text if input is empty
+
+    Raises:
+        EOFError: If user presses Ctrl+D
+        KeyboardInterrupt: If user presses Ctrl+C
+
+    Note:
+        Shows character usage feedback after successful input
+    """
     clean_prompt = strip_color_codes(prompt_text)
 
     if default_text:
@@ -492,6 +718,29 @@ def confirm_user_action(
     cancel_message: Optional[str] = None,
     default_yes: bool = True,
 ) -> bool:
+    """Prompt user for yes/no confirmation with validation.
+
+    Displays a confirmation prompt and validates the user's response. Supports
+    default values (indicated by uppercase letter in prompt) and provides
+    helpful feedback messages.
+
+    Args:
+        prompt_text: Confirmation question (should contain "(y/n)")
+        success_message: Message to show if user confirms (None to skip)
+        cancel_message: Message to show if user cancels (None to skip)
+        default_yes: If True, default to Yes on Enter; otherwise default to No
+
+    Returns:
+        True if user confirmed, False if user cancelled
+
+    Raises:
+        EOFError: If user presses Ctrl+D
+        KeyboardInterrupt: If user presses Ctrl+C
+
+    Note:
+        Automatically converts "(y/n)" to "(Y/n)" or "(y/N)" based on default_yes.
+        Uses prompt_toolkit if available, falls back to basic input otherwise.
+    """
     user_input = ""
 
     # Replace (y/n) with (Y/n) or (y/N) based on default
@@ -580,6 +829,29 @@ def confirm_user_action(
 def read_multiline_input(
     default_text: Optional[str] = None, max_length: Optional[int] = None
 ) -> str:
+    """Read multiline input from user with character limit validation.
+
+    Allows users to enter multiple lines of text for commit bodies or other
+    long-form content. Uses prompt_toolkit for enhanced experience if available,
+    otherwise falls back to basic multiline input with double-Enter to finish.
+
+    Args:
+        default_text: Optional default text to pre-fill
+        max_length: Optional maximum total character limit
+
+    Returns:
+        Multiline input as a single string (with newlines), or default_text if empty
+
+    Raises:
+        EOFError: If user presses Ctrl+D
+        KeyboardInterrupt: If user presses Ctrl+C
+
+    Note:
+        With prompt_toolkit: Use Ctrl+D or Escape+Enter to submit
+        Without prompt_toolkit: Press Enter twice (empty line) to finish
+        Maximum 80 characters per line in fallback mode
+        Displays character usage feedback after input
+    """
     if PROMPT_TOOLKIT_AVAILABLE and max_length:
         try:
             from prompt_toolkit import prompt
@@ -626,7 +898,7 @@ def read_multiline_input(
     if max_length:
         print(f"{BLUE}Maximum {max_length} characters allowed{RESET}")
 
-    lines = []
+    lines: List[str] = []
     empty_line_count = 0
     total_chars = 0
     max_line_length = 80

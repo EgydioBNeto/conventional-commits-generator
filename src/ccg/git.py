@@ -3,7 +3,7 @@
 import os
 import subprocess
 import tempfile
-from typing import Any, List, Optional, Tuple
+from typing import Any, List, Optional, Tuple, cast
 
 from ccg.utils import (
     print_error,
@@ -24,6 +24,36 @@ def run_git_command(
     show_output: bool = False,
     timeout: int = DEFAULT_GIT_TIMEOUT,
 ) -> Tuple[bool, Any]:
+    """Execute a git command with error handling and output capture.
+
+    Central function for all git operations in CCG. Runs the specified git
+    command as a subprocess, handles timeouts, captures output, displays
+    success/error messages, and returns results in a consistent format.
+
+    Args:
+        command: List of command parts (e.g., ["git", "status", "--porcelain"])
+        error_message: Message to display if command fails (empty string to suppress)
+        success_message: Optional message to display on success
+        show_output: If True, return stdout in the second tuple element
+        timeout: Maximum seconds to wait for command (default: 60)
+
+    Returns:
+        Tuple of (success: bool, output: str or None):
+        - (True, output_string) if show_output=True and success
+        - (True, None) if show_output=False and success
+        - (False, error_string) if show_output=True and failure
+        - (False, None) if show_output=False and failure
+
+    Examples:
+        >>> run_git_command(["git", "status"], "Failed to get status")
+        (True, None)
+        >>> run_git_command(["git", "branch"], "", show_output=True)
+        (True, "main\\n* feature\\n")
+
+    Note:
+        Special handling for "Changes pushed successfully!" message - displays
+        it in a "Remote Push" section for visual clarity
+    """
     try:
         result = subprocess.run(
             command, capture_output=True, check=True, text=True, timeout=timeout
@@ -57,6 +87,20 @@ def run_git_command(
 
 
 def git_add(paths: Optional[List[str]] = None) -> bool:
+    """Stage changes for commit using git add.
+
+    Stages files or directories for the next commit. If no paths are provided,
+    stages all changes in the current directory (git add .).
+
+    Args:
+        paths: Optional list of file/directory paths to stage (defaults to ["."])
+
+    Returns:
+        True if all paths staged successfully, False if any path fails
+
+    Note:
+        Processes each path individually to provide granular error reporting
+    """
     if not paths:
         paths = ["."]
 
@@ -75,6 +119,20 @@ def git_add(paths: Optional[List[str]] = None) -> bool:
 
 
 def git_commit(commit_message: str) -> bool:
+    """Create a git commit with the specified message.
+
+    Executes git commit with the provided message. Displays process and
+    success/error messages to user.
+
+    Args:
+        commit_message: Complete commit message including subject and optional body
+
+    Returns:
+        True if commit created successfully, False on error
+
+    Note:
+        Message should already be in conventional commit format when passed here
+    """
     print_process("Committing changes...")
     success, _ = run_git_command(
         ["git", "commit", "-m", commit_message],
@@ -85,6 +143,22 @@ def git_commit(commit_message: str) -> bool:
 
 
 def handle_upstream_error(branch_name: str, remote_name: str, error_output: str) -> bool:
+    """Handle git push errors related to missing upstream branch configuration.
+
+    Detects if a push failure is due to missing upstream tracking and prompts
+    the user to set upstream and retry the push.
+
+    Args:
+        branch_name: Name of the current local branch
+        remote_name: Name of the remote repository (usually "origin")
+        error_output: stderr/stdout from the failed git push command
+
+    Returns:
+        True if user wants to set upstream and retry, False otherwise
+
+    Note:
+        Looks for specific error messages about upstream configuration
+    """
     if "set the remote as upstream" in error_output or "no upstream branch" in error_output:
         print_warning("Upstream not set for this branch")
         print_info(f"Suggested command: git push --set-upstream {remote_name} {branch_name}")
@@ -100,6 +174,23 @@ def handle_upstream_error(branch_name: str, remote_name: str, error_output: str)
 
 
 def git_push(set_upstream: bool = False, force: bool = False) -> bool:
+    """Push commits to the remote repository with various strategies.
+
+    Pushes local commits to remote, handling upstream configuration and force
+    push scenarios. Automatically detects remote name and current branch.
+    Provides intelligent error handling for missing upstream branches.
+
+    Args:
+        set_upstream: If True, use --set-upstream to create remote branch
+        force: If True, force push (overwrites remote history)
+
+    Returns:
+        True if push succeeded, False on error
+
+    Note:
+        When both set_upstream and force are True, combines both flags.
+        Regular push attempts upstream error recovery automatically.
+    """
     branch_name = get_current_branch()
     if not branch_name:
         print_error("Failed to determine current branch name")
@@ -154,6 +245,21 @@ def git_push(set_upstream: bool = False, force: bool = False) -> bool:
 
 
 def create_tag(tag_name: str, message: Optional[str] = None) -> bool:
+    """Create a git tag (lightweight or annotated).
+
+    Creates either a lightweight tag (no message) or an annotated tag (with message)
+    at the current HEAD commit.
+
+    Args:
+        tag_name: Name of the tag to create (e.g., "v1.0.0")
+        message: Optional tag message (creates annotated tag if provided)
+
+    Returns:
+        True if tag created successfully, False on error
+
+    Note:
+        Annotated tags include metadata (tagger, date) and are recommended for releases
+    """
     print_process(f"Creating tag '{tag_name}'...")
 
     if message:
@@ -173,6 +279,20 @@ def create_tag(tag_name: str, message: Optional[str] = None) -> bool:
 
 
 def push_tag(tag_name: str) -> bool:
+    """Push a specific tag to the remote repository.
+
+    Pushes a previously created tag to the remote, making it available to
+    other repository users.
+
+    Args:
+        tag_name: Name of the tag to push
+
+    Returns:
+        True if tag pushed successfully, False on error
+
+    Note:
+        Tag must already exist locally before pushing
+    """
     print_process(f"Pushing tag '{tag_name}' to remote...")
 
     success, output = run_git_command(
@@ -195,6 +315,18 @@ def push_tag(tag_name: str) -> bool:
 
 
 def discard_local_changes() -> bool:
+    """Discard all local changes and untracked files (destructive operation).
+
+    Performs a complete reset of the working directory by unstaging all changes,
+    discarding modifications to tracked files, and removing untracked files/directories.
+
+    Returns:
+        True if all changes discarded successfully, False on error
+
+    Note:
+        DESTRUCTIVE - This cannot be undone. All uncommitted work will be lost.
+        Executes: git reset HEAD, git checkout ., git clean -fd
+    """
     print_process("Discarding all local changes...")
 
     success, _ = run_git_command(
@@ -223,6 +355,18 @@ def discard_local_changes() -> bool:
 
 
 def pull_from_remote() -> bool:
+    """Pull latest changes from the remote repository.
+
+    Fetches and merges changes from the remote branch that corresponds to
+    the current local branch.
+
+    Returns:
+        True if pull succeeded, False on error
+
+    Note:
+        Uses 120 second timeout (longer than default) as pulling can be slow
+        for large repositories or slow network connections
+    """
     print_process("Pulling latest changes from remote...")
 
     success, output = run_git_command(
@@ -249,6 +393,17 @@ def pull_from_remote() -> bool:
 
 
 def get_staged_files() -> List[str]:
+    """Get list of files currently staged for commit.
+
+    Retrieves the names of all files that have been staged with git add and
+    are ready to be committed.
+
+    Returns:
+        List of file paths (relative to repository root), empty list on error
+
+    Note:
+        Used by pre-commit hooks to determine which files to check
+    """
     success, output = run_git_command(
         ["git", "diff", "--name-only", "--cached"], "Failed to get staged files", show_output=True
     )
@@ -259,6 +414,17 @@ def get_staged_files() -> List[str]:
 
 
 def check_is_git_repo() -> bool:
+    """Check if current directory is inside a git repository.
+
+    Verifies that git operations can be performed in the current directory
+    by checking if it's within a git working tree.
+
+    Returns:
+        True if inside a git repository, False otherwise
+
+    Note:
+        This is used as a guard check before most git operations
+    """
     success, _ = run_git_command(
         ["git", "rev-parse", "--is-inside-work-tree"], "Not a git repository", show_output=True
     )
@@ -266,6 +432,20 @@ def check_is_git_repo() -> bool:
 
 
 def check_has_changes(paths: Optional[List[str]] = None) -> bool:
+    """Check if there are any uncommitted changes in the working directory.
+
+    Examines the working directory for modified, added, or deleted files.
+    Can check entire repository or specific paths.
+
+    Args:
+        paths: Optional list of specific paths to check (defaults to entire repository)
+
+    Returns:
+        True if changes detected, False if working directory is clean
+
+    Note:
+        Uses git status --porcelain for machine-readable output
+    """
     if not paths:
         print_process("Checking for changes in the working directory...")
         success, output = run_git_command(
@@ -299,6 +479,20 @@ def check_has_changes(paths: Optional[List[str]] = None) -> bool:
 
 
 def check_remote_access() -> bool:
+    """Verify that the remote repository is accessible and user has permissions.
+
+    Performs comprehensive check of remote connectivity and access permissions
+    using git ls-remote. Detects and provides helpful error messages for common
+    issues like authentication failures, network problems, or missing permissions.
+
+    Returns:
+        True if remote is accessible and user has access, False otherwise
+
+    Note:
+        Uses 15 second timeout and disables terminal prompts to avoid hanging.
+        Provides detailed error messages for different failure scenarios including
+        permission denied, network issues, and repository not found.
+    """
     print_process("Checking remote repository access...")
 
     success, output = run_git_command(
@@ -375,6 +569,16 @@ def check_remote_access() -> bool:
 
 
 def get_current_branch() -> Optional[str]:
+    """Get the name of the current git branch.
+
+    Retrieves the name of the currently checked out branch.
+
+    Returns:
+        Branch name as string, or None if unable to determine (e.g., detached HEAD)
+
+    Note:
+        Returns branch name only, not full ref path (e.g., "main" not "refs/heads/main")
+    """
     success, output = run_git_command(
         ["git", "rev-parse", "--abbrev-ref", "HEAD"],
         "Failed to get current branch name",
@@ -382,7 +586,7 @@ def get_current_branch() -> Optional[str]:
     )
 
     if success and output:
-        return output
+        return cast(str, output)
     return None
 
 
@@ -399,7 +603,7 @@ def get_repository_name() -> Optional[str]:
     )
 
     if success and output:
-        return os.path.basename(output)
+        return os.path.basename(cast(str, output))
     return None
 
 
@@ -416,7 +620,7 @@ def get_repository_root() -> Optional[str]:
     )
 
     if success and output:
-        return output
+        return cast(str, output)
     return None
 
 
@@ -444,6 +648,20 @@ def is_path_in_repository(path: str, repo_root: str) -> bool:
 
 
 def branch_exists_on_remote(branch_name: str) -> bool:
+    """Check if a branch exists on the remote repository.
+
+    Queries the remote repository to determine if the specified branch
+    exists there, useful for deciding whether to create upstream or push normally.
+
+    Args:
+        branch_name: Name of the branch to check
+
+    Returns:
+        True if branch exists on remote, False otherwise
+
+    Note:
+        Uses 30 second timeout for ls-remote operation as it requires network access
+    """
     success, output = run_git_command(
         ["git", "remote"], "Failed to get remote name", show_output=True
     )
@@ -464,6 +682,29 @@ def branch_exists_on_remote(branch_name: str) -> bool:
 
 
 def get_recent_commits(count: Optional[int] = None) -> List[Tuple[str, str, str, str, str]]:
+    """Retrieve a list of recent commits with their metadata.
+
+    Gets commit history with formatted output including hashes, subject, author,
+    and relative date.
+
+    Args:
+        count: Optional number of commits to retrieve (None = all commits)
+
+    Returns:
+        List of tuples, each containing:
+        (full_hash, short_hash, subject, author, relative_date)
+        Returns empty list on error
+
+    Examples:
+        >>> commits = get_recent_commits(5)
+        >>> len(commits)
+        5
+        >>> commits[0][2]  # Subject of most recent commit
+        'feat: add new feature'
+
+    Note:
+        Uses custom format string to parse commit data reliably
+    """
     format_str = "%H|%h|%s|%an|%ar"
     command = ["git", "log", f"--pretty=format:{format_str}"]
     if count is not None and count > 0:
@@ -488,6 +729,22 @@ def get_recent_commits(count: Optional[int] = None) -> List[Tuple[str, str, str,
 
 
 def get_commit_by_hash(commit_hash: str) -> Optional[Tuple[str, str, str, str, str, str]]:
+    """Retrieve detailed information about a specific commit by its hash.
+
+    Fetches comprehensive commit metadata including message, author, and date.
+    Accepts both full and partial hashes.
+
+    Args:
+        commit_hash: Full or partial commit hash to look up
+
+    Returns:
+        Tuple containing (full_hash, short_hash, subject, body, author, date)
+        or None if commit not found
+
+    Note:
+        Subject and body are separated from the full commit message.
+        Body will be empty string if commit has no body.
+    """
     success, _ = run_git_command(
         ["git", "rev-parse", "--verify", commit_hash],
         f"Commit '{commit_hash}' not found",
@@ -552,6 +809,23 @@ def get_commit_by_hash(commit_hash: str) -> Optional[Tuple[str, str, str, str, s
 def edit_latest_commit_with_amend(
     commit_hash: str, new_message: str, new_body: Optional[str] = None
 ) -> bool:
+    """Edit the most recent commit using git commit --amend.
+
+    Modifies the latest commit's message while preserving its changes.
+    More efficient than filter-branch for editing the most recent commit.
+
+    Args:
+        commit_hash: Hash of commit to edit (for verification/display)
+        new_message: New commit subject line
+        new_body: Optional new commit body
+
+    Returns:
+        True if commit amended successfully, False on error
+
+    Note:
+        Uses --no-verify to bypass pre-commit hooks as the changes are
+        already committed. Creates temporary file for commit message.
+    """
     full_commit_message = new_message
     if new_body:
         full_commit_message += f"\n\n{new_body}"
@@ -587,6 +861,25 @@ def edit_old_commit_with_filter_branch(
     new_body: Optional[str] = None,
     is_initial_commit: bool = False,
 ) -> bool:
+    """Edit an old commit using git filter-branch.
+
+    Rewrites git history to modify a commit that is not the latest one.
+    This is more complex and time-consuming than amending.
+
+    Args:
+        commit_hash: Full hash of commit to edit
+        new_message: New commit subject line
+        new_body: Optional new commit body
+        is_initial_commit: If True, use --all flag for initial commit
+
+    Returns:
+        True if commit edited successfully, False on error
+
+    Note:
+        REWRITES HISTORY - Changes all descendant commit hashes.
+        Uses 300 second (5 minute) timeout for large repositories.
+        Escapes single quotes in message for shell safety.
+    """
     full_commit_message = new_message
     if new_body:
         full_commit_message += f"\n\n{new_body}"
@@ -626,6 +919,22 @@ def edit_old_commit_with_filter_branch(
 
 
 def edit_commit_message(commit_hash: str, new_message: str, new_body: Optional[str] = None) -> bool:
+    """Edit a commit message by hash, using appropriate method based on position.
+
+    Intelligently chooses between amend (for latest commit) and filter-branch
+    (for older commits). Detects if editing the initial commit and handles accordingly.
+
+    Args:
+        commit_hash: Full hash of commit to edit
+        new_message: New commit subject line
+        new_body: Optional new commit body
+
+    Returns:
+        True if edit succeeded, False on error
+
+    Note:
+        Automatically selects the most efficient editing method
+    """
     success, latest_commit = run_git_command(
         ["git", "rev-parse", "HEAD"], "Failed to get latest commit hash", show_output=True
     )
@@ -655,6 +964,18 @@ def edit_commit_message(commit_hash: str, new_message: str, new_body: Optional[s
 
 
 def delete_latest_commit() -> bool:
+    """Delete the most recent commit using git reset.
+
+    Removes the latest commit while keeping the working directory clean.
+    More efficient than rebase for deleting the most recent commit.
+
+    Returns:
+        True if commit deleted successfully, False on error
+
+    Note:
+        DESTRUCTIVE - Commit is permanently removed from history.
+        Uses --hard flag which discards the commit entirely.
+    """
     print_process("Deleting latest commit...")
     success, _ = run_git_command(
         ["git", "reset", "--hard", "HEAD~1"],
@@ -665,6 +986,23 @@ def delete_latest_commit() -> bool:
 
 
 def create_rebase_script_for_deletion(commit_hash: str) -> Tuple[bool, Optional[str], List[str]]:
+    """Create a rebase script file for deleting a specific commit.
+
+    Generates a git rebase todo script that excludes the target commit,
+    effectively removing it from history when the rebase is executed.
+
+    Args:
+        commit_hash: Full hash of commit to delete
+
+    Returns:
+        Tuple of (success, script_file_path, script_lines):
+        - success: True if script created, False on error
+        - script_file_path: Path to temporary script file, or None on error
+        - script_lines: List of rebase commands, empty on error
+
+    Note:
+        Caller is responsible for cleaning up the temporary script file
+    """
     success, all_commits = run_git_command(
         ["git", "rev-list", "--reverse", "HEAD"], "Failed to get commit history", show_output=True
     )
@@ -707,6 +1045,23 @@ def create_rebase_script_for_deletion(commit_hash: str) -> Tuple[bool, Optional[
 
 
 def delete_old_commit_with_rebase(commit_hash: str) -> bool:
+    """Delete an old commit using interactive rebase.
+
+    Removes a commit that is not the latest one by performing an interactive
+    rebase with a pre-generated script that excludes the target commit.
+
+    Args:
+        commit_hash: Full hash of commit to delete
+
+    Returns:
+        True if commit deleted successfully, False on error
+
+    Note:
+        REWRITES HISTORY - Changes all descendant commit hashes.
+        Uses 120 second timeout for rebase operation.
+        Automatically aborts rebase on failure to prevent repository corruption.
+        If deleting all commits, creates empty repository with update-ref.
+    """
     try:
         success, script_file, rebase_script = create_rebase_script_for_deletion(commit_hash)
         if not success or not script_file:
@@ -763,6 +1118,21 @@ def delete_old_commit_with_rebase(commit_hash: str) -> bool:
 
 
 def delete_commit(commit_hash: str) -> bool:
+    """Delete a commit by hash, using appropriate method based on position.
+
+    Intelligently chooses between reset (for latest commit) and rebase
+    (for older commits). Verifies commit exists before attempting deletion.
+
+    Args:
+        commit_hash: Full or partial hash of commit to delete
+
+    Returns:
+        True if deletion succeeded, False on error
+
+    Note:
+        DESTRUCTIVE - Commit is permanently removed from history.
+        Automatically selects the most efficient deletion method.
+    """
     success, _ = run_git_command(
         ["git", "cat-file", "-e", commit_hash],
         f"Commit '{commit_hash}' not found or not accessible",
@@ -788,6 +1158,21 @@ def delete_commit(commit_hash: str) -> bool:
 
 
 def run_pre_commit_hooks(staged_files: List[str]) -> bool:
+    """Execute pre-commit hooks on specified staged files.
+
+    Runs the pre-commit framework's hooks on the provided file list to
+    validate code quality before committing.
+
+    Args:
+        staged_files: List of file paths to check with pre-commit
+
+    Returns:
+        True if all hooks passed, False if any hook failed or on error
+
+    Note:
+        Uses 120 second timeout as some hooks (linters, formatters) can be slow.
+        Displays hook output to user for debugging failed checks.
+    """
     try:
         result = subprocess.run(
             ["pre-commit", "run", "--files"] + staged_files,
@@ -826,6 +1211,19 @@ def run_pre_commit_hooks(staged_files: List[str]) -> bool:
 
 
 def check_and_install_pre_commit() -> bool:
+    """Check for pre-commit configuration and run hooks if present.
+
+    Detects if pre-commit is configured, verifies it's installed, installs
+    hooks if needed, and runs all hooks on staged files.
+
+    Returns:
+        True if no config exists, or if pre-commit installed and all hooks passed
+        False if pre-commit not installed or hooks failed
+
+    Note:
+        Gracefully skips if no .pre-commit-config.yaml exists.
+        Provides helpful installation instructions if pre-commit not found.
+    """
     try:
         if not os.path.exists(".pre-commit-config.yaml"):
             print_info("No pre-commit configuration found. Skipping pre-commit checks.")

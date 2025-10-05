@@ -15,7 +15,7 @@ CYAN='\033[0;36m'
 NC='\033[0m' # No Color
 
 # Configurations
-PYTHON_VERSION="3.8"
+PYTHON_VERSION="3.9"
 VENV_DIR=".venv"
 
 # Function for logs with timestamp
@@ -82,12 +82,12 @@ USAGE:
     $0 [OPTIONS]
 
 OPTIONS:
-    -p, --python     Minimum Python version (default: 3.8)
+    -p, --python     Minimum Python version (default: 3.9)
     -h, --help       Show this help
 
 EXAMPLES:
     $0                # Normal installation
-    $0 -p 3.9         # With Python 3.9+
+    $0 -p 3.9       # With Python 3.9+
 
 EOF
 }

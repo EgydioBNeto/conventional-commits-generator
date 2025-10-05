@@ -130,7 +130,10 @@ def update_pyproject_toml(new_version: str) -> None:
     content = pyproject_file.read_text()
 
     updated_content = re.sub(
-        r'^version = ["\'][^"\']+["\']', f'version = "{new_version}"', content, flags=re.MULTILINE
+        r'^version = ["\'][^"\']+["\']',
+        f'version = "{new_version}"',
+        content,
+        flags=re.MULTILINE,
     )
 
     pyproject_file.write_text(updated_content)
@@ -150,7 +153,9 @@ def update_security_md(new_version: str) -> None:
     major_version = new_version.split(".")[0]
 
     updated_content = re.sub(
-        r"\| >= \d+\.\d+\.\d+\s*\| ✅\s*\|", f"| >= {major_version}.0.0   | ✅     |", content
+        r"\| >= \d+\.\d+\.\d+\s*\| ✅\s*\|",
+        f"| >= {major_version}.0.0   | ✅     |",
+        content,
     )
 
     if major_version != "1":
@@ -221,7 +226,9 @@ def main():
         help="Type of version bump (default: patch)",
     )
     parser.add_argument(
-        "--dry-run", action="store_true", help="Show what would be changed without making changes"
+        "--dry-run",
+        action="store_true",
+        help="Show what would be changed without making changes",
     )
 
     args = parser.parse_args()
