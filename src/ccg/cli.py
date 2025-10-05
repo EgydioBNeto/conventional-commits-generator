@@ -652,9 +652,18 @@ def handle_tag() -> int:
         print_error("Failed to create tag. Aborting.")
         return 1
 
-    if not push_tag(tag_name):
-        print_error("Failed to push tag to remote.")
-        return 1
+    push = confirm_user_action(
+        f"{YELLOW}Push tag '{tag_name}' to remote? (y/n){RESET}",
+        success_message=None,
+        cancel_message=None,
+    )
+
+    if push:
+        if not push_tag(tag_name):
+            print_error("Failed to push tag to remote.")
+            return 1
+    else:
+        print_info(f"Tag '{tag_name}' created locally only")
     return 0
 
 

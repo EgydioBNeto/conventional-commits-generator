@@ -142,26 +142,34 @@ class TestPathValidation:
 class TestPushOnlyWorkflow:
     """Tests for push-only workflow."""
 
+    @patch("ccg.cli.branch_exists_on_remote")
     @patch("ccg.cli.git_push")
     @patch("ccg.cli.check_is_git_repo")
     @patch("ccg.cli.show_repository_info")
-    def test_push_only_success(self, mock_show: Mock, mock_check: Mock, mock_push: Mock) -> None:
+    def test_push_only_success(
+        self, mock_show: Mock, mock_check: Mock, mock_push: Mock, mock_branch: Mock
+    ) -> None:
         """Should push successfully."""
         mock_check.return_value = True
         mock_push.return_value = True
+        mock_branch.return_value = True  # Branch exists on remote
 
         result = handle_push_only()
 
         assert result == 0
         mock_push.assert_called_once()
 
+    @patch("ccg.cli.branch_exists_on_remote")
     @patch("ccg.cli.git_push")
     @patch("ccg.cli.check_is_git_repo")
     @patch("ccg.cli.show_repository_info")
-    def test_push_only_failure(self, mock_show: Mock, mock_check: Mock, mock_push: Mock) -> None:
+    def test_push_only_failure(
+        self, mock_show: Mock, mock_check: Mock, mock_push: Mock, mock_branch: Mock
+    ) -> None:
         """Should return error code on push failure."""
         mock_check.return_value = True
         mock_push.return_value = False
+        mock_branch.return_value = True  # Branch exists on remote
 
         result = handle_push_only()
 
@@ -187,7 +195,7 @@ class TestTagWorkflow:
         """Should create lightweight tag."""
         mock_check.return_value = True
         mock_input.return_value = "v1.0.0"
-        mock_confirm.side_effect = [False, False]  # Not annotated, don't push
+        mock_confirm.side_effect = [False, False]  # Not annotated (1st), don't push (2nd)
         mock_create.return_value = True
 
         result = handle_tag()
@@ -213,7 +221,7 @@ class TestTagWorkflow:
         """Should create annotated tag and push."""
         mock_check.return_value = True
         mock_input.side_effect = ["v1.0.0", "Release version 1.0.0"]
-        mock_confirm.side_effect = [True, True]  # Annotated, and push
+        mock_confirm.side_effect = [True, True]  # Annotated (1st), push (2nd)
         mock_create.return_value = True
         mock_push.return_value = True
 
