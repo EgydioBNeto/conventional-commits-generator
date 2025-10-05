@@ -17,8 +17,7 @@ env:
 
 permissions:
   contents: write
-  actions: read
-  packages: read
+  id-token: write
 
 jobs:
   check-release:
