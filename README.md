@@ -3,7 +3,7 @@
 <div align="center">
 <img src="https://github.com/EgydioBNeto/conventional-commits-generator/assets/84047984/53f38934-16bb-40f6-aff7-a5800c4bd706" width="300px"/>
 
-[![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
+[![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
 [![PyPI version](https://badge.fury.io/py/conventional-commits-generator.svg)](https://badge.fury.io/py/conventional-commits-generator)
 
 </div>
@@ -178,7 +178,7 @@ Do you want to push these changes? (Y/n): y
 
 ## Requirements
 
-- Python 3.8+
+- Python 3.9+
 - Git
 
 ## Contributing
