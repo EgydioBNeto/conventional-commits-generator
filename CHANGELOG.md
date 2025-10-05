@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.2.6] - 2025-10-05
+
+### 🐛 Fixed
+
+- fix tag test error ([0b555de])
+
+### 🧪 Tests
+
+- add tox and mise suport ([f780158])
+- add unit tests ([76703cc])
+
+### 🔧 Maintenance
+
+- update workflows permissions ([dc4af3b])
+- remove 3.8 python references ([d529a0b])
+- update labeler and fix test ([a2322f1])
+
+
 ## [2.2.5] - 2025-10-04
 
 ### ✨ Added
