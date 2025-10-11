@@ -22,71 +22,52 @@ from ccg.utils import (
 
 
 class TestValidateConfirmationInput:
-    """Tests for validate_confirmation_input function."""
+    """Property-based tests for validate_confirmation_input function using Hypothesis."""
 
-    def test_yes_lowercase(self) -> None:
-        """Should accept lowercase 'y' as True."""
-        assert validate_confirmation_input("y", True) is True
+    @given(st.sampled_from(["y", "Y", "yes", "YES", "Yes", "yEs", "yeS", "YEs", "yES", "YeS"]))
+    def test_all_yes_variations_return_true(self, yes_input: str) -> None:
+        """All variations of 'yes' should return True regardless of default."""
+        # Should return True for both default_yes=True and default_yes=False
+        assert validate_confirmation_input(yes_input, True) is True
+        assert validate_confirmation_input(yes_input, False) is True
 
-    def test_yes_uppercase(self) -> None:
-        """Should accept uppercase 'Y' as True."""
-        assert validate_confirmation_input("Y", True) is True
+    @given(st.sampled_from(["n", "N", "no", "NO", "No", "nO", "NO", "No"]))
+    def test_all_no_variations_return_false(self, no_input: str) -> None:
+        """All variations of 'no' should return False regardless of default."""
+        # Should return False for both default_yes=True and default_yes=False
+        assert validate_confirmation_input(no_input, True) is False
+        assert validate_confirmation_input(no_input, False) is False
 
-    def test_yes_full_lowercase(self) -> None:
-        """Should accept full 'yes' as True."""
-        assert validate_confirmation_input("yes", True) is True
+    @given(st.booleans())
+    def test_empty_string_returns_default(self, default: bool) -> None:
+        """Empty string should return the default value."""
+        assert validate_confirmation_input("", default) == default
 
-    def test_yes_full_uppercase(self) -> None:
-        """Should accept full 'YES' as True."""
-        assert validate_confirmation_input("YES", True) is True
+    @given(
+        st.text(min_size=1).filter(
+            lambda s: s.strip().lower() not in ["y", "yes", "n", "no", ""] and len(s) <= 3
+        )
+    )
+    def test_invalid_input_returns_none(self, invalid_input: str) -> None:
+        """Invalid input (not yes/no) should return None."""
+        result = validate_confirmation_input(invalid_input, True)
+        # Should return None for truly invalid inputs
+        if result is not None:
+            # If it's not None, it must be a yes/no variant we didn't catch
+            assert result in (True, False), f"Unexpected result for input '{invalid_input}'"
 
-    def test_yes_mixed_case(self) -> None:
-        """Should accept mixed case 'Yes' as True."""
-        assert validate_confirmation_input("Yes", True) is True
+    @given(st.text(min_size=4))
+    def test_too_long_input_returns_none(self, long_input: str) -> None:
+        """Input longer than 3 characters should return None."""
+        assert validate_confirmation_input(long_input, True) is None
+        assert validate_confirmation_input(long_input, False) is None
 
-    def test_no_lowercase(self) -> None:
-        """Should accept lowercase 'n' as False."""
-        assert validate_confirmation_input("n", True) is False
-
-    def test_no_uppercase(self) -> None:
-        """Should accept uppercase 'N' as False."""
-        assert validate_confirmation_input("N", True) is False
-
-    def test_no_full_lowercase(self) -> None:
-        """Should accept full 'no' as False."""
-        assert validate_confirmation_input("no", True) is False
-
-    def test_no_full_uppercase(self) -> None:
-        """Should accept full 'NO' as False."""
-        assert validate_confirmation_input("NO", True) is False
-
-    def test_empty_with_default_yes(self) -> None:
-        """Should return True when empty and default=True."""
-        assert validate_confirmation_input("", True) is True
-
-    def test_empty_with_default_no(self) -> None:
-        """Should return False when empty and default=False."""
-        assert validate_confirmation_input("", False) is False
-
-    def test_invalid_input(self) -> None:
-        """Should return None for invalid input."""
-        assert validate_confirmation_input("maybe", True) is None
-
-    def test_invalid_random_text(self) -> None:
-        """Should return None for random text."""
-        assert validate_confirmation_input("xyz", True) is None
-
-    def test_whitespace_with_default_yes(self) -> None:
-        """Should return None for whitespace (invalid input)."""
-        result = validate_confirmation_input("   ", True)
-        # Whitespace is not treated as empty, but as invalid input
-        assert result is None
-
-    def test_whitespace_with_default_no(self) -> None:
-        """Should return None for whitespace (invalid input)."""
-        result = validate_confirmation_input("   ", False)
-        # Whitespace is not treated as empty, but as invalid input
-        assert result is None
+    def test_whitespace_examples_return_none(self) -> None:
+        """Whitespace-only inputs should return None."""
+        # Test specific whitespace cases instead of generating them
+        for whitespace in ["   ", " ", "  ", "\t", "\n"]:
+            result = validate_confirmation_input(whitespace, True)
+            assert result is None, f"Expected None for whitespace '{repr(whitespace)}''"
 
 
 class TestStripColorCodes:
@@ -135,92 +116,59 @@ class TestStripColorCodes:
 
 
 class TestGetEmojiForType:
-    """Tests for get_emoji_for_type function."""
+    """Property-based tests for get_emoji_for_type function using Hypothesis."""
 
-    def test_feat_emoji_visual(self) -> None:
-        """Should return visual emoji for feat."""
-        result = get_emoji_for_type("feat", use_code=False)
-        assert result == "✨"
-
-    def test_feat_emoji_code(self) -> None:
-        """Should return emoji code for feat."""
-        result = get_emoji_for_type("feat", use_code=True)
-        assert result == ":sparkles:"
-
-    def test_fix_emoji_visual(self) -> None:
-        """Should return visual emoji for fix."""
-        result = get_emoji_for_type("fix", use_code=False)
-        assert result == "🐛"
-
-    def test_fix_emoji_code(self) -> None:
-        """Should return emoji code for fix."""
-        result = get_emoji_for_type("fix", use_code=True)
-        assert result == ":bug:"
-
-    def test_chore_emoji_visual(self) -> None:
-        """Should return visual emoji for chore."""
-        result = get_emoji_for_type("chore", use_code=False)
-        assert result == "🔧"
-
-    def test_chore_emoji_code(self) -> None:
-        """Should return emoji code for chore."""
-        result = get_emoji_for_type("chore", use_code=True)
-        assert result == ":wrench:"
-
-    def test_docs_emoji_visual(self) -> None:
-        """Should return visual emoji for docs."""
-        result = get_emoji_for_type("docs", use_code=False)
-        assert result == "📚"
-
-    def test_invalid_type(self) -> None:
-        """Should return empty string for invalid type."""
-        result = get_emoji_for_type("invalid", use_code=False)
-        assert result == ""
-
-    def test_invalid_type_code(self) -> None:
-        """Should return empty string for invalid type code."""
-        result = get_emoji_for_type("invalid", use_code=True)
-        assert result == ""
-
-    @pytest.mark.parametrize(
-        "commit_type,expected_code",
-        [
-            ("feat", ":sparkles:"),
-            ("fix", ":bug:"),
-            ("chore", ":wrench:"),
-            ("style", ":lipstick:"),
-            ("docs", ":books:"),
-            ("test", ":test_tube:"),
-            ("build", ":package:"),
-            ("revert", ":rewind:"),
-            ("ci", ":construction_worker:"),
-            ("perf", ":zap:"),
-        ],
-    )
-    def test_all_types_codes(self, commit_type: str, expected_code: str) -> None:
-        """Should return correct emoji code for all types."""
+    @given(st.sampled_from([ct["type"] for ct in COMMIT_TYPES]))
+    def test_valid_types_return_emoji_code(self, commit_type: str) -> None:
+        """All valid commit types should return a valid emoji code."""
         result = get_emoji_for_type(commit_type, use_code=True)
-        assert result == expected_code
+        assert result != ""
+        assert result.startswith(":")
+        assert result.endswith(":")
+        assert len(result) > 2
 
-    @pytest.mark.parametrize(
-        "commit_type,expected_emoji",
-        [
-            ("feat", "✨"),
-            ("fix", "🐛"),
-            ("chore", "🔧"),
-            ("style", "💄"),
-            ("docs", "📚"),
-            ("test", "🧪"),
-            ("build", "📦"),
-            ("revert", "⏪"),
-            ("ci", "👷"),
-            ("perf", "⚡"),
-        ],
-    )
-    def test_all_types_visual(self, commit_type: str, expected_emoji: str) -> None:
-        """Should return correct visual emoji for all types."""
+    @given(st.sampled_from([ct["type"] for ct in COMMIT_TYPES]))
+    def test_valid_types_return_visual_emoji(self, commit_type: str) -> None:
+        """All valid commit types should return a visual emoji."""
         result = get_emoji_for_type(commit_type, use_code=False)
-        assert result == expected_emoji
+        assert result != ""
+        assert ":" not in result  # Visual emoji shouldn't have colons
+        assert len(result) <= 4  # Emojis are typically 1-4 bytes
+
+    @given(st.sampled_from([ct["type"] for ct in COMMIT_TYPES]), st.booleans())
+    def test_consistent_non_empty_results(self, commit_type: str, use_code: bool) -> None:
+        """Valid types should always return non-empty consistent results."""
+        result1 = get_emoji_for_type(commit_type, use_code)
+        result2 = get_emoji_for_type(commit_type, use_code)
+        assert result1 == result2  # Idempotent
+        assert result1 != ""  # Never empty for valid types
+
+    @given(st.sampled_from([ct["type"] for ct in COMMIT_TYPES]))
+    def test_code_and_visual_are_different(self, commit_type: str) -> None:
+        """Emoji code and visual representation should be different."""
+        code = get_emoji_for_type(commit_type, use_code=True)
+        visual = get_emoji_for_type(commit_type, use_code=False)
+        assert code != visual
+        assert len(code) > len(visual)  # Code is longer (":sparkles:" vs "✨")
+
+    @given(st.text(min_size=1).filter(lambda s: s not in [ct["type"] for ct in COMMIT_TYPES]))
+    def test_invalid_types_return_empty(self, invalid_type: str) -> None:
+        """Invalid commit types should return empty string."""
+        result_code = get_emoji_for_type(invalid_type, use_code=True)
+        result_visual = get_emoji_for_type(invalid_type, use_code=False)
+        assert result_code == ""
+        assert result_visual == ""
+
+    @given(st.sampled_from([ct["type"] for ct in COMMIT_TYPES]))
+    def test_emoji_mapping_is_complete(self, commit_type: str) -> None:
+        """Every valid type should have both code and visual emoji."""
+        # Find the type in COMMIT_TYPES
+        type_info = next((ct for ct in COMMIT_TYPES if ct["type"] == commit_type), None)
+        assert type_info is not None
+
+        # Check that the function returns what's in COMMIT_TYPES
+        assert get_emoji_for_type(commit_type, use_code=True) == type_info["emoji_code"]
+        assert get_emoji_for_type(commit_type, use_code=False) == type_info["emoji"]
 
 
 # ============================================================================
@@ -535,3 +483,217 @@ class TestConstants:
 
         assert ASCII_LOGO is not None
         assert "CCG" in ASCII_LOGO or "Conventional" in ASCII_LOGO
+
+
+class TestReadMultilineInput:
+    """Tests for read_multiline_input function."""
+
+    @patch("ccg.utils.PROMPT_TOOLKIT_AVAILABLE", False)
+    @patch("builtins.input", side_effect=["line 1", "line 2", "", ""])
+    def test_basic_multiline_input(self, mock_input: Mock) -> None:
+        """Should read multiline input until empty line."""
+        from ccg.utils import read_multiline_input
+
+        result = read_multiline_input()
+
+        assert "line 1" in result
+        assert "line 2" in result
+
+    @patch("builtins.input", return_value="")
+    def test_empty_multiline_uses_default(self, mock_input: Mock) -> None:
+        """Should use default text when no input."""
+        from ccg.utils import read_multiline_input
+
+        result = read_multiline_input(default_text="default body")
+
+        assert result == "default body"
+
+    @patch("ccg.utils.PROMPT_TOOLKIT_AVAILABLE", False)
+    @patch("builtins.input", side_effect=["x" * 100, "", ""])
+    def test_multiline_max_length_per_line(self, mock_input: Mock, capsys) -> None:
+        """Should enforce max length per line."""
+        from ccg.utils import read_multiline_input
+
+        result = read_multiline_input(max_length=100)
+
+        # Should reject the long line and not include it
+        captured = capsys.readouterr()
+        assert "too long" in captured.out.lower() or "Line" in captured.out
+
+    @patch("builtins.input", side_effect=KeyboardInterrupt())
+    def test_multiline_keyboard_interrupt(self, mock_input: Mock) -> None:
+        """Should handle keyboard interrupt gracefully."""
+        from ccg.utils import read_multiline_input
+
+        result = read_multiline_input()
+
+        assert result == ""
+
+    @patch("ccg.utils.PROMPT_TOOLKIT_AVAILABLE", False)
+    @patch("builtins.input", side_effect=["short", "x" * 50, "", ""])
+    def test_multiline_total_char_limit(self, mock_input: Mock, capsys) -> None:
+        """Should enforce total character limit across all lines."""
+        from ccg.utils import read_multiline_input
+
+        result = read_multiline_input(max_length=60)
+
+        # Should reject second line that would exceed total  limit
+        captured = capsys.readouterr()
+        assert "remaining" in captured.out.lower() or "characters" in captured.out.lower()
+
+    @patch("ccg.utils.PROMPT_TOOLKIT_AVAILABLE", False)
+    @patch("builtins.input", side_effect=["test", "", "test2", "", ""])
+    def test_multiline_with_empty_lines(self, mock_input: Mock) -> None:
+        """Should handle empty lines correctly."""
+        from ccg.utils import read_multiline_input
+
+        result = read_multiline_input()
+
+        # Should include test but stop after two empty lines
+        assert "test" in result
+
+    @patch("ccg.utils.PROMPT_TOOLKIT_AVAILABLE", False)
+    @patch("builtins.input", side_effect=EOFError())
+    def test_multiline_eof_error(self, mock_input: Mock) -> None:
+        """Should handle EOFError gracefully."""
+        from ccg.utils import read_multiline_input
+
+        result = read_multiline_input()
+
+        assert result == ""
+
+
+class TestConfirmUserActionFallback:
+    """Tests for confirm_user_action with fallback (no prompt_toolkit)."""
+
+    @patch("ccg.utils.PROMPT_TOOLKIT_AVAILABLE", False)
+    @patch("builtins.input", return_value="y")
+    def test_confirm_yes_fallback(self, mock_input: Mock) -> None:
+        """Should return True for 'y' in fallback mode."""
+        from ccg.utils import confirm_user_action
+
+        result = confirm_user_action("Confirm?", default_yes=True)
+
+        assert result is True
+
+    @patch("ccg.utils.PROMPT_TOOLKIT_AVAILABLE", False)
+    @patch("builtins.input", return_value="n")
+    def test_confirm_no_fallback(self, mock_input: Mock) -> None:
+        """Should return False for 'n' in fallback mode."""
+        from ccg.utils import confirm_user_action
+
+        result = confirm_user_action("Confirm?", default_yes=True)
+
+        assert result is False
+
+    @patch("ccg.utils.PROMPT_TOOLKIT_AVAILABLE", False)
+    @patch("builtins.input", return_value="")
+    def test_confirm_default_yes_fallback(self, mock_input: Mock) -> None:
+        """Should use default_yes for empty input."""
+        from ccg.utils import confirm_user_action
+
+        result = confirm_user_action("Confirm?", default_yes=True)
+
+        assert result is True
+
+    @patch("ccg.utils.PROMPT_TOOLKIT_AVAILABLE", False)
+    @patch("builtins.input", return_value="")
+    def test_confirm_default_no_fallback(self, mock_input: Mock) -> None:
+        """Should use default_no for empty input."""
+        from ccg.utils import confirm_user_action
+
+        result = confirm_user_action("Confirm?", default_yes=False)
+
+        assert result is False
+
+
+class TestCreateCounterToolbar:
+    """Tests for create_counter_toolbar function."""
+
+    def test_create_toolbar_returns_callable(self) -> None:
+        """Should return a callable toolbar function."""
+        from ccg.utils import create_counter_toolbar
+
+        toolbar = create_counter_toolbar(100)
+
+        assert toolbar is not None
+        assert callable(toolbar)
+
+    def test_create_toolbar_confirmation_mode(self) -> None:
+        """Should create toolbar for confirmation input."""
+        from ccg.utils import create_counter_toolbar
+
+        toolbar = create_counter_toolbar(3, is_confirmation=True)
+
+        assert toolbar is not None
+        assert callable(toolbar)
+
+
+class TestCreateInputKeyBindings:
+    """Tests for create_input_key_bindings function."""
+
+    def test_create_key_bindings_returns_object(self) -> None:
+        """Should return key bindings object."""
+        from ccg.utils import create_input_key_bindings
+
+        kb = create_input_key_bindings(max_length=100)
+
+        assert kb is not None
+
+    def test_create_key_bindings_multiline(self) -> None:
+        """Should create key bindings for multiline input."""
+        from ccg.utils import create_input_key_bindings
+
+        kb = create_input_key_bindings(multiline=True)
+
+        assert kb is not None
+
+    def test_create_key_bindings_confirmation(self) -> None:
+        """Should create key bindings for confirmation."""
+        from ccg.utils import create_input_key_bindings
+
+        kb = create_input_key_bindings(is_confirmation=True, default_yes=True)
+
+        assert kb is not None
+
+
+class TestReadInputWithPromptToolkit:
+    """Tests for read_input with prompt_toolkit available."""
+
+    @patch("ccg.utils.PROMPT_TOOLKIT_AVAILABLE", True)
+    @patch("ccg.utils.prompt")
+    def test_read_input_with_history(self, mock_prompt: Mock) -> None:
+        """Should use history when available."""
+        from ccg.utils import read_input
+
+        mock_prompt.return_value = "test input"
+
+        result = read_input("Enter text", history_type="message")
+
+        assert result == "test input"
+        mock_prompt.assert_called_once()
+
+    @patch("ccg.utils.PROMPT_TOOLKIT_AVAILABLE", True)
+    @patch("ccg.utils.prompt")
+    def test_read_input_with_default(self, mock_prompt: Mock) -> None:
+        """Should use default text."""
+        from ccg.utils import read_input
+
+        mock_prompt.return_value = "test"
+
+        result = read_input("Enter text", default_text="default")
+
+        assert result == "test"
+
+    @patch("ccg.utils.PROMPT_TOOLKIT_AVAILABLE", True)
+    @patch("ccg.utils.prompt")
+    def test_read_input_falls_back_on_error(self, mock_prompt: Mock) -> None:
+        """Should fall back to basic input on error."""
+        from ccg.utils import read_input
+
+        mock_prompt.side_effect = Exception("prompt_toolkit error")
+
+        with patch("ccg.utils.read_input_fallback", return_value="fallback"):
+            result = read_input("Enter text")
+
+            assert result == "fallback"

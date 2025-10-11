@@ -22,6 +22,7 @@ from ccg.git import (
     get_commit_by_hash,
     get_current_branch,
     get_recent_commits,
+    get_remote_name,
     get_repository_name,
     get_repository_root,
     git_add,

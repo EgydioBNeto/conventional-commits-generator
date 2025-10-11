@@ -118,28 +118,21 @@ BOLD = "\033[1m"
 UNDERLINE = "\033[4m"
 RESET = "\033[0m"
 
-# Symbols
+# Symbols (used in print functions)
 CHECK = "✓"
 CROSS = "✗"
 ARROW = "→"
-STAR = "★"
-DIAMOND = "♦"
-HEART = "♥"
 WARNING = "⚠"
 INFO = "ℹ"
 BULLET = "•"
 
 try:
     TERM_WIDTH: int
-    TERM_HEIGHT: int
-    TERM_WIDTH, TERM_HEIGHT = shutil.get_terminal_size()
+    TERM_WIDTH, _ = shutil.get_terminal_size()
 except Exception:
     from ccg.config import UI_CONFIG
 
-    TERM_WIDTH, TERM_HEIGHT = (
-        UI_CONFIG.DEFAULT_TERM_WIDTH,
-        UI_CONFIG.DEFAULT_TERM_HEIGHT,
-    )
+    TERM_WIDTH = UI_CONFIG.DEFAULT_TERM_WIDTH
 
 # Import configuration - backward compatibility dict
 from ccg.config import INPUT_LIMITS as INPUT_LIMITS_CONFIG

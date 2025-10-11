@@ -601,6 +601,54 @@ class TestGetRepositoryRoot:
         assert result == "/home/user/projects/my-repo"
 
 
+class TestGetRemoteName:
+    """Tests for get_remote_name function."""
+
+    @patch("ccg.git.run_git_command")
+    def test_get_remote_name_success(self, mock_run: Mock) -> None:
+        """Should return remote name."""
+        from ccg.git import get_remote_name
+
+        mock_run.return_value = (True, "origin")
+
+        result = get_remote_name()
+
+        assert result == "origin"
+
+    @patch("ccg.git.run_git_command")
+    def test_get_remote_name_no_remote(self, mock_run: Mock) -> None:
+        """Should return None if no remote."""
+        from ccg.git import get_remote_name
+
+        mock_run.return_value = (False, None)
+
+        result = get_remote_name()
+
+        assert result is None
+
+    @patch("ccg.git.run_git_command")
+    def test_get_remote_name_empty_output(self, mock_run: Mock) -> None:
+        """Should return None if output is empty."""
+        from ccg.git import get_remote_name
+
+        mock_run.return_value = (True, "")
+
+        result = get_remote_name()
+
+        assert result is None
+
+    @patch("ccg.git.run_git_command")
+    def test_get_remote_name_multiple_remotes(self, mock_run: Mock) -> None:
+        """Should return first remote when multiple exist."""
+        from ccg.git import get_remote_name
+
+        mock_run.return_value = (True, "origin\nupstream\nfork")
+
+        result = get_remote_name()
+
+        assert result == "origin"
+
+
 class TestIsPathInRepository:
     """Tests for is_path_in_repository function."""
 
@@ -920,3 +968,242 @@ class TestCheckRemoteAccess:
         result = check_remote_access()
 
         assert result is False
+
+
+class TestEditLatestCommitWithAmend:
+    """Tests for edit_latest_commit_with_amend function."""
+
+    @patch("os.path.exists")
+    @patch("os.unlink")
+    @patch("tempfile.NamedTemporaryFile")
+    @patch("ccg.git.run_git_command")
+    def test_amend_success(
+        self, mock_run: Mock, mock_tempfile: Mock, mock_unlink: Mock, mock_exists: Mock
+    ) -> None:
+        """Should amend commit successfully."""
+        from ccg.git import edit_latest_commit_with_amend
+
+        mock_temp = Mock()
+        mock_temp.name = "/tmp/commit_msg"
+        mock_temp.__enter__ = Mock(return_value=mock_temp)
+        mock_temp.__exit__ = Mock(return_value=False)
+        mock_tempfile.return_value = mock_temp
+        mock_run.return_value = (True, None)
+        mock_exists.return_value = True
+
+        result = edit_latest_commit_with_amend("abc123", "feat: new message")
+
+        assert result is True
+        mock_run.assert_called_once()
+
+    @patch("tempfile.NamedTemporaryFile")
+    def test_amend_tempfile_error(self, mock_tempfile: Mock) -> None:
+        """Should handle tempfile creation error."""
+        from ccg.git import edit_latest_commit_with_amend
+
+        mock_tempfile.side_effect = OSError("Cannot create temp file")
+
+        result = edit_latest_commit_with_amend("abc123", "feat: new")
+
+        assert result is False
+
+
+class TestEditOldCommitWithFilterBranch:
+    """Tests for edit_old_commit_with_filter_branch function."""
+
+    @patch("ccg.git.run_git_command")
+    def test_filter_branch_success(self, mock_run: Mock) -> None:
+        """Should edit old commit with filter-branch."""
+        from ccg.git import edit_old_commit_with_filter_branch
+
+        mock_run.return_value = (True, "Rewriting history...")
+
+        result = edit_old_commit_with_filter_branch("abc123", "feat: updated")
+
+        assert result is True
+
+    @patch("ccg.git.run_git_command")
+    def test_filter_branch_initial_commit(self, mock_run: Mock) -> None:
+        """Should handle initial commit editing."""
+        from ccg.git import edit_old_commit_with_filter_branch
+
+        mock_run.return_value = (True, None)
+
+        result = edit_old_commit_with_filter_branch("abc123", "feat: init", is_initial_commit=True)
+
+        assert result is True
+        # Check that --all flag is used for initial commit
+        call_args = mock_run.call_args[0][0]
+        assert "--" in call_args
+        assert "--all" in call_args
+
+
+class TestDeleteLatestCommit:
+    """Tests for delete_latest_commit function."""
+
+    @patch("ccg.git.run_git_command")
+    def test_delete_latest_success(self, mock_run: Mock) -> None:
+        """Should delete latest commit with reset."""
+        from ccg.git import delete_latest_commit
+
+        mock_run.return_value = (True, None)
+
+        result = delete_latest_commit()
+
+        assert result is True
+        mock_run.assert_called_once()
+        call_args = mock_run.call_args[0][0]
+        assert call_args == ["git", "reset", "--hard", "HEAD~1"]
+
+
+class TestCreateRebaseScriptForDeletion:
+    """Tests for create_rebase_script_for_deletion function."""
+
+    @patch("tempfile.NamedTemporaryFile")
+    @patch("ccg.git.run_git_command")
+    def test_create_script_success(self, mock_run: Mock, mock_tempfile: Mock) -> None:
+        """Should create rebase script successfully."""
+        from ccg.git import create_rebase_script_for_deletion
+
+        mock_temp = Mock()
+        mock_temp.name = "/tmp/rebase_script"
+        mock_temp.__enter__ = Mock(return_value=mock_temp)
+        mock_temp.__exit__ = Mock(return_value=False)
+        mock_tempfile.return_value = mock_temp
+
+        mock_run.side_effect = [
+            (True, "abc123\ndef456\nghi789"),  # rev-list
+            (True, "feat: first"),  # subject for abc123
+            (True, "fix: second"),  # subject for def456 (target to delete)
+            (True, "chore: third"),  # subject for ghi789
+        ]
+
+        success, script_file, script_lines = create_rebase_script_for_deletion("def456")
+
+        assert success is True
+        assert script_file == "/tmp/rebase_script"
+        assert len(script_lines) == 2  # Excludes the deleted commit
+        assert "abc123" in script_lines[0]
+        assert "ghi789" in script_lines[1]
+
+    @patch("ccg.git.run_git_command")
+    def test_create_script_commit_not_found(self, mock_run: Mock) -> None:
+        """Should return False if commit not in history."""
+        from ccg.git import create_rebase_script_for_deletion
+
+        mock_run.return_value = (True, "abc123\ndef456")
+
+        success, script_file, script_lines = create_rebase_script_for_deletion("nonexistent")
+
+        assert success is False
+        assert script_file is None
+        assert script_lines == []
+
+
+# ============================================================================
+# Hypothesis Property-Based Tests
+# ============================================================================
+
+from hypothesis import given
+from hypothesis import strategies as st
+
+
+class TestIsPathInRepositoryProperties:
+    """Property-based tests for is_path_in_repository function."""
+
+    @given(st.text(min_size=1, max_size=100))
+    def test_empty_repo_root_always_false(self, path: str) -> None:
+        """Should return False when repo root is empty."""
+        from ccg.git import is_path_in_repository
+
+        result = is_path_in_repository(path, "")
+        assert result is False
+
+    @given(st.text(min_size=1, max_size=50))
+    def test_same_path_as_repo_returns_true(self, path: str) -> None:
+        """Should return True when path equals repo root."""
+        from ccg.git import is_path_in_repository
+
+        # Skip paths with special characters that would break path comparison
+        try:
+            result = is_path_in_repository(path, path)
+            assert result is True
+        except (ValueError, OSError):
+            # Some paths may be invalid on certain OSes
+            pass
+
+    def test_child_path_returns_true(self) -> None:
+        """Should return True for child paths."""
+        from ccg.git import is_path_in_repository
+
+        assert is_path_in_repository("/repo/src/file.py", "/repo") is True
+        assert is_path_in_repository("/repo/tests", "/repo") is True
+
+    def test_parent_path_returns_false(self) -> None:
+        """Should return False for parent paths."""
+        from ccg.git import is_path_in_repository
+
+        assert is_path_in_repository("/home", "/home/user/repo") is False
+        assert is_path_in_repository("/", "/home/user/repo") is False
+
+
+class TestGetRemoteNameEdgeCases:
+    """Additional tests for get_remote_name function."""
+
+    @patch("ccg.git.run_git_command")
+    def test_remote_with_whitespace(self, mock_run: Mock) -> None:
+        """Should handle remote names with surrounding whitespace."""
+        from ccg.git import get_remote_name
+
+        mock_run.return_value = (True, "  origin  ")
+
+        result = get_remote_name()
+
+        assert result == "origin"
+
+    @patch("ccg.git.run_git_command")
+    def test_multiple_remotes_returns_first(self, mock_run: Mock) -> None:
+        """Should return first remote when multiple exist."""
+        from ccg.git import get_remote_name
+
+        mock_run.return_value = (True, "origin\nupstream\nfork")
+
+        result = get_remote_name()
+
+        assert result == "origin"
+
+
+class TestGetCommitByHashErrorPaths:
+    """Tests for error handling in get_commit_by_hash."""
+
+    @patch("ccg.git.run_git_command")
+    def test_invalid_hash_returns_none(self, mock_run: Mock) -> None:
+        """Should return None for invalid commit hash."""
+        from ccg.git import get_commit_by_hash
+
+        mock_run.return_value = (False, None)
+
+        result = get_commit_by_hash("invalid123")
+
+        assert result is None
+
+    @patch("ccg.git.run_git_command")
+    def test_commit_with_multiline_body(self, mock_run: Mock) -> None:
+        """Should handle commits with multiline bodies."""
+        from ccg.git import get_commit_by_hash
+
+        mock_run.side_effect = [
+            (True, None),  # verify
+            (True, "abc123full"),  # full hash
+            (True, "abc123"),  # short hash
+            (True, "feat: test\n\nLine 1\n\nLine 2"),  # message with multiple paragraphs
+            (True, "John"),  # author
+            (True, "1 day ago"),  # date
+        ]
+
+        result = get_commit_by_hash("abc123")
+
+        assert result is not None
+        assert result[2] == "feat: test"
+        assert "Line 1" in result[3]
+        assert "Line 2" in result[3]

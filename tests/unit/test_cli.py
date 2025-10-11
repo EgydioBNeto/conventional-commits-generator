@@ -276,3 +276,494 @@ class TestResetWorkflow:
         result = handle_reset()
 
         assert result == 0
+
+
+class TestHandleCommitOperation:
+    """Tests for handle_commit_operation function."""
+
+    @patch("ccg.cli.edit_specific_commit")
+    @patch("ccg.cli.read_input")
+    @patch("ccg.cli.get_recent_commits")
+    @patch("ccg.cli.check_is_git_repo")
+    @patch("ccg.cli.show_repository_info")
+    def test_edit_by_number(
+        self,
+        mock_show: Mock,
+        mock_check: Mock,
+        mock_commits: Mock,
+        mock_input: Mock,
+        mock_edit: Mock,
+    ) -> None:
+        """Should select commit by number for editing."""
+        from ccg.cli import handle_commit_operation
+
+        mock_check.return_value = True
+        mock_commits.return_value = [
+            ("abc123", "abc", "feat: test", "Author", "1 day ago"),
+            ("def456", "def", "fix: bug", "Author", "2 days ago"),
+        ]
+        mock_input.side_effect = ["", "1"]  # First for count, then for selection
+        mock_edit.return_value = 0
+
+        result = handle_commit_operation("edit")
+
+        assert result == 0
+        mock_edit.assert_called_once_with("abc123")
+
+    @patch("ccg.cli.delete_specific_commit")
+    @patch("ccg.cli.read_input")
+    @patch("ccg.cli.get_recent_commits")
+    @patch("ccg.cli.check_is_git_repo")
+    @patch("ccg.cli.show_repository_info")
+    def test_delete_by_hash(
+        self,
+        mock_show: Mock,
+        mock_check: Mock,
+        mock_commits: Mock,
+        mock_input: Mock,
+        mock_delete: Mock,
+    ) -> None:
+        """Should select commit by hash for deleting."""
+        from ccg.cli import handle_commit_operation
+
+        mock_check.return_value = True
+        mock_commits.return_value = [
+            ("abc123", "abc", "feat: test", "Author", "1 day ago"),
+            ("def456", "def", "fix: bug", "Author", "2 days ago"),
+        ]
+        mock_input.side_effect = ["5", "abc"]  # Count=5, hash starting with 'abc'
+        mock_delete.return_value = 0
+
+        result = handle_commit_operation("delete")
+
+        assert result == 0
+        mock_delete.assert_called_once_with("abc123")
+
+    @patch("ccg.cli.read_input")
+    @patch("ccg.cli.get_recent_commits")
+    @patch("ccg.cli.check_is_git_repo")
+    @patch("ccg.cli.show_repository_info")
+    def test_quit_operation(
+        self, mock_show: Mock, mock_check: Mock, mock_commits: Mock, mock_input: Mock
+    ) -> None:
+        """Should quit on 'q' input."""
+        from ccg.cli import handle_commit_operation
+
+        mock_check.return_value = True
+        mock_commits.return_value = [("abc123", "abc", "feat: test", "Author", "1 day ago")]
+        mock_input.side_effect = ["", "q"]
+
+        result = handle_commit_operation("edit")
+
+        assert result == 0
+
+    @patch("ccg.cli.read_input")
+    @patch("ccg.cli.get_recent_commits")
+    @patch("ccg.cli.check_is_git_repo")
+    @patch("ccg.cli.show_repository_info")
+    def test_invalid_then_valid_selection(
+        self, mock_show: Mock, mock_check: Mock, mock_commits: Mock, mock_input: Mock
+    ) -> None:
+        """Should retry on invalid selection."""
+        from ccg.cli import handle_commit_operation
+
+        mock_check.return_value = True
+        mock_commits.return_value = [("abc123", "abc", "feat: test", "Author", "1 day ago")]
+        mock_input.side_effect = ["", "999", "1"]  # Invalid number, then valid
+
+        with patch("ccg.cli.edit_specific_commit", return_value=0):
+            result = handle_commit_operation("edit")
+
+        assert result == 0
+
+
+class TestEditSpecificCommit:
+    """Tests for edit_specific_commit function."""
+
+    @patch("ccg.cli.handle_push_after_edit")
+    @patch("ccg.cli.confirm_push")
+    @patch("ccg.cli.edit_commit_message")
+    @patch("ccg.cli.confirm_commit_edit")
+    @patch("ccg.cli.handle_commit_edit_input")
+    @patch("ccg.cli.get_commit_by_hash")
+    def test_edit_and_push(
+        self,
+        mock_get: Mock,
+        mock_input: Mock,
+        mock_confirm: Mock,
+        mock_edit: Mock,
+        mock_push_confirm: Mock,
+        mock_handle_push: Mock,
+    ) -> None:
+        """Should edit commit and push."""
+        from ccg.cli import edit_specific_commit
+
+        mock_get.return_value = ("abc123", "abc", "feat: old", "", "Author", "1 day ago")
+        mock_input.return_value = ("feat: new", None)
+        mock_confirm.return_value = True
+        mock_edit.return_value = True
+        mock_push_confirm.return_value = True
+        mock_handle_push.return_value = 0
+
+        result = edit_specific_commit("abc123")
+
+        assert result == 0
+        mock_edit.assert_called_once()
+        mock_handle_push.assert_called_once()
+
+    @patch("ccg.cli.handle_commit_edit_input")
+    @patch("ccg.cli.get_commit_by_hash")
+    def test_edit_cancelled(self, mock_get: Mock, mock_input: Mock) -> None:
+        """Should return 0 when edit is cancelled."""
+        from ccg.cli import edit_specific_commit
+
+        mock_get.return_value = ("abc123", "abc", "feat: test", "", "Author", "1 day ago")
+        mock_input.return_value = (None, None)  # User cancelled
+
+        result = edit_specific_commit("abc123")
+
+        assert result == 0
+
+    @patch("ccg.cli.get_commit_by_hash")
+    def test_commit_not_found(self, mock_get: Mock) -> None:
+        """Should return 1 when commit not found."""
+        from ccg.cli import edit_specific_commit
+
+        mock_get.return_value = None
+
+        result = edit_specific_commit("invalid")
+
+        assert result == 1
+
+
+class TestDeleteSpecificCommit:
+    """Tests for delete_specific_commit function."""
+
+    @patch("ccg.cli.handle_push_after_edit")
+    @patch("ccg.cli.confirm_push")
+    @patch("ccg.cli.delete_commit")
+    @patch("ccg.cli.confirm_user_action")
+    @patch("ccg.cli.get_commit_by_hash")
+    def test_delete_and_push(
+        self,
+        mock_get: Mock,
+        mock_confirm: Mock,
+        mock_delete: Mock,
+        mock_push_confirm: Mock,
+        mock_handle_push: Mock,
+    ) -> None:
+        """Should delete commit and push."""
+        from ccg.cli import delete_specific_commit
+
+        mock_get.return_value = ("abc123", "abc", "feat: test", "", "Author", "1 day ago")
+        mock_confirm.return_value = True
+        mock_delete.return_value = True
+        mock_push_confirm.return_value = True
+        mock_handle_push.return_value = 0
+
+        result = delete_specific_commit("abc123")
+
+        assert result == 0
+        mock_delete.assert_called_once()
+
+    @patch("ccg.cli.confirm_user_action")
+    @patch("ccg.cli.get_commit_by_hash")
+    def test_delete_cancelled(self, mock_get: Mock, mock_confirm: Mock) -> None:
+        """Should return 0 when delete is cancelled."""
+        from ccg.cli import delete_specific_commit
+
+        mock_get.return_value = ("abc123", "abc", "feat: test", "", "Author", "1 day ago")
+        mock_confirm.return_value = False
+
+        result = delete_specific_commit("abc123")
+
+        assert result == 0
+
+
+class TestHandleGitWorkflow:
+    """Tests for handle_git_workflow function."""
+
+    @patch("ccg.cli.confirm_push")
+    @patch("ccg.cli.git_commit")
+    @patch("ccg.cli.generate_commit_message")
+    @patch("ccg.cli.check_and_install_pre_commit")
+    @patch("ccg.cli.git_add")
+    @patch("ccg.cli.validate_repository_state")
+    def test_full_workflow_success(
+        self,
+        mock_validate: Mock,
+        mock_add: Mock,
+        mock_precommit: Mock,
+        mock_generate: Mock,
+        mock_commit: Mock,
+        mock_confirm_push: Mock,
+    ) -> None:
+        """Should execute full workflow successfully."""
+        from ccg.cli import handle_git_workflow
+
+        mock_validate.return_value = True
+        mock_add.return_value = True
+        mock_precommit.return_value = True
+        mock_generate.return_value = "feat: test commit"
+        mock_commit.return_value = True
+        mock_confirm_push.return_value = False  # Don't push
+
+        result = handle_git_workflow()
+
+        assert result == 0
+        mock_validate.assert_called_once()
+        mock_add.assert_called_once()
+        mock_commit.assert_called_once()
+
+    @patch("ccg.cli.validate_repository_state")
+    def test_workflow_validation_fails(self, mock_validate: Mock) -> None:
+        """Should return 1 if validation fails."""
+        from ccg.cli import handle_git_workflow
+
+        mock_validate.return_value = False
+
+        result = handle_git_workflow()
+
+        assert result == 1
+
+    @patch("ccg.cli.git_add")
+    @patch("ccg.cli.validate_repository_state")
+    def test_workflow_staging_fails(self, mock_validate: Mock, mock_add: Mock) -> None:
+        """Should return 1 if staging fails."""
+        from ccg.cli import handle_git_workflow
+
+        mock_validate.return_value = True
+        mock_add.return_value = False
+
+        result = handle_git_workflow()
+
+        assert result == 1
+
+    @patch("ccg.cli.check_and_install_pre_commit")
+    @patch("ccg.cli.git_add")
+    @patch("ccg.cli.validate_repository_state")
+    def test_workflow_precommit_fails(
+        self, mock_validate: Mock, mock_add: Mock, mock_precommit: Mock
+    ) -> None:
+        """Should return 1 if pre-commit fails."""
+        from ccg.cli import handle_git_workflow
+
+        mock_validate.return_value = True
+        mock_add.return_value = True
+        mock_precommit.return_value = False
+
+        result = handle_git_workflow()
+
+        assert result == 1
+
+    @patch("ccg.cli.generate_commit_message")
+    @patch("ccg.cli.validate_repository_state")
+    def test_workflow_commit_only_mode(self, mock_validate: Mock, mock_generate: Mock) -> None:
+        """Should handle --commit flag (generate only, no commit)."""
+        from ccg.cli import handle_git_workflow
+
+        mock_validate.return_value = True
+        mock_generate.return_value = "feat: test"
+
+        result = handle_git_workflow(commit_only=True)
+
+        assert result == 0
+
+    @patch("ccg.cli.git_commit")
+    @patch("ccg.cli.generate_commit_message")
+    @patch("ccg.cli.check_and_install_pre_commit")
+    @patch("ccg.cli.git_add")
+    @patch("ccg.cli.validate_repository_state")
+    def test_workflow_commit_fails(
+        self,
+        mock_validate: Mock,
+        mock_add: Mock,
+        mock_precommit: Mock,
+        mock_generate: Mock,
+        mock_commit: Mock,
+    ) -> None:
+        """Should return 1 if git commit fails."""
+        from ccg.cli import handle_git_workflow
+
+        mock_validate.return_value = True
+        mock_add.return_value = True
+        mock_precommit.return_value = True
+        mock_generate.return_value = "feat: test"
+        mock_commit.return_value = False
+
+        result = handle_git_workflow()
+
+        assert result == 1
+
+    @patch("ccg.cli.git_push")
+    @patch("ccg.cli.branch_exists_on_remote")
+    @patch("ccg.cli.get_current_branch")
+    @patch("ccg.cli.confirm_push")
+    @patch("ccg.cli.git_commit")
+    @patch("ccg.cli.generate_commit_message")
+    @patch("ccg.cli.check_and_install_pre_commit")
+    @patch("ccg.cli.git_add")
+    @patch("ccg.cli.validate_repository_state")
+    def test_workflow_with_push_existing_branch(
+        self,
+        mock_validate: Mock,
+        mock_add: Mock,
+        mock_precommit: Mock,
+        mock_generate: Mock,
+        mock_commit: Mock,
+        mock_confirm_push: Mock,
+        mock_get_branch: Mock,
+        mock_branch_exists: Mock,
+        mock_push: Mock,
+    ) -> None:
+        """Should push to existing remote branch."""
+        from ccg.cli import handle_git_workflow
+
+        mock_validate.return_value = True
+        mock_add.return_value = True
+        mock_precommit.return_value = True
+        mock_generate.return_value = "feat: test"
+        mock_commit.return_value = True
+        mock_confirm_push.return_value = True
+        mock_get_branch.return_value = "main"
+        mock_branch_exists.return_value = True
+        mock_push.return_value = True
+
+        result = handle_git_workflow()
+
+        assert result == 0
+        mock_push.assert_called_once()
+
+    @patch("ccg.cli.confirm_create_branch")
+    @patch("ccg.cli.branch_exists_on_remote")
+    @patch("ccg.cli.get_current_branch")
+    @patch("ccg.cli.confirm_push")
+    @patch("ccg.cli.git_commit")
+    @patch("ccg.cli.generate_commit_message")
+    @patch("ccg.cli.check_and_install_pre_commit")
+    @patch("ccg.cli.git_add")
+    @patch("ccg.cli.validate_repository_state")
+    def test_workflow_create_new_branch_cancelled(
+        self,
+        mock_validate: Mock,
+        mock_add: Mock,
+        mock_precommit: Mock,
+        mock_generate: Mock,
+        mock_commit: Mock,
+        mock_confirm_push: Mock,
+        mock_get_branch: Mock,
+        mock_branch_exists: Mock,
+        mock_confirm_create: Mock,
+    ) -> None:
+        """Should handle cancellation of new branch creation."""
+        from ccg.cli import handle_git_workflow
+
+        mock_validate.return_value = True
+        mock_add.return_value = True
+        mock_precommit.return_value = True
+        mock_generate.return_value = "feat: test"
+        mock_commit.return_value = True
+        mock_confirm_push.return_value = True
+        mock_get_branch.return_value = "new-feature"
+        mock_branch_exists.return_value = False
+        mock_confirm_create.return_value = False
+
+        result = handle_git_workflow()
+
+        assert result == 0
+
+
+class TestValidateRepositoryState:
+    """Tests for validate_repository_state function."""
+
+    @patch("ccg.cli.check_remote_access")
+    @patch("ccg.cli.show_repository_info")
+    @patch("ccg.cli.check_is_git_repo")
+    def test_validation_success(
+        self, mock_check_repo: Mock, mock_show_info: Mock, mock_remote: Mock
+    ) -> None:
+        """Should return True when all validations pass."""
+        from ccg.cli import validate_repository_state
+
+        mock_check_repo.return_value = True
+        mock_remote.return_value = True
+
+        result = validate_repository_state(commit_only=True)
+
+        assert result is True
+
+    @patch("ccg.cli.check_is_git_repo")
+    def test_validation_not_git_repo(self, mock_check_repo: Mock) -> None:
+        """Should return False if not a git repo."""
+        from ccg.cli import validate_repository_state
+
+        mock_check_repo.return_value = False
+
+        result = validate_repository_state()
+
+        assert result is False
+
+    @patch("ccg.cli.check_has_changes")
+    @patch("ccg.cli.check_remote_access")
+    @patch("ccg.cli.show_repository_info")
+    @patch("ccg.cli.check_is_git_repo")
+    def test_validation_no_changes(
+        self,
+        mock_check_repo: Mock,
+        mock_show_info: Mock,
+        mock_remote: Mock,
+        mock_has_changes: Mock,
+    ) -> None:
+        """Should return False when no changes detected."""
+        from ccg.cli import validate_repository_state
+
+        mock_check_repo.return_value = True
+        mock_remote.return_value = True
+        mock_has_changes.return_value = False
+
+        result = validate_repository_state(commit_only=False)
+
+        assert result is False
+
+
+class TestChangeToWorkingDirectory:
+    """Tests for change_to_working_directory function."""
+
+    @patch("os.path.isdir")
+    @patch("os.path.exists")
+    def test_single_directory_changes_dir(self, mock_exists: Mock, mock_isdir: Mock) -> None:
+        """Should change to directory and return None."""
+        from ccg.cli import change_to_working_directory
+
+        mock_exists.return_value = True
+        mock_isdir.return_value = True
+
+        with patch("os.chdir") as mock_chdir:
+            result = change_to_working_directory(["src/"])
+
+            assert result is None
+            mock_chdir.assert_called_once()
+
+    @patch("ccg.cli.validate_paths_in_repository")
+    @patch("os.path.isdir")
+    @patch("os.path.exists")
+    def test_multiple_paths_returns_paths(
+        self, mock_exists: Mock, mock_isdir: Mock, mock_validate: Mock
+    ) -> None:
+        """Should return paths when multiple provided."""
+        from ccg.cli import change_to_working_directory
+
+        mock_exists.return_value = True
+        mock_isdir.return_value = False
+
+        result = change_to_working_directory(["file1.py", "file2.py"])
+
+        assert result == ["file1.py", "file2.py"]
+
+    def test_none_paths_returns_none(self) -> None:
+        """Should return None when no paths provided."""
+        from ccg.cli import change_to_working_directory
+
+        result = change_to_working_directory(None)
+
+        assert result is None

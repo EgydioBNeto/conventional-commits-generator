@@ -5,6 +5,7 @@ import subprocess
 import tempfile
 from typing import Any, List, Optional, Tuple, cast
 
+from ccg.config import GIT_CONFIG
 from ccg.utils import (
     print_error,
     print_info,
@@ -14,15 +15,13 @@ from ccg.utils import (
     print_warning,
 )
 
-DEFAULT_GIT_TIMEOUT = 60
-
 
 def run_git_command(
     command: List[str],
     error_message: str,
     success_message: Optional[str] = None,
     show_output: bool = False,
-    timeout: int = DEFAULT_GIT_TIMEOUT,
+    timeout: int = GIT_CONFIG.DEFAULT_TIMEOUT,
 ) -> Tuple[bool, Any]:
     """Execute a git command with error handling and output capture.
 
@@ -142,6 +141,35 @@ def git_commit(commit_message: str) -> bool:
     return success
 
 
+def get_remote_name() -> Optional[str]:
+    """Get the name of the primary git remote.
+
+    Retrieves the first configured remote name (typically 'origin').
+    This helper function eliminates code duplication across git operations
+    that need to know the remote name.
+
+    Returns:
+        Remote name as string, or None if no remote configured
+
+    Examples:
+        >>> get_remote_name()
+        'origin'
+
+    Note:
+        Returns the first remote in the list. If multiple remotes exist,
+        this returns the first one alphabetically.
+    """
+    success, output = run_git_command(
+        ["git", "remote"], "Failed to get remote name", show_output=True
+    )
+
+    if not success or not output:
+        print_error("No remote repository configured")
+        return None
+
+    return str(output.split()[0])
+
+
 def handle_upstream_error(branch_name: str, remote_name: str, error_output: str) -> bool:
     """Handle git push errors related to missing upstream branch configuration.
 
@@ -196,15 +224,9 @@ def git_push(set_upstream: bool = False, force: bool = False) -> bool:
         print_error("Failed to determine current branch name")
         return False
 
-    success, remote_output = run_git_command(
-        ["git", "remote"], "Failed to get remote name", show_output=True
-    )
-
-    if not success or not remote_output:
-        print_error("No remote repository configured")
+    remote_name = get_remote_name()
+    if not remote_name:
         return False
-
-    remote_name = remote_output.split()[0]
 
     if set_upstream:
         command = ["git", "push", "--set-upstream"]
@@ -295,15 +317,9 @@ def push_tag(tag_name: str) -> bool:
     """
     print_process(f"Pushing tag '{tag_name}' to remote...")
 
-    success, output = run_git_command(
-        ["git", "remote"], "Failed to get remote name", show_output=True
-    )
-
-    if not success or not output:
-        print_error("No remote repository configured")
+    remote_name = get_remote_name()
+    if not remote_name:
         return False
-
-    remote_name = output.split()[0]
 
     success, _ = run_git_command(
         ["git", "push", remote_name, tag_name],
@@ -369,15 +385,10 @@ def pull_from_remote() -> bool:
     """
     print_process("Pulling latest changes from remote...")
 
-    success, output = run_git_command(
-        ["git", "remote"], "Failed to get remote name", show_output=True
-    )
-
-    if not success or not output:
-        print_error("No remote repository configured")
+    remote_name = get_remote_name()
+    if not remote_name:
         return False
 
-    remote_name = output.split()[0]
     branch_name = get_current_branch()
     if not branch_name:
         print_error("Failed to determine current branch name")
@@ -634,6 +645,10 @@ def is_path_in_repository(path: str, repo_root: str) -> bool:
     Returns:
         True if path is within repository, False otherwise
     """
+    # Return False if repo_root is empty or path is empty
+    if not repo_root or not path:
+        return False
+
     abs_path = os.path.abspath(path)
     abs_repo_root = os.path.abspath(repo_root)
 
@@ -662,14 +677,9 @@ def branch_exists_on_remote(branch_name: str) -> bool:
     Note:
         Uses 30 second timeout for ls-remote operation as it requires network access
     """
-    success, output = run_git_command(
-        ["git", "remote"], "Failed to get remote name", show_output=True
-    )
-
-    if not success or not output:
+    remote_name = get_remote_name()
+    if not remote_name:
         return False
-
-    remote_name = output.split()[0]
 
     success, output = run_git_command(
         ["git", "ls-remote", "--heads", remote_name, branch_name],
