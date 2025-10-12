@@ -24,7 +24,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - remove 3.8 python references ([d529a0b])
 - update labeler and fix test ([a2322f1])
 
-
 ## [2.2.5] - 2025-10-04
 
 ### ✨ Added
@@ -32,7 +31,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - feat(cli): add repository/branch display and path validation ([46368f4])
 - **cli**: add repository/branch display and path validation ([f1ab585])
 
-### ♻️ Changed
+### 🔨 Changed
 
 - change workflows name [skip-release] ([999a730])
 
@@ -61,7 +60,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Update SECURITY.md [skip-release] ([c08867f])
 - Update issue templates [skip-release] ([26998c4])
 
-
 ## [2.2.4] - 2025-08-30
 
 ### 🔧 Maintenance
@@ -72,7 +70,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Create dependabot.yml ([ebbc56e])
 
-
 ## [2.2.3] - 2025-08-30
 
 ### 📦 Other
@@ -80,20 +77,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Update FUNDING.yml ([e455c2f])
 - Create FUNDING.yml ([1d9bfb5])
 
-
 ## [2.2.2] - 2025-08-29
 
 ### 🔧 Maintenance
 
 - change emoji to code ([5954188])
 
-
 ## [2.2.1] - 2025-08-29
 
 ### 🐛 Fixed
 
 - some fixes ([e8a7c82])
-
 
 ## [2.2.0] - 2025-08-29
 
@@ -103,7 +97,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - some updates ([f45fd74])
 - some updates ([f14189a])
 
-### ♻️ Changed
+### 🔨 Changed
 
 - **ux**: sanitizing and adapting ([a9ca921])
 
@@ -120,4 +114,3 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### 🔧 Maintenance
 
 - some updates ([816c778])
-

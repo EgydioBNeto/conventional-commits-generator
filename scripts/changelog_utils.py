@@ -100,7 +100,9 @@ def parse_commit_message(subject: str, body: str) -> Dict[str, str]:
     }
 
 
-def categorize_commits(commits: List[Tuple[str, str, str, str]]) -> Dict[str, List[Dict]]:
+def categorize_commits(
+    commits: List[Tuple[str, str, str, str]],
+) -> Dict[str, List[Dict]]:
     """Categorize commits by type.
 
     Args:
@@ -161,7 +163,7 @@ def categorize_commits(commits: List[Tuple[str, str, str, str]]) -> Dict[str, Li
 CHANGELOG_SECTION_ORDER = [
     ("breaking", "💥 BREAKING CHANGES"),
     ("added", "✨ Added"),
-    ("changed", "♻️ Changed"),
+    ("changed", "🔨 Changed"),
     ("fixed", "🐛 Fixed"),
     ("documentation", "📚 Documentation"),
     ("tests", "🧪 Tests"),

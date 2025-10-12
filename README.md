@@ -108,7 +108,7 @@ Repository: my-project  Branch: main
 1. ✨ feat     - A new feature
 2. 🐛 fix      - A bug fix
 3. 🔧 chore    - Maintenance tasks
-4. ♻️ refactor - Code refactoring
+4. 🔨 refactor - Code refactoring
 5. 💄 style    - Style changes
 6. 📚 docs     - Documentation
 ...
@@ -167,7 +167,7 @@ Do you want to push these changes? (Y/n): y
 | `feat`     | ✨    | A new feature             |
 | `fix`      | 🐛    | A bug fix                 |
 | `chore`    | 🔧    | Maintenance tasks         |
-| `refactor` | ♻️    | Code refactoring          |
+| `refactor` | 🔨    | Code refactoring          |
 | `style`    | 💄    | Style/formatting changes  |
 | `docs`     | 📚    | Documentation changes     |
 | `test`     | 🧪    | Adding or modifying tests |
