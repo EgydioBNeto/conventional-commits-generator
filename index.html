@@ -1,1 +1,1234 @@
-<!doctype html><html lang=en class=no-js> <head><meta charset=utf-8><meta name=viewport content="width=device-width,initial-scale=1"><meta name=description content="Interactive CLI tool for creating standardized commit messages following the Conventional Commits specification"><meta name=author content="Egydio Bolonhezi"><link href=https://egydioBNeto.github.io/conventional-commits-generator/ rel=canonical><link href=home/quick-start/ rel=next><link rel=icon href=assets/images/favicon.png><meta name=generator content="mkdocs-1.6.1, mkdocs-material-9.6.21"><title>Overview - Conventional Commits Generator</title><link rel=stylesheet href=assets/stylesheets/main.2a3383ac.min.css><link rel=stylesheet href=assets/stylesheets/palette.06af60db.min.css><link rel=preconnect href=https://fonts.gstatic.com crossorigin><link rel=stylesheet href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback"><style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style><script>__md_scope=new URL(".",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script></head> <body dir=ltr data-md-color-scheme=slate data-md-color-primary=pink data-md-color-accent=deep-purple> <input class=md-toggle data-md-toggle=drawer type=checkbox id=__drawer autocomplete=off> <input class=md-toggle data-md-toggle=search type=checkbox id=__search autocomplete=off> <label class=md-overlay for=__drawer></label> <div data-md-component=skip> <a href=#overview class=md-skip> Skip to content </a> </div> <div data-md-component=announce> </div> <header class="md-header md-header--shadow md-header--lifted" data-md-component=header> <nav class="md-header__inner md-grid" aria-label=Header> <a href=. title="Conventional Commits Generator" class="md-header__button md-logo" aria-label="Conventional Commits Generator" data-md-component=logo> <svg xmlns=http://www.w3.org/2000/svg viewbox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg> </a> <label class="md-header__button md-icon" for=__drawer> <svg xmlns=http://www.w3.org/2000/svg viewbox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg> </label> <div class=md-header__title data-md-component=header-title> <div class=md-header__ellipsis> <div class=md-header__topic> <span class=md-ellipsis> Conventional Commits Generator </span> </div> <div class=md-header__topic data-md-component=header-topic> <span class=md-ellipsis> Overview </span> </div> </div> </div> <form class=md-header__option data-md-component=palette> <input class=md-option data-md-color-media data-md-color-scheme=slate data-md-color-primary=pink data-md-color-accent=deep-purple aria-label="Switch to light mode" type=radio name=__palette id=__palette_0> <label class="md-header__button md-icon" title="Switch to light mode" for=__palette_1 hidden> <svg xmlns=http://www.w3.org/2000/svg viewbox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg> </label> <input class=md-option data-md-color-media data-md-color-scheme=default data-md-color-primary=pink data-md-color-accent=deep-purple aria-label="Switch to dark mode" type=radio name=__palette id=__palette_1> <label class="md-header__button md-icon" title="Switch to dark mode" for=__palette_0 hidden> <svg xmlns=http://www.w3.org/2000/svg viewbox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg> </label> </form> <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script> <label class="md-header__button md-icon" for=__search> <svg xmlns=http://www.w3.org/2000/svg viewbox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg> </label> <div class=md-search data-md-component=search role=dialog> <label class=md-search__overlay for=__search></label> <div class=md-search__inner role=search> <form class=md-search__form name=search> <input type=text class=md-search__input name=query aria-label=Search placeholder=Search autocapitalize=off autocorrect=off autocomplete=off spellcheck=false data-md-component=search-query required> <label class="md-search__icon md-icon" for=__search> <svg xmlns=http://www.w3.org/2000/svg viewbox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg> <svg xmlns=http://www.w3.org/2000/svg viewbox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg> </label> <nav class=md-search__options aria-label=Search> <a href=javascript:void(0) class="md-search__icon md-icon" title=Share aria-label=Share data-clipboard data-clipboard-text data-md-component=search-share tabindex=-1> <svg xmlns=http://www.w3.org/2000/svg viewbox="0 0 24 24"><path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9a3 3 0 0 0-3 3 3 3 0 0 0 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.15c-.05.21-.08.43-.08.66 0 1.61 1.31 2.91 2.92 2.91s2.92-1.3 2.92-2.91A2.92 2.92 0 0 0 18 16.08"/></svg> </a> <button type=reset class="md-search__icon md-icon" title=Clear aria-label=Clear tabindex=-1> <svg xmlns=http://www.w3.org/2000/svg viewbox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg> </button> </nav> <div class=md-search__suggest data-md-component=search-suggest></div> </form> <div class=md-search__output> <div class=md-search__scrollwrap tabindex=0 data-md-scrollfix> <div class=md-search-result data-md-component=search-result> <div class=md-search-result__meta> Initializing search </div> <ol class=md-search-result__list role=presentation></ol> </div> </div> </div> </div> </div> <div class=md-header__source> <a href=https://github.com/EgydioBNeto/conventional-commits-generator title="Go to repository" class=md-source data-md-component=source> <div class="md-source__icon md-icon"> <svg xmlns=http://www.w3.org/2000/svg viewbox="0 0 512 512"><!-- Font Awesome Free 7.0.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg> </div> <div class=md-source__repository> EgydioBNeto/conventional-commits-generator </div> </a> </div> </nav> <nav class=md-tabs aria-label=Tabs data-md-component=tabs> <div class=md-grid> <ul class=md-tabs__list> <li class="md-tabs__item md-tabs__item--active"> <a href=. class=md-tabs__link> Home </a> </li> <li class=md-tabs__item> <a href=user-guide/installation/ class=md-tabs__link> User Guide </a> </li> <li class=md-tabs__item> <a href=community/contributing/ class=md-tabs__link> Community </a> </li> </ul> </div> </nav> </header> <div class=md-container data-md-component=container> <main class=md-main data-md-component=main> <div class="md-main__inner md-grid"> <div class="md-sidebar md-sidebar--primary" data-md-component=sidebar data-md-type=navigation> <div class=md-sidebar__scrollwrap> <div class=md-sidebar__inner> <nav class="md-nav md-nav--primary md-nav--lifted" aria-label=Navigation data-md-level=0> <label class=md-nav__title for=__drawer> <a href=. title="Conventional Commits Generator" class="md-nav__button md-logo" aria-label="Conventional Commits Generator" data-md-component=logo> <svg xmlns=http://www.w3.org/2000/svg viewbox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg> </a> Conventional Commits Generator </label> <div class=md-nav__source> <a href=https://github.com/EgydioBNeto/conventional-commits-generator title="Go to repository" class=md-source data-md-component=source> <div class="md-source__icon md-icon"> <svg xmlns=http://www.w3.org/2000/svg viewbox="0 0 512 512"><!-- Font Awesome Free 7.0.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg> </div> <div class=md-source__repository> EgydioBNeto/conventional-commits-generator </div> </a> </div> <ul class=md-nav__list data-md-scrollfix> <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested"> <input class="md-nav__toggle md-toggle " type=checkbox id=__nav_1 checked> <label class=md-nav__link for=__nav_1 id=__nav_1_label tabindex> <span class=md-ellipsis> Home </span> <span class="md-nav__icon md-icon"></span> </label> <nav class=md-nav data-md-level=1 aria-labelledby=__nav_1_label aria-expanded=true> <label class=md-nav__title for=__nav_1> <span class="md-nav__icon md-icon"></span> Home </label> <ul class=md-nav__list data-md-scrollfix> <li class="md-nav__item md-nav__item--active"> <input class="md-nav__toggle md-toggle" type=checkbox id=__toc> <label class="md-nav__link md-nav__link--active" for=__toc> <span class=md-ellipsis> Overview </span> <span class="md-nav__icon md-icon"></span> </label> <a href=. class="md-nav__link md-nav__link--active"> <span class=md-ellipsis> Overview </span> </a> <nav class="md-nav md-nav--secondary" aria-label="Table of contents"> <label class=md-nav__title for=__toc> <span class="md-nav__icon md-icon"></span> Table of contents </label> <ul class=md-nav__list data-md-component=toc data-md-scrollfix> <li class=md-nav__item> <a href=#what-is-ccg class=md-nav__link> <span class=md-ellipsis> What is CCG? </span> </a> </li> <li class=md-nav__item> <a href=#key-features class=md-nav__link> <span class=md-ellipsis> Key Features </span> </a> </li> <li class=md-nav__item> <a href=#why-use-ccg class=md-nav__link> <span class=md-ellipsis> Why Use CCG? </span> </a> </li> </ul> </nav> </li> <li class=md-nav__item> <a href=home/quick-start/ class=md-nav__link> <span class=md-ellipsis> Quick Start </span> </a> </li> <li class=md-nav__item> <a href=home/commit-types/ class=md-nav__link> <span class=md-ellipsis> Commit Types </span> </a> </li> </ul> </nav> </li> <li class="md-nav__item md-nav__item--nested"> <input class="md-nav__toggle md-toggle " type=checkbox id=__nav_2> <label class=md-nav__link for=__nav_2 id=__nav_2_label tabindex=0> <span class=md-ellipsis> User Guide </span> <span class="md-nav__icon md-icon"></span> </label> <nav class=md-nav data-md-level=1 aria-labelledby=__nav_2_label aria-expanded=false> <label class=md-nav__title for=__nav_2> <span class="md-nav__icon md-icon"></span> User Guide </label> <ul class=md-nav__list data-md-scrollfix> <li class=md-nav__item> <a href=user-guide/installation/ class=md-nav__link> <span class=md-ellipsis> Installation </span> </a> </li> <li class=md-nav__item> <a href=user-guide/quick-start/ class=md-nav__link> <span class=md-ellipsis> Quick Start </span> </a> </li> <li class=md-nav__item> <a href=user-guide/usage/ class=md-nav__link> <span class=md-ellipsis> Usage </span> </a> </li> <li class=md-nav__item> <a href=user-guide/faq/ class=md-nav__link> <span class=md-ellipsis> FAQ </span> </a> </li> </ul> </nav> </li> <li class="md-nav__item md-nav__item--nested"> <input class="md-nav__toggle md-toggle " type=checkbox id=__nav_3> <label class=md-nav__link for=__nav_3 id=__nav_3_label tabindex=0> <span class=md-ellipsis> Community </span> <span class="md-nav__icon md-icon"></span> </label> <nav class=md-nav data-md-level=1 aria-labelledby=__nav_3_label aria-expanded=false> <label class=md-nav__title for=__nav_3> <span class="md-nav__icon md-icon"></span> Community </label> <ul class=md-nav__list data-md-scrollfix> <li class=md-nav__item> <a href=community/contributing/ class=md-nav__link> <span class=md-ellipsis> Contributing </span> </a> </li> <li class=md-nav__item> <a href=community/code-of-conduct/ class=md-nav__link> <span class=md-ellipsis> Code of Conduct </span> </a> </li> <li class=md-nav__item> <a href=community/security/ class=md-nav__link> <span class=md-ellipsis> Security </span> </a> </li> <li class=md-nav__item> <a href=community/changelog/ class=md-nav__link> <span class=md-ellipsis> Changelog </span> </a> </li> </ul> </nav> </li> </ul> </nav> </div> </div> </div> <div class="md-sidebar md-sidebar--secondary" data-md-component=sidebar data-md-type=toc> <div class=md-sidebar__scrollwrap> <div class=md-sidebar__inner> <nav class="md-nav md-nav--secondary" aria-label="Table of contents"> <label class=md-nav__title for=__toc> <span class="md-nav__icon md-icon"></span> Table of contents </label> <ul class=md-nav__list data-md-component=toc data-md-scrollfix> <li class=md-nav__item> <a href=#what-is-ccg class=md-nav__link> <span class=md-ellipsis> What is CCG? </span> </a> </li> <li class=md-nav__item> <a href=#key-features class=md-nav__link> <span class=md-ellipsis> Key Features </span> </a> </li> <li class=md-nav__item> <a href=#why-use-ccg class=md-nav__link> <span class=md-ellipsis> Why Use CCG? </span> </a> </li> </ul> </nav> </div> </div> </div> <div class=md-content data-md-component=content> <article class="md-content__inner md-typeset"> <h1 id=overview>Overview<a class=headerlink href=#overview title="Permanent link">&para;</a></h1> <div align=center> <img src=https://github.com/EgydioBNeto/conventional-commits-generator/assets/84047984/53f38934-16bb-40f6-aff7-a5800c4bd706 width=300px> <p> <a href=https://www.python.org/downloads/ ><img src=https://img.shields.io/badge/python-3.9+-blue.svg alt="Python 3.9+"></a> <a href=https://badge.fury.io/py/conventional-commits-generator><img src=https://badge.fury.io/py/conventional-commits-generator.svg alt="PyPI version"></a> <a href=https://opensource.org/licenses/MIT><img src=https://img.shields.io/badge/License-MIT-yellow.svg alt="License: MIT"></a> <a href=https://github.com/EgydioBNeto/conventional-commits-generator/actions><img src=https://github.com/EgydioBNeto/conventional-commits-generator/workflows/Tests/badge.svg alt=Tests></a> </p> </div> <hr> <h2 id=what-is-ccg>What is CCG?<a class=headerlink href=#what-is-ccg title="Permanent link">&para;</a></h2> <p><strong>Conventional Commits Generator (CCG)</strong> is a powerful command-line interface tool that helps developers create standardized git commit messages following the <a href=https://www.conventionalcommits.org/ >Conventional Commits</a> specification. Say goodbye to inconsistent commit messages and embrace a professional, standardized workflow.</p> <hr> <h2 id=key-features>Key Features<a class=headerlink href=#key-features title="Permanent link">&para;</a></h2> <ul> <li> <p><strong>Interactive Interface</strong> - Beautiful, user-friendly prompts guide you through creating perfect commit messages every time</p> </li> <li> <p><strong>Emoji Support</strong> - Optional GitHub-compatible emoji codes make your commits visually expressive and easy to scan</p> </li> <li> <p><strong>Advanced Git Operations</strong> - Edit, delete, and manage commits with intelligent history rewriting and safety checks</p> </li> <li> <p><strong>Tag Management</strong> - Create and push semantic version tags with annotated messages</p> </li> <li> <p><strong>Flexible Workflows</strong> - Work with specific paths, multiple repositories, and various git workflows seamlessly</p> </li> <li> <p><strong>Pre-commit Integration</strong> - Automatic detection and execution of pre-commit hooks for code quality assurance</p> </li> </ul> <hr> <h2 id=why-use-ccg>Why Use CCG?<a class=headerlink href=#why-use-ccg title="Permanent link">&para;</a></h2> <div class="admonition success"> <p class=admonition-title>Benefits</p> <ul> <li><strong>Consistency</strong>: Standardized commits across your team</li> <li><strong>Clarity</strong>: Clear commit messages make code review easier</li> <li><strong>Safety</strong>: Built-in validation and confirmation prompts</li> </ul> </div> <div class="admonition tip"> <p class=admonition-title>Perfect For</p> <ul> <li>Open source projects</li> <li>Team collaborations</li> <li>Professional development workflows</li> <li>Projects using semantic versioning</li> <li>Automated release processes</li> </ul> </div> </article> </div> <script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script> </div> <button type=button class="md-top md-icon" data-md-component=top hidden> <svg xmlns=http://www.w3.org/2000/svg viewbox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg> Back to top </button> </main> <footer class=md-footer> <nav class="md-footer__inner md-grid" aria-label=Footer> <a href=home/quick-start/ class="md-footer__link md-footer__link--next" aria-label="Next: Quick Start"> <div class=md-footer__title> <span class=md-footer__direction> Next </span> <div class=md-ellipsis> Quick Start </div> </div> <div class="md-footer__button md-icon"> <svg xmlns=http://www.w3.org/2000/svg viewbox="0 0 24 24"><path d="M4 11v2h12l-5.5 5.5 1.42 1.42L19.84 12l-7.92-7.92L10.5 5.5 16 11z"/></svg> </div> </a> </nav> <div class="md-footer-meta md-typeset"> <div class="md-footer-meta__inner md-grid"> <div class=md-copyright> <div class=md-copyright__highlight> Copyright &copy; 2025 Egydio Bolonhezi </div> Made with <a href=https://squidfunk.github.io/mkdocs-material/ target=_blank rel=noopener> Material for MkDocs </a> </div> <div class=md-social> <a href=https://github.com/EgydioBNeto/conventional-commits-generator target=_blank rel=noopener title=github.com class=md-social__link> <svg xmlns=http://www.w3.org/2000/svg viewbox="0 0 512 512"><!-- Font Awesome Free 7.0.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg> </a> <a href=https://pypi.org/project/conventional-commits-generator/ target=_blank rel=noopener title=pypi.org class=md-social__link> <svg xmlns=http://www.w3.org/2000/svg viewbox="0 0 448 512"><!-- Font Awesome Free 7.0.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.8 200.5c-7.7-30.9-22.3-54.2-53.4-54.2h-40.1v47.4c0 36.8-31.2 67.8-66.8 67.8H172.7c-29.2 0-53.4 25-53.4 54.3v101.8c0 29 25.2 46 53.4 54.3 33.8 9.9 66.3 11.7 106.8 0 26.9-7.8 53.4-23.5 53.4-54.3v-40.7H226.2v-13.6h160.2c31.1 0 42.6-21.7 53.4-54.2 11.2-33.5 10.7-65.7 0-108.6M286.2 444.7a20.4 20.4 0 1 1 0-40.7 20.4 20.4 0 1 1 0 40.7M167.8 248.1h106.8c29.7 0 53.4-24.5 53.4-54.3V91.9c0-29-24.4-50.7-53.4-55.6-35.8-5.9-74.7-5.6-106.8.1-45.2 8-53.4 24.7-53.4 55.6v40.7h106.9v13.6h-147c-31.1 0-58.3 18.7-66.8 54.2-9.8 40.7-10.2 66.1 0 108.6 7.6 31.6 25.7 54.2 56.8 54.2H101v-48.8c0-35.3 30.5-66.4 66.8-66.4m-6.6-183.4a20.4 20.4 0 1 1 0 40.8 20.4 20.4 0 1 1 0-40.8"/></svg> </a> </div> </div> </div> </footer> </div> <div class=md-dialog data-md-component=dialog> <div class="md-dialog__inner md-typeset"></div> </div> <script id=__config type=application/json>{"base": ".", "features": ["navigation.tabs", "navigation.tabs.sticky", "navigation.sections", "navigation.top", "navigation.footer", "search.suggest", "search.highlight", "search.share", "content.code.copy"], "search": "assets/javascripts/workers/search.973d3a69.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script> <script src=assets/javascripts/bundle.f55a23d4.min.js></script> </body> </html>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Conventional Commits Generator (CCG)</title>
+    <meta name="description" content="Interactive CLI tool for creating standardized commit messages following the conventional commits format.">
+    <meta name="author" content="EgydioBNeto">
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" sizes="32x32" href="https://github.com/EgydioBNeto/conventional-commits-generator/assets/84047984/53f38934-16bb-40f6-aff7-a5800c4bd706">
+    <link rel="icon" type="image/png" sizes="16x16" href="https://github.com/EgydioBNeto/conventional-commits-generator/assets/84047984/53f38934-16bb-40f6-aff7-a5800c4bd706">
+    <link rel="apple-touch-icon" href="https://github.com/EgydioBNeto/conventional-commits-generator/assets/84047984/53f38934-16bb-40f6-aff7-a5800c4bd706">
+
+    <!-- Open Graph -->
+    <meta property="og:title" content="Conventional Commits Generator (CCG)">
+    <meta property="og:description" content="Interactive CLI tool for creating standardized commit messages">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://egydiobneto.github.io/conventional-commits-generator/">
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Conventional Commits Generator (CCG)">
+    <meta name="twitter:description" content="Interactive CLI tool for creating standardized commit messages">
+
+    <style>
+        :root {
+            --primary: 352 95% 68%;
+            --primary-dark: 352 95% 58%;
+            --accent: 280 100% 70%;
+            --background: 222 84% 4.9%;
+            --surface: 217 32% 17.5%;
+            --text: 210 40% 98%;
+            --text-muted: 215 20% 65%;
+            --border: 217 32% 17.5%;
+            --success: 142 76% 36%;
+            --warning: 48 96% 53%;
+
+            --gradient-primary: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--accent)));
+            --gradient-surface: linear-gradient(145deg, hsl(var(--surface)), hsl(217 32% 22%));
+            --shadow-glow: 0 0 40px hsl(var(--primary) / 0.3);
+            --shadow-card: 0 10px 30px -10px hsl(0 0% 0% / 0.5);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: hsl(var(--background));
+            color: hsl(var(--text));
+            line-height: 1.6;
+            overflow-x: hidden;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 2rem;
+        }
+
+        /* Header */
+        header {
+            padding: 2rem 0;
+            position: relative;
+        }
+
+        .hero {
+            text-align: center;
+            padding: 4rem 0 6rem;
+            position: relative;
+        }
+
+        .hero::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 200px;
+            height: 200px;
+            background: var(--gradient-primary);
+            border-radius: 50%;
+            filter: blur(60px);
+            opacity: 0.3;
+            z-index: -1;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .logo img {
+            height: 200px;
+            width: auto;
+        }
+
+        .logo-text {
+            font-size: 4rem;
+            font-weight: 900;
+            background: var(--gradient-primary);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            font-family: 'Courier New', monospace;
+            letter-spacing: -0.05em;
+        }
+
+        .tagline {
+            font-size: 1.5rem;
+            color: hsl(var(--text-muted));
+            margin-bottom: 3rem;
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        /* Buttons */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 1rem 2rem;
+            border: none;
+            border-radius: 0.75rem;
+            font-size: 1.1rem;
+            font-weight: 600;
+            text-decoration: none;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn-primary {
+            background: var(--gradient-primary);
+            color: white;
+            box-shadow: var(--shadow-glow);
+        }
+
+        .btn-secondary {
+            background: hsl(var(--surface));
+            color: hsl(var(--text));
+            border: 2px solid hsl(var(--border));
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 20px 40px -10px hsl(var(--primary) / 0.4);
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        /* Cards */
+        .card {
+            background: var(--gradient-surface);
+            border-radius: 1rem;
+            padding: 2rem;
+            border: 1px solid hsl(var(--border));
+            box-shadow: var(--shadow-card);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 20px 50px -10px hsl(0 0% 0% / 0.6);
+        }
+
+        /* Sections */
+        section {
+            padding: 4rem 0;
+        }
+
+        .section-title {
+            font-size: 2.5rem;
+            font-weight: 700;
+            text-align: center;
+            margin-bottom: 3rem;
+            background: var(--gradient-primary);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        /* Features Grid */
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+            margin-top: 3rem;
+        }
+
+        .feature-icon {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+        }
+
+        .feature-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            color: hsl(var(--primary));
+        }
+
+        /* Code Block */
+        .code-block {
+            background: hsl(217 32% 12%);
+            border-radius: 0.75rem;
+            padding: 2rem;
+            border: 1px solid hsl(var(--border));
+            font-family: 'Courier New', monospace;
+            overflow-x: auto;
+            position: relative;
+        }
+
+        .code-block::before {
+            content: '$ ';
+            color: hsl(var(--success));
+            font-weight: bold;
+        }
+
+        .copy-button {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            background: hsl(var(--surface));
+            border: 1px solid hsl(var(--border));
+            color: hsl(var(--text));
+            padding: 0.5rem;
+            border-radius: 0.5rem;
+            cursor: pointer;
+            font-size: 0.9rem;
+            opacity: 0;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .code-block:hover .copy-button {
+            opacity: 1;
+        }
+
+        .copy-button:hover {
+            background: hsl(var(--primary));
+            color: white;
+            transform: scale(1.05);
+        }
+
+        .copy-button.copied {
+            background: hsl(var(--success));
+            color: white;
+        }
+
+        /* Interactive Generator */
+        .generator {
+            background: var(--gradient-surface);
+            border-radius: 1rem;
+            padding: 2rem;
+            border: 1px solid hsl(var(--border));
+            margin: 2rem 0;
+        }
+
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .form-label {
+            display: block;
+            margin-bottom: 0.5rem;
+            color: hsl(var(--primary));
+            font-weight: 600;
+        }
+
+        .form-select, .form-input {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid hsl(var(--border));
+            border-radius: 0.5rem;
+            background: hsl(var(--background));
+            color: hsl(var(--text));
+            font-family: inherit;
+        }
+
+        .form-input::placeholder {
+            color: hsl(var(--text-muted));
+        }
+
+        .generated-commit {
+            background: hsl(217 32% 8%);
+            border: 1px solid hsl(var(--success));
+            border-radius: 0.5rem;
+            padding: 1rem;
+            font-family: 'Courier New', monospace;
+            color: hsl(var(--success));
+            margin-top: 1rem;
+            word-break: break-all;
+        }
+
+        .code-highlight {
+            color: hsl(var(--primary));
+        }
+
+        /* Installation Steps */
+        .install-steps {
+            display: grid;
+            gap: 1.5rem;
+            margin-top: 2rem;
+        }
+
+        .install-step {
+            display: flex;
+            align-items: flex-start;
+            gap: 1rem;
+        }
+
+        .step-number {
+            background: var(--gradient-primary);
+            color: white;
+            width: 2.5rem;
+            height: 2.5rem;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            flex-shrink: 0;
+        }
+
+        /* Demo Terminal */
+        .terminal {
+            background: hsl(217 32% 8%);
+            border-radius: 0.75rem;
+            overflow: hidden;
+            border: 1px solid hsl(var(--border));
+            margin: 2rem 0;
+        }
+
+        .terminal-header {
+            background: hsl(217 32% 15%);
+            padding: 0.75rem 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .terminal-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+        }
+
+        .dot-red { background: #ff5f56; }
+        .dot-yellow { background: #ffbd2e; }
+        .dot-green { background: #27ca3f; }
+
+        .terminal-content {
+            padding: 2rem;
+            font-family: 'Courier New', monospace;
+            line-height: 1.8;
+            overflow-x: auto;
+            max-width: 100%;
+        }
+
+        .terminal-content pre {
+            margin: 0;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            overflow-x: auto;
+        }
+
+        .terminal-prompt {
+            color: hsl(var(--success));
+        }
+
+        .terminal-command {
+            color: hsl(var(--text));
+        }
+
+        .terminal-output {
+            color: hsl(var(--text-muted));
+            margin-left: 1rem;
+        }
+
+        /* Footer */
+        footer {
+            background: hsl(217 32% 12%);
+            padding: 3rem 0;
+            text-align: center;
+            border-top: 1px solid hsl(var(--border));
+        }
+
+        .footer-links {
+            display: flex;
+            justify-content: center;
+            gap: 2rem;
+            margin-bottom: 2rem;
+            flex-wrap: wrap;
+        }
+
+        .footer-link {
+            color: hsl(var(--text-muted));
+            text-decoration: none;
+            transition: color 0.3s ease;
+        }
+
+        .footer-link:hover {
+            color: hsl(var(--primary));
+        }
+
+        /* Mobile Navigation */
+        .mobile-menu {
+            display: none;
+            position: fixed;
+            top: 1rem;
+            right: 1rem;
+            z-index: 1000;
+            background: hsl(var(--surface));
+            border: 1px solid hsl(var(--border));
+            border-radius: 0.5rem;
+            padding: 0.5rem;
+            cursor: pointer;
+        }
+
+        .mobile-menu span {
+            display: block;
+            width: 25px;
+            height: 3px;
+            background: hsl(var(--text));
+            margin: 4px 0;
+            transition: all 0.3s ease;
+        }
+
+        @media (max-width: 768px) {
+            .mobile-menu {
+                display: block;
+            }
+        }
+
+        /* Ensure images are responsive */
+        img {
+            max-width: 100%;
+            height: auto;
+        }
+
+        /* Improve touch targets for mobile */
+        @media (hover: none) and (pointer: coarse) {
+            .btn, .copy-button, .footer-link {
+                min-height: 44px;
+                min-width: 44px;
+            }
+        }
+
+        /* Horizontal scroll prevention */
+        html, body {
+            overflow-x: hidden;
+            max-width: 100%;
+        }
+
+        /* Better code blocks on mobile */
+        @media (max-width: 768px) {
+            .code-block {
+                overflow-x: auto;
+                -webkit-overflow-scrolling: touch;
+            }
+        }
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .animate-fadeInUp {
+            animation: fadeInUp 0.8s ease-out forwards;
+        }
+
+        /* Responsive */
+        @media (max-width: 1200px) {
+            .container {
+                max-width: 95%;
+            }
+
+            .features-grid {
+                grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            }
+        }
+
+        @media (max-width: 992px) {
+            .hero {
+                padding: 3rem 0 4rem;
+            }
+
+            .logo-text {
+                font-size: 3.5rem;
+            }
+
+            .tagline {
+                font-size: 1.35rem;
+            }
+
+            .section-title {
+                font-size: 2.2rem;
+            }
+
+            .features-grid {
+                grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+                gap: 1.5rem;
+            }
+
+            .terminal {
+                margin: 1.5rem 0;
+            }
+
+            .terminal-content {
+                padding: 1.5rem;
+                font-size: 0.9rem;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .logo {
+                flex-direction: column;
+                gap: 0.5rem;
+            }
+
+            .logo img {
+                height: 120px;
+            }
+
+            .logo-text {
+                font-size: 2.8rem;
+            }
+
+            .tagline {
+                font-size: 1.2rem;
+                padding: 0 1rem;
+            }
+
+            .btn-group {
+                flex-direction: column;
+                align-items: stretch;
+                width: 100%;
+                max-width: 300px;
+                margin: 0 auto;
+            }
+
+            .btn {
+                width: 100%;
+                justify-content: center;
+                padding: 0.9rem 1.5rem;
+                font-size: 1rem;
+            }
+
+            .features-grid {
+                grid-template-columns: 1fr;
+                gap: 1.2rem;
+            }
+
+            .card {
+                padding: 1.5rem;
+            }
+
+            .feature-icon {
+                font-size: 2.5rem;
+            }
+
+            .feature-title {
+                font-size: 1.3rem;
+            }
+
+            .section-title {
+                font-size: 2rem;
+                margin-bottom: 2rem;
+            }
+
+            section {
+                padding: 3rem 0;
+            }
+
+            .container {
+                padding: 0 1rem;
+            }
+
+            .code-block {
+                padding: 1.5rem;
+                font-size: 0.9rem;
+                word-break: break-all;
+            }
+
+            .install-step {
+                flex-direction: column;
+                text-align: center;
+            }
+
+            .step-number {
+                margin: 0 auto 1rem;
+            }
+
+            .terminal-content pre {
+                font-size: 0.75rem;
+                overflow-x: auto;
+            }
+
+            .footer-links {
+                flex-wrap: wrap;
+                gap: 1rem;
+            }
+        }
+
+        @media (max-width: 576px) {
+            .hero {
+                padding: 2rem 0 3rem;
+            }
+
+            .logo img {
+                height: 100px;
+            }
+
+            .logo-text {
+                font-size: 2.2rem;
+                letter-spacing: -0.03em;
+            }
+
+            .tagline {
+                font-size: 1.1rem;
+            }
+
+            .section-title {
+                font-size: 1.8rem;
+            }
+
+            .card {
+                padding: 1.25rem;
+            }
+
+            .feature-icon {
+                font-size: 2rem;
+                margin-bottom: 0.75rem;
+            }
+
+            .feature-title {
+                font-size: 1.2rem;
+                margin-bottom: 0.75rem;
+            }
+
+            .code-block {
+                padding: 1.2rem;
+                font-size: 0.85rem;
+            }
+
+            .copy-button {
+                top: 0.5rem;
+                right: 0.5rem;
+                padding: 0.4rem;
+                font-size: 0.8rem;
+            }
+
+            .terminal-header {
+                padding: 0.6rem 0.8rem;
+            }
+
+            .terminal-content {
+                padding: 1rem;
+            }
+
+            .terminal-content pre {
+                font-size: 0.65rem;
+            }
+
+            footer {
+                padding: 2rem 0;
+            }
+
+            .footer-links {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 1rem;
+                text-align: center;
+            }
+
+            .footer-link {
+                font-size: 0.95rem;
+            }
+        }
+
+        @media (max-width: 400px) {
+            .logo img {
+                height: 80px;
+            }
+
+            .logo-text {
+                font-size: 1.8rem;
+            }
+
+            .tagline {
+                font-size: 1rem;
+            }
+
+            .btn {
+                font-size: 0.95rem;
+                padding: 0.8rem 1.2rem;
+            }
+
+            .section-title {
+                font-size: 1.6rem;
+            }
+
+            .card {
+                padding: 1rem;
+            }
+
+            .code-block {
+                padding: 1rem;
+                font-size: 0.8rem;
+            }
+
+            .terminal-content pre {
+                font-size: 0.6rem;
+            }
+        }
+
+        /* Ultra small devices */
+        @media (max-width: 320px) {
+            .container {
+                padding: 0 0.75rem;
+            }
+
+            .logo img {
+                height: 70px;
+            }
+
+            .logo-text {
+                font-size: 1.5rem;
+            }
+
+            .tagline {
+                font-size: 0.95rem;
+            }
+
+            .btn {
+                font-size: 0.9rem;
+                padding: 0.75rem 1rem;
+            }
+
+            .section-title {
+                font-size: 1.4rem;
+            }
+
+            .card {
+                padding: 0.9rem;
+            }
+
+            .feature-icon {
+                font-size: 1.8rem;
+            }
+
+            .feature-title {
+                font-size: 1.1rem;
+            }
+
+            .terminal-content pre {
+                font-size: 0.55rem;
+            }
+        }
+
+        /* Landscape mode adjustments */
+        @media (max-height: 600px) and (orientation: landscape) {
+            .hero {
+                padding: 2rem 0;
+            }
+
+            .logo img {
+                height: 80px;
+            }
+
+            .logo-text {
+                font-size: 2rem;
+            }
+
+            section {
+                padding: 2rem 0;
+            }
+        }
+
+        /* Print styles */
+        @media print {
+            .btn-group, .copy-button {
+                display: none;
+            }
+
+            body {
+                background: white;
+                color: black;
+            }
+
+            .card {
+                border: 1px solid #ddd;
+                box-shadow: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="container">
+            <div class="hero">
+                <div class="logo animate-fadeInUp">
+                    <img src="https://github.com/EgydioBNeto/conventional-commits-generator/assets/84047984/53f38934-16bb-40f6-aff7-a5800c4bd706" alt="CCG Logo">
+                </div>
+                <p class="tagline animate-fadeInUp">Interactive CLI tool for creating standardized commit messages following the conventional commits format</p>
+                <div class="btn-group animate-fadeInUp">
+                    <a href="./docs/" class="btn btn-secondary">
+                        📚 Documentation
+                    </a>
+                    <a href="https://pypi.org/project/conventional-commits-generator/" class="btn btn-secondary" target="_blank" rel="noopener noreferrer">
+                        📦 Install via PyPI
+                    </a>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main>
+        <section id="features" class="animate-fadeInUp">
+            <div class="container">
+                <h2 class="section-title">Main Features</h2>
+                <div class="features-grid">
+                    <div class="card animate-fadeInUp">
+                        <div class="feature-icon">✨</div>
+                        <h3 class="feature-title">Interactive CLI</h3>
+                        <p>User-friendly interface with interactive prompts for choosing commit types, scopes, and descriptions.</p>
+                    </div>
+                    <div class="card animate-fadeInUp">
+                        <div class="feature-icon">📏</div>
+                        <h3 class="feature-title">Conventional Commits</h3>
+                        <p>Strictly follows the conventional commits specification for consistent and semantic versioning.</p>
+                    </div>
+                    <div class="card animate-fadeInUp">
+                        <div class="feature-icon">🎨</div>
+                        <h3 class="feature-title">Emoji Support</h3>
+                        <p>GitHub-compatible emoji codes to make your commits more visual and organized.</p>
+                    </div>
+                    <div class="card animate-fadeInUp">
+                        <div class="feature-icon">✏️</div>
+                        <h3 class="feature-title">Commit Management</h3>
+                        <p>Edit or delete existing commits with interactive selection and safety checks.</p>
+                    </div>
+                    <div class="card animate-fadeInUp">
+                        <div class="feature-icon">🏷️</div>
+                        <h3 class="feature-title">Tag Creation</h3>
+                        <p>Create and push annotated or lightweight tags directly from the CLI.</p>
+                    </div>
+                    <div class="card animate-fadeInUp">
+                        <div class="feature-icon">🔄</div>
+                        <h3 class="feature-title">Git Integration</h3>
+                        <p>Complete Git workflow support including staging, committing, and pushing.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="demo" class="animate-fadeInUp">
+            <div class="container">
+                <h2 class="section-title">How It Works</h2>
+                <div class="terminal">
+                    <div class="terminal-header">
+                        <div class="terminal-dot dot-red"></div>
+                        <div class="terminal-dot dot-yellow"></div>
+                        <div class="terminal-dot dot-green"></div>
+                        <span style="margin-left: 1rem; color: hsl(var(--text-muted)); font-size: 0.9rem;">Terminal</span>
+                    </div>
+                    <div class="terminal-content">
+                        <div><span class="terminal-prompt">$</span> <span class="terminal-command">ccg</span></div>
+                        <div class="terminal-output">
+                            <div style="overflow-x: auto;">
+                                <pre> ________      ________      ________
+|\   ____\    |\   ____\    |\   ____\
+\ \  \___|    \ \  \___|    \ \  \___|
+ \ \  \        \ \  \        \ \  \  ___
+  \ \  \____    \ \  \____    \ \  \|\  \
+   \ \_______\   \ \_______\   \ \_______\
+    \|_______|    \|_______|    \|_______|
+
+ Conventional Commits Generator
+
+<span style="color: hsl(var(--accent));">Repository:</span> <span style="font-weight: bold;">my-project</span>  <span style="color: hsl(var(--accent));">Branch:</span> <span style="font-weight: bold;">main</span>
+
+┌──────────────────────┐
+│ Commit Types         │
+└──────────────────────┘
+
+1. ✨ feat     - A new feature
+2. 🐛 fix      - A bug fix
+3. 🔧 chore    - Maintenance tasks
+4. 🔨 refactor - Code refactoring
+5. 💄 style    - Style changes
+6. 📚 docs     - Documentation
+7. 🧪 test     - Adding tests
+8. 📦 build    - Build system changes
+9. ⏪ revert   - Reverts a commit
+10. 👷 ci      - CI/CD changes
+11. ⚡ perf    - Performance improvements
+
+Choose the commit type: <span style="color: hsl(var(--primary));">1</span>
+
+┌──────────────────────┐
+│ Scope                │
+└──────────────────────┘
+Enter the scope (optional): <span style="color: hsl(var(--primary));">auth</span>
+
+┌──────────────────────┐
+│ Breaking Change      │
+└──────────────────────┘
+Is this a BREAKING CHANGE? (y/N): <span style="color: hsl(var(--primary));">n</span>
+
+┌──────────────────────┐
+│ Emoji                │
+└──────────────────────┘
+Include emoji in commit message? (Y/n): <span style="color: hsl(var(--primary));">y</span>
+
+┌──────────────────────┐
+│ Commit Message       │
+└──────────────────────┘
+Enter the commit message: <span style="color: hsl(var(--primary));">implement OAuth login</span>
+
+┌──────────────────────┐
+│ Commit Body          │
+└──────────────────────┘
+Commit body (optional): <span style="color: hsl(var(--primary));">Added Google OAuth 2.0 support
+Integration with existing user system</span>
+
+┌──────────────────────┐
+│ Review               │
+└──────────────────────┘
+<span style="color: hsl(var(--accent));">Commit:</span> <span style="color: hsl(var(--success));">✨ feat(auth): implement OAuth login</span>
+
+<span style="color: hsl(var(--accent));">Body:</span>
+Added Google OAuth 2.0 support
+Integration with existing user system
+
+Confirm this commit message? (Y/n): <span style="color: hsl(var(--primary));">y</span>
+✓ Commit message confirmed!
+
+┌──────────────────────┐
+│ Push Changes         │
+└──────────────────────┘
+Do you want to push these changes? (Y/n): <span style="color: hsl(var(--primary));">y</span>
+✓ Changes pushed successfully!</pre>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="installation" class="animate-fadeInUp">
+            <div class="container">
+                <h2 class="section-title">Installation</h2>
+
+                <div class="install-steps">
+                    <div class="install-step">
+                        <div class="step-number">1</div>
+                        <div>
+                            <h3 style="margin-bottom: 0.5rem; color: hsl(var(--primary));">Using pipx (recommended)</h3>
+                            <div class="code-block">
+                                pipx install conventional-commits-generator
+                                <button class="copy-button" onclick="copyCode(this, 'pipx install conventional-commits-generator')">
+                                    📋 Copy
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="install-step">
+                        <div class="step-number">2</div>
+                        <div>
+                            <h3 style="margin-bottom: 0.5rem; color: hsl(var(--primary));">Using pip</h3>
+                            <div class="code-block">
+                                pip install conventional-commits-generator
+                                <button class="copy-button" onclick="copyCode(this, 'pip install conventional-commits-generator')">
+                                    📋 Copy
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="install-step">
+                        <div class="step-number">3</div>
+                        <div>
+                            <h3 style="margin-bottom: 0.5rem; color: hsl(var(--primary));">Development Setup</h3>
+                            <div class="code-block">
+                                git clone https://github.com/EgydioBNeto/conventional-commits-generator.git<br>
+                                cd conventional-commits-generator<br>
+                                chmod +x scripts/setup_venv.sh<br>
+                                ./scripts/setup_venv.sh
+                                <button class="copy-button" onclick="copyCode(this, 'git clone https://github.com/EgydioBNeto/conventional-commits-generator.git && cd conventional-commits-generator && chmod +x scripts/setup_venv.sh && ./scripts/setup_venv.sh')">
+                                    📋 Copy
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="usage" class="animate-fadeInUp">
+            <div class="container">
+                <h2 class="section-title">Available Commands</h2>
+                <div class="features-grid">
+                    <div class="card animate-fadeInUp">
+                        <h3 class="feature-title">🚀 Interactive Commit</h3>
+                        <div class="code-block">
+                            ccg
+                            <button class="copy-button" onclick="copyCode(this, 'ccg')">📋 Copy</button>
+                        </div>
+                        <p style="margin-top: 1rem;">Create a commit with interactive prompts</p>
+                    </div>
+                    <div class="card animate-fadeInUp">
+                        <h3 class="feature-title">💬 Generate Message Only</h3>
+                        <div class="code-block">
+                            ccg --commit
+                            <button class="copy-button" onclick="copyCode(this, 'ccg --commit')">📋 Copy</button>
+                        </div>
+                        <p style="margin-top: 1rem;">Generate commit message without committing</p>
+                    </div>
+                    <div class="card animate-fadeInUp">
+                        <h3 class="feature-title">📤 Push Only</h3>
+                        <div class="code-block">
+                            ccg --push
+                            <button class="copy-button" onclick="copyCode(this, 'ccg --push')">📋 Copy</button>
+                        </div>
+                        <p style="margin-top: 1rem;">Push existing commits to remote</p>
+                    </div>
+                    <div class="card animate-fadeInUp">
+                        <h3 class="feature-title">✏️ Edit Commit</h3>
+                        <div class="code-block">
+                            ccg --edit
+                            <button class="copy-button" onclick="copyCode(this, 'ccg --edit')">📋 Copy</button>
+                        </div>
+                        <p style="margin-top: 1rem;">Edit an existing commit message</p>
+                    </div>
+                    <div class="card animate-fadeInUp">
+                        <h3 class="feature-title">🗑️ Delete Commit</h3>
+                        <div class="code-block">
+                            ccg --delete
+                            <button class="copy-button" onclick="copyCode(this, 'ccg --delete')">📋 Copy</button>
+                        </div>
+                        <p style="margin-top: 1rem;">Delete an existing commit</p>
+                    </div>
+                    <div class="card animate-fadeInUp">
+                        <h3 class="feature-title">🏷️ Create Tag</h3>
+                        <div class="code-block">
+                            ccg --tag
+                            <button class="copy-button" onclick="copyCode(this, 'ccg --tag')">📋 Copy</button>
+                        </div>
+                        <p style="margin-top: 1rem;">Create and push a new tag</p>
+                    </div>
+                    <div class="card animate-fadeInUp">
+                        <h3 class="feature-title">🔄 Reset Changes</h3>
+                        <div class="code-block">
+                            ccg --reset
+                            <button class="copy-button" onclick="copyCode(this, 'ccg --reset')">📋 Copy</button>
+                        </div>
+                        <p style="margin-top: 1rem;">Discard local changes and pull from remote</p>
+                    </div>
+                    <div class="card animate-fadeInUp">
+                        <h3 class="feature-title">📁 Specific Paths</h3>
+                        <div class="code-block">
+                            ccg --path src/ docs/
+                            <button class="copy-button" onclick="copyCode(this, 'ccg --path src/ docs/')">📋 Copy</button>
+                        </div>
+                        <p style="margin-top: 1rem;">Stage specific paths instead of all changes</p>
+                    </div>
+                    <div class="card animate-fadeInUp">
+                        <h3 class="feature-title">ℹ️ Version</h3>
+                        <div class="code-block">
+                            ccg --version
+                            <button class="copy-button" onclick="copyCode(this, 'ccg --version')">📋 Copy</button>
+                        </div>
+                        <p style="margin-top: 1rem;">Display current CCG version</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="commit-types" class="animate-fadeInUp">
+            <div class="container">
+                <h2 class="section-title">Commit Types</h2>
+                <div class="features-grid">
+                    <div class="card">
+                        <h3 style="color: hsl(var(--success));">✨ feat</h3>
+                        <p>A new feature for the user or a particular enhancement</p>
+                    </div>
+                    <div class="card">
+                        <h3 style="color: hsl(var(--warning));">🐛 fix</h3>
+                        <p>A bug fix for the user or a particular issue</p>
+                    </div>
+                    <div class="card">
+                        <h3 style="color: hsl(var(--primary));">🔧 chore</h3>
+                        <p>Routine tasks, maintenance, or minor updates</p>
+                    </div>
+                    <div class="card">
+                        <h3 style="color: hsl(var(--accent));">🔨 refactor</h3>
+                        <p>Code refactoring without changing its behavior</p>
+                    </div>
+                    <div class="card">
+                        <h3 style="color: hsl(var(--text-muted));">💄 style</h3>
+                        <p>Code style changes, formatting, or cosmetic improvements</p>
+                    </div>
+                    <div class="card">
+                        <h3 style="color: hsl(var(--text));">📚 docs</h3>
+                        <p>Documentation-related changes</p>
+                    </div>
+                    <div class="card">
+                        <h3 style="color: hsl(var(--warning));">🧪 test</h3>
+                        <p>Adding or modifying tests</p>
+                    </div>
+                    <div class="card">
+                        <h3 style="color: hsl(var(--warning));">📦 build</h3>
+                        <p>Changes that affect the build system or external dependencies</p>
+                    </div>
+                    <div class="card">
+                        <h3 style="color: hsl(var(--warning));">⏪ revert</h3>
+                        <p>Reverts a previous commit</p>
+                    </div>
+                    <div class="card">
+                        <h3 style="color: hsl(var(--primary));">👷 ci</h3>
+                        <p>Changes to CI configuration files and scripts</p>
+                    </div>
+                    <div class="card">
+                        <h3 style="color: hsl(var(--success));">⚡ perf</h3>
+                        <p>A code change that improves performance</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="requirements" class="animate-fadeInUp">
+            <div class="container">
+                <h2 class="section-title">Requirements</h2>
+                <div class="card" style="max-width: 600px; margin: 0 auto;">
+                    <ul style="list-style: none; padding: 0;">
+                        <li style="padding: 0.5rem 0;">✅ Python 3.9 or higher</li>
+                        <li style="padding: 0.5rem 0;">✅ Git installed and configured</li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer>
+        <div class="container">
+            <div class="footer-links">
+                <a href="https://github.com/EgydioBNeto/conventional-commits-generator" class="footer-link" target="_blank" rel="noopener noreferrer">GitHub</a>
+                <a href="https://pypi.org/project/conventional-commits-generator/" class="footer-link" target="_blank" rel="noopener noreferrer">PyPI</a>
+                <a href="https://conventionalcommits.org/" class="footer-link" target="_blank" rel="noopener noreferrer">Conventional Commits</a>
+                <a href="https://github.com/EgydioBNeto/conventional-commits-generator/issues" class="footer-link" target="_blank" rel="noopener noreferrer">Issues</a>
+                <a href="https://github.com/EgydioBNeto/conventional-commits-generator/blob/main/.github/CONTRIBUTING.md" class="footer-link" target="_blank" rel="noopener noreferrer">Contributing</a>
+            </div>
+            <p style="color: hsl(var(--text-muted));">
+                Created by <a href="https://github.com/EgydioBNeto" style="color: hsl(var(--primary)); text-decoration: none;" target="_blank" rel="noopener noreferrer">EgydioBNeto</a>
+            </p>
+        </div>
+    </footer>
+
+    <script>
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    target.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'start'
+                    });
+                }
+            });
+        });
+
+        const observerOptions = {
+            threshold: 0.1,
+            rootMargin: '0px 0px -50px 0px'
+        };
+
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('animate-fadeInUp');
+                }
+            });
+        }, observerOptions);
+
+        document.querySelectorAll('.card, section').forEach(el => {
+            observer.observe(el);
+        });
+
+        function copyCode(button, text) {
+            navigator.clipboard.writeText(text).then(() => {
+                const originalText = button.innerHTML;
+                button.innerHTML = '✅ Copied!';
+                button.classList.add('copied');
+
+                setTimeout(() => {
+                    button.innerHTML = originalText;
+                    button.classList.remove('copied');
+                }, 2000);
+            }).catch(err => {
+                console.error('Failed to copy text: ', err);
+                button.innerHTML = '❌ Failed';
+                setTimeout(() => {
+                    button.innerHTML = '📋 Copy';
+                }, 2000);
+            });
+        }
+    </script>
+</body>
+</html>
