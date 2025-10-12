@@ -1556,6 +1556,32 @@ class TestHandleResetAdvanced:
 
         assert result == 1
 
+    @patch("ccg.cli.confirm_reset")
+    @patch("ccg.cli.check_has_changes")
+    @patch("ccg.cli.check_remote_access")
+    @patch("ccg.cli.check_is_git_repo")
+    @patch("ccg.cli.show_repository_info")
+    def test_reset_with_changes_cancelled_by_user(
+        self,
+        mock_show: Mock,
+        mock_check: Mock,
+        mock_remote: Mock,
+        mock_has_changes: Mock,
+        mock_confirm: Mock,
+    ) -> None:
+        """Should return 0 when user cancels reset with existing changes."""
+        from ccg.cli import handle_reset
+
+        mock_check.return_value = True
+        mock_remote.return_value = True
+        mock_has_changes.return_value = True
+        mock_confirm.return_value = False  # User declines reset
+
+        result = handle_reset()
+
+        assert result == 0
+        mock_confirm.assert_called_once()
+
 
 class TestHandlePushOnlyAdvanced:
     """Advanced tests for handle_push_only."""
