@@ -1,0 +1,112 @@
+# Project information
+site_name: Conventional Commits Generator
+site_description: Interactive CLI tool for creating standardized commit messages following the Conventional Commits specification
+site_author: Egydio Bolonhezi
+site_url: https://egydioBNeto.github.io/conventional-commits-generator/
+
+# Repository
+repo_name: EgydioBNeto/conventional-commits-generator
+repo_url: https://github.com/EgydioBNeto/conventional-commits-generator
+edit_uri: edit/main/docs/
+
+# Copyright
+copyright: Copyright &copy; 2025 Egydio Bolonhezi
+
+# Configuration
+theme:
+  name: material
+  language: en
+  palette:
+    # Dark mode (default)
+    - scheme: slate
+      primary: pink
+      accent: deep purple
+      toggle:
+        icon: material/brightness-7
+        name: Switch to light mode
+    # Light mode
+    - scheme: default
+      primary: pink
+      accent: deep purple
+      toggle:
+        icon: material/brightness-4
+        name: Switch to dark mode
+
+  font:
+    text: Roboto
+    code: Roboto Mono
+
+  features:
+    - navigation.tabs
+    - navigation.tabs.sticky
+    - navigation.sections
+    - navigation.top
+    - navigation.footer
+    - search.suggest
+    - search.highlight
+    - search.share
+    - content.code.copy
+
+  icon:
+    repo: fontawesome/brands/github
+
+# Extensions
+markdown_extensions:
+  # Python Markdown
+  - admonition
+  - attr_list
+  - md_in_html
+  - tables
+  - toc:
+      permalink: true
+      toc_depth: 3
+
+  # Python Markdown Extensions
+  - pymdownx.details
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.superfences
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.tasklist:
+      custom_checkbox: true
+
+# Plugins
+plugins:
+  - search:
+      lang: en
+  - minify:
+      minify_html: true
+      minify_js: true
+      minify_css: true
+
+# Navigation structure
+nav:
+  - Home:
+    - Overview: index.md
+    - Quick Start: home/quick-start.md
+    - Commit Types: home/commit-types.md
+  - User Guide:
+    - Installation: user-guide/installation.md
+    - Quick Start: user-guide/quick-start.md
+    - Usage: user-guide/usage.md
+    - FAQ: user-guide/faq.md
+  - Community:
+    - Contributing: community/contributing.md
+    - Code of Conduct: community/code-of-conduct.md
+    - Security: community/security.md
+    - Changelog: community/changelog.md
+
+# Extra
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/EgydioBNeto/conventional-commits-generator
+    - icon: fontawesome/brands/python
+      link: https://pypi.org/project/conventional-commits-generator/

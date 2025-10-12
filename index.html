@@ -824,7 +824,7 @@
                 <div class="logo animate-fadeInUp">
                     <img src="https://github.com/EgydioBNeto/conventional-commits-generator/assets/84047984/53f38934-16bb-40f6-aff7-a5800c4bd706" alt="CCG Logo">
                 </div>
-                <p class="tagline animate-fadeInUp">Interactive CLI tool for creating standardized commit messages following the conventional commits format</p>
+                <p class="tagline animate-fadeInUp">Interactive CLI tool for creating standardized commit messages</p>
                 <div class="btn-group animate-fadeInUp">
                     <a href="https://github.com/EgydioBNeto/conventional-commits-generator" class="btn btn-primary" target="_blank" rel="noopener noreferrer">
                         🚀 View on GitHub
@@ -1000,22 +1000,6 @@ Do you want to push these changes? (Y/n): <span style="color: hsl(var(--primary)
                             </div>
                         </div>
                     </div>
-
-                    <div class="install-step">
-                        <div class="step-number">3</div>
-                        <div>
-                            <h3 style="margin-bottom: 0.5rem; color: hsl(var(--primary));">Development Setup</h3>
-                            <div class="code-block">
-                                git clone https://github.com/EgydioBNeto/conventional-commits-generator.git<br>
-                                cd conventional-commits-generator<br>
-                                chmod +x scripts/setup_venv.sh<br>
-                                ./scripts/setup_venv.sh
-                                <button class="copy-button" onclick="copyCode(this, 'git clone https://github.com/EgydioBNeto/conventional-commits-generator.git && cd conventional-commits-generator && chmod +x scripts/setup_venv.sh && ./scripts/setup_venv.sh')">
-                                    📋 Copy
-                                </button>
-                            </div>
-                        </div>
-                    </div>
                 </div>
             </div>
         </section>
@@ -1033,12 +1017,12 @@ Do you want to push these changes? (Y/n): <span style="color: hsl(var(--primary)
                         <p style="margin-top: 1rem;">Create a commit with interactive prompts</p>
                     </div>
                     <div class="card animate-fadeInUp">
-                        <h3 class="feature-title">💬 Generate Message Only</h3>
+                        <h3 class="feature-title">💬 Commit Only</h3>
                         <div class="code-block">
                             ccg --commit
                             <button class="copy-button" onclick="copyCode(this, 'ccg --commit')">📋 Copy</button>
                         </div>
-                        <p style="margin-top: 1rem;">Generate commit message without committing</p>
+                        <p style="margin-top: 1rem;">Generate commit message without pushing</p>
                     </div>
                     <div class="card animate-fadeInUp">
                         <h3 class="feature-title">📤 Push Only</h3>
@@ -1086,7 +1070,7 @@ Do you want to push these changes? (Y/n): <span style="color: hsl(var(--primary)
                             ccg --path src/ docs/
                             <button class="copy-button" onclick="copyCode(this, 'ccg --path src/ docs/')">📋 Copy</button>
                         </div>
-                        <p style="margin-top: 1rem;">Stage specific paths instead of all changes</p>
+                        <p style="margin-top: 1rem;">Stage specific paths</p>
                     </div>
                     <div class="card animate-fadeInUp">
                         <h3 class="feature-title">ℹ️ Version</h3>

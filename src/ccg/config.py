@@ -15,7 +15,7 @@ class InputLimits:
     TAG_MESSAGE: int = 512
     EDIT_MESSAGE: int = 128
     CONFIRMATION: int = 3
-    COMMIT_COUNT: int = 6  # For selecting commits to edit/delete
+    COMMIT_COUNT: int = 6
 
 
 @dataclass(frozen=True)
@@ -38,7 +38,6 @@ class UIConfig:
     DEFAULT_TERM_HEIGHT: int = 24
 
 
-# Singleton instances
 INPUT_LIMITS = InputLimits()
 GIT_CONFIG = GitConfig()
 UI_CONFIG = UIConfig()

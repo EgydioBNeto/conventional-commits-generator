@@ -135,9 +135,6 @@ venv.bak/
 # Rope project settings
 .ropeproject
 
-# mkdocs documentation
-/site
-
 # mypy
 .mypy_cache/
 .dmypy.json
@@ -157,3 +154,7 @@ cython_debug/
 #Claude
 .claude
 CLAUDE.md
+
+#Gemini
+.gemini
+GEMINI.md

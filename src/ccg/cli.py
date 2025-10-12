@@ -4,8 +4,12 @@ import argparse
 import os
 import sys
 import traceback
+from argparse import Action
 from functools import wraps
-from typing import Any, Callable, List, Optional, Tuple, TypeVar, cast
+from typing import TYPE_CHECKING, Any, Callable, List, Optional, Tuple, TypeVar, cast
+
+if TYPE_CHECKING:
+    from collections.abc import Iterable
 
 from ccg import __version__
 from ccg.core import confirm_commit, confirm_push, generate_commit_message, validate_commit_message
@@ -36,6 +40,7 @@ from ccg.utils import (
     RESET,
     YELLOW,
     confirm_user_action,
+    is_valid_semver,
     print_error,
     print_info,
     print_logo,
@@ -82,7 +87,7 @@ def require_git_repo(func: F) -> F:
     """
 
     @wraps(func)
-    def wrapper(*args: Any, **kwargs: Any) -> int:
+    def wrapper(*args: object, **kwargs: object) -> int:
         if not check_is_git_repo():
             print_error("Not a git repository. Please initialize one with 'git init'.")
             return 1
@@ -102,10 +107,17 @@ class CustomHelpFormatter(argparse.HelpFormatter):
     def __init__(self, prog: str) -> None:
         super().__init__(prog, max_help_position=50, width=100)
 
-    def _format_usage(self, usage: Any, actions: Any, groups: Any, prefix: Optional[str]) -> str:
+    def _format_usage(
+        self,
+        usage: object,
+        actions: "Iterable[Action]",
+        groups: "Iterable[Any]",
+        prefix: Optional[str],
+    ) -> str:
         """Format usage text with logo prepended."""
         print_logo()
-        return super()._format_usage(usage, actions, groups, prefix)
+        usage_str = usage if isinstance(usage, str) else None
+        return super()._format_usage(usage_str, actions, groups, prefix)
 
 
 def parse_args(args: Optional[List[str]] = None) -> argparse.Namespace:
@@ -158,10 +170,8 @@ def parse_args(args: Optional[List[str]] = None) -> argparse.Namespace:
         help="Specify path(s) to stage or directory to work in",
     )
 
-    # Parse args and catch unknown arguments
     parsed_args, unknown = parser.parse_known_args(args)
 
-    # If there are unknown arguments, show error
     if unknown:
         print_logo()
         print_error(f"Unrecognized arguments: {' '.join(unknown)}")
@@ -270,7 +280,7 @@ def handle_commit_operation(operation_type: str) -> int:
     print()
 
     for i, commit in enumerate(commits, start=1):
-        full_hash, short_hash, subject, author, date = commit
+        _, short_hash, subject, author, date = commit
         print(f"{i}. [{short_hash}] {subject} - {author} ({date})")
     print()
 
@@ -347,7 +357,7 @@ def display_commit_details(commit_details: Tuple[str, str, str, str, str, str]) 
         commit_details: Tuple containing (full_hash, short_hash, subject,
                         body, author, date) from get_commit_by_hash()
     """
-    hash_full, hash_short, subject, body, author, date = commit_details
+    hash_full, _, subject, body, author, date = commit_details
     print(f"Hash: {hash_full}")
     print(f"Author: {author}")
     print(f"Date: {date}")
@@ -444,7 +454,6 @@ def confirm_commit_edit(
     from ccg.core import convert_emoji_codes_to_real
     from ccg.utils import BOLD, CYAN, RESET
 
-    # Display original commit message
     display_header = convert_emoji_codes_to_real(original_subject)
     print(f"{CYAN}Commit:{RESET} {BOLD}{display_header}{RESET}")
 
@@ -525,7 +534,7 @@ def edit_specific_commit(commit_hash: str) -> int:
     display_commit_details(commit_details)
     print_section("Edit Message")
 
-    hash_full, hash_short, subject, body, author, date = commit_details
+    hash_full, _, subject, body, _, _ = commit_details
     new_message, new_body = handle_commit_edit_input(subject, body)
 
     if new_message is None:
@@ -574,7 +583,7 @@ def delete_specific_commit(commit_hash: str) -> int:
 
     display_commit_details(commit_details)
     print_section("Delete Confirmation")
-    hash_full, hash_short, subject, body, author, date = commit_details
+    hash_full, _, _, _, _, _ = commit_details
 
     print_warning("This will permanently delete the commit from history!")
     print_warning("This action cannot be undone and may affect other commits.")
@@ -622,14 +631,22 @@ def handle_tag() -> int:
     if not check_remote_access():
         return 1
 
-    tag_name = read_input(
-        f"{YELLOW}Enter the tag name (e.g., v1.0.0){RESET}",
-        max_length=INPUT_LIMITS["tag"],
-    )
+    while True:
+        tag_name = read_input(
+            f"{YELLOW}Enter the tag name (e.g., v1.0.0){RESET}",
+            max_length=INPUT_LIMITS["tag"],
+        )
 
-    if not tag_name:
-        print_error("Tag name cannot be empty. Aborting.")
-        return 1
+        if not tag_name:
+            print_info("Tag creation cancelled.")
+            return 0
+
+        if is_valid_semver(tag_name):
+            break
+        else:
+            print_error("Invalid tag format.")
+            print_info("Tag must follow Semantic Versioning (e.g., v1.0.0, 1.0.0-alpha.1).")
+            print_info("For more details, see: https://semver.org/")
 
     annotated = confirm_user_action(
         f"{YELLOW}Create an annotated tag with a message? (y/n){RESET}",
@@ -866,7 +883,7 @@ def validate_paths_exist(paths: List[str]) -> None:
     Raises:
         SystemExit: If any path does not exist
     """
-    invalid_paths = []
+    invalid_paths: List[str] = []
     for path in paths:
         if not os.path.exists(path):
             invalid_paths.append(path)
@@ -890,14 +907,12 @@ def validate_paths_in_repository(paths: List[str]) -> None:
     Raises:
         SystemExit: If any path is outside the repository
     """
-    # Get current repository root
     repo_root = get_repository_root()
     if not repo_root:
         print_error("Failed to determine git repository root")
         sys.exit(1)
 
-    # Check each path
-    paths_outside_repo = []
+    paths_outside_repo: List[str] = []
     for path in paths:
         if not is_path_in_repository(path, repo_root):
             paths_outside_repo.append(path)
@@ -924,10 +939,8 @@ def change_to_working_directory(paths: Optional[List[str]]) -> Optional[List[str
     if not paths:
         return None
 
-    # Validate all paths exist first
     validate_paths_exist(paths)
 
-    # If there's only one path and it's a directory, change to it
     if len(paths) == 1 and os.path.isdir(paths[0]):
         target_dir = os.path.abspath(paths[0])
         try:
@@ -937,11 +950,8 @@ def change_to_working_directory(paths: Optional[List[str]]) -> Optional[List[str
             print_error(f"Failed to change to directory '{paths[0]}': {e}")
             sys.exit(1)
 
-    # For multiple paths or files, validate they're all in the same repository
-    # This must be done AFTER we've changed directory if needed
     validate_paths_in_repository(paths)
 
-    # Otherwise, treat as paths to stage
     return paths
 
 
@@ -976,8 +986,6 @@ def main(args: Optional[List[str]] = None) -> int:
         if not any(help_flag in sys.argv for help_flag in ["-h", "--help"]):
             print_logo()
 
-        # Handle directory change if --path points to a single directory
-        # This works for all operations
         stage_paths = parsed_args.path
         working_dir_changed = False
 
@@ -990,7 +998,6 @@ def main(args: Optional[List[str]] = None) -> int:
                 parsed_args.tag,
             ]
         ):
-            # For these operations, --path should change directory
             stage_paths = change_to_working_directory(parsed_args.path)
             working_dir_changed = True
 
@@ -1005,7 +1012,6 @@ def main(args: Optional[List[str]] = None) -> int:
         elif parsed_args.tag:
             return handle_tag()
         else:
-            # For normal workflow, --path can either change directory OR specify files to stage
             if not working_dir_changed and parsed_args.path:
                 stage_paths = change_to_working_directory(parsed_args.path)
             return handle_git_workflow(commit_only=parsed_args.commit, paths=stage_paths)
@@ -1021,5 +1027,5 @@ def main(args: Optional[List[str]] = None) -> int:
         return 1
 
 
-if __name__ == "__main__":
+if __name__ == "__main__":  # pragma: no cover
     sys.exit(main())

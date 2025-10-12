@@ -3,8 +3,9 @@
 import os
 import subprocess
 import tempfile
-from typing import Any, List, Optional, Tuple, cast
+from typing import List, Optional, Tuple
 
+from ccg.config import GIT_CONFIG
 from ccg.utils import (
     print_error,
     print_info,
@@ -14,16 +15,14 @@ from ccg.utils import (
     print_warning,
 )
 
-DEFAULT_GIT_TIMEOUT = 60
-
 
 def run_git_command(
     command: List[str],
     error_message: str,
     success_message: Optional[str] = None,
     show_output: bool = False,
-    timeout: int = DEFAULT_GIT_TIMEOUT,
-) -> Tuple[bool, Any]:
+    timeout: int = GIT_CONFIG.DEFAULT_TIMEOUT,
+) -> Tuple[bool, Optional[str]]:
     """Execute a git command with error handling and output capture.
 
     Central function for all git operations in CCG. Runs the specified git
@@ -142,6 +141,35 @@ def git_commit(commit_message: str) -> bool:
     return success
 
 
+def get_remote_name() -> Optional[str]:
+    """Get the name of the primary git remote.
+
+    Retrieves the first configured remote name (typically 'origin').
+    This helper function eliminates code duplication across git operations
+    that need to know the remote name.
+
+    Returns:
+        Remote name as string, or None if no remote configured
+
+    Examples:
+        >>> get_remote_name()
+        'origin'
+
+    Note:
+        Returns the first remote in the list. If multiple remotes exist,
+        this returns the first one alphabetically.
+    """
+    success, output = run_git_command(
+        ["git", "remote"], "Failed to get remote name", show_output=True
+    )
+
+    if not success or not output:
+        print_error("No remote repository configured")
+        return None
+
+    return str(output.split()[0])
+
+
 def handle_upstream_error(branch_name: str, remote_name: str, error_output: str) -> bool:
     """Handle git push errors related to missing upstream branch configuration.
 
@@ -196,15 +224,9 @@ def git_push(set_upstream: bool = False, force: bool = False) -> bool:
         print_error("Failed to determine current branch name")
         return False
 
-    success, remote_output = run_git_command(
-        ["git", "remote"], "Failed to get remote name", show_output=True
-    )
-
-    if not success or not remote_output:
-        print_error("No remote repository configured")
+    remote_name = get_remote_name()
+    if not remote_name:
         return False
-
-    remote_name = remote_output.split()[0]
 
     if set_upstream:
         command = ["git", "push", "--set-upstream"]
@@ -295,15 +317,9 @@ def push_tag(tag_name: str) -> bool:
     """
     print_process(f"Pushing tag '{tag_name}' to remote...")
 
-    success, output = run_git_command(
-        ["git", "remote"], "Failed to get remote name", show_output=True
-    )
-
-    if not success or not output:
-        print_error("No remote repository configured")
+    remote_name = get_remote_name()
+    if not remote_name:
         return False
-
-    remote_name = output.split()[0]
 
     success, _ = run_git_command(
         ["git", "push", remote_name, tag_name],
@@ -369,15 +385,10 @@ def pull_from_remote() -> bool:
     """
     print_process("Pulling latest changes from remote...")
 
-    success, output = run_git_command(
-        ["git", "remote"], "Failed to get remote name", show_output=True
-    )
-
-    if not success or not output:
-        print_error("No remote repository configured")
+    remote_name = get_remote_name()
+    if not remote_name:
         return False
 
-    remote_name = output.split()[0]
     branch_name = get_current_branch()
     if not branch_name:
         print_error("Failed to determine current branch name")
@@ -405,7 +416,9 @@ def get_staged_files() -> List[str]:
         Used by pre-commit hooks to determine which files to check
     """
     success, output = run_git_command(
-        ["git", "diff", "--name-only", "--cached"], "Failed to get staged files", show_output=True
+        ["git", "diff", "--name-only", "--cached"],
+        "Failed to get staged files",
+        show_output=True,
     )
 
     if success and output:
@@ -426,7 +439,9 @@ def check_is_git_repo() -> bool:
         This is used as a guard check before most git operations
     """
     success, _ = run_git_command(
-        ["git", "rev-parse", "--is-inside-work-tree"], "Not a git repository", show_output=True
+        ["git", "rev-parse", "--is-inside-work-tree"],
+        "Not a git repository",
+        show_output=True,
     )
     return success
 
@@ -449,7 +464,9 @@ def check_has_changes(paths: Optional[List[str]] = None) -> bool:
     if not paths:
         print_process("Checking for changes in the working directory...")
         success, output = run_git_command(
-            ["git", "status", "--porcelain"], "Failed to check for changes", show_output=True
+            ["git", "status", "--porcelain"],
+            "Failed to check for changes",
+            show_output=True,
         )
 
         if success:
@@ -586,7 +603,7 @@ def get_current_branch() -> Optional[str]:
     )
 
     if success and output:
-        return cast(str, output)
+        return output
     return None
 
 
@@ -603,7 +620,7 @@ def get_repository_name() -> Optional[str]:
     )
 
     if success and output:
-        return os.path.basename(cast(str, output))
+        return os.path.basename(output)
     return None
 
 
@@ -620,7 +637,7 @@ def get_repository_root() -> Optional[str]:
     )
 
     if success and output:
-        return cast(str, output)
+        return output
     return None
 
 
@@ -634,16 +651,16 @@ def is_path_in_repository(path: str, repo_root: str) -> bool:
     Returns:
         True if path is within repository, False otherwise
     """
+    if not repo_root or not path:
+        return False
+
     abs_path = os.path.abspath(path)
     abs_repo_root = os.path.abspath(repo_root)
 
     try:
-        # Check if path is relative to repo_root
         os.path.relpath(abs_path, abs_repo_root)
-        # Check if the path actually starts with repo_root
         return abs_path.startswith(abs_repo_root)
     except ValueError:
-        # On Windows, relpath raises ValueError if paths are on different drives
         return False
 
 
@@ -662,14 +679,9 @@ def branch_exists_on_remote(branch_name: str) -> bool:
     Note:
         Uses 30 second timeout for ls-remote operation as it requires network access
     """
-    success, output = run_git_command(
-        ["git", "remote"], "Failed to get remote name", show_output=True
-    )
-
-    if not success or not output:
+    remote_name = get_remote_name()
+    if not remote_name:
         return False
-
-    remote_name = output.split()[0]
 
     success, output = run_git_command(
         ["git", "ls-remote", "--heads", remote_name, branch_name],
@@ -681,7 +693,9 @@ def branch_exists_on_remote(branch_name: str) -> bool:
     return success and bool(output)
 
 
-def get_recent_commits(count: Optional[int] = None) -> List[Tuple[str, str, str, str, str]]:
+def get_recent_commits(
+    count: Optional[int] = None,
+) -> List[Tuple[str, str, str, str, str]]:
     """Retrieve a list of recent commits with their metadata.
 
     Gets commit history with formatted output including hashes, subject, author,
@@ -717,7 +731,7 @@ def get_recent_commits(count: Optional[int] = None) -> List[Tuple[str, str, str,
     if not success or not output:
         return []
 
-    commits = []
+    commits: List[Tuple[str, str, str, str, str]] = []
     for line in output.split("\n"):
         if line:
             parts = line.split("|")
@@ -728,7 +742,9 @@ def get_recent_commits(count: Optional[int] = None) -> List[Tuple[str, str, str,
     return commits
 
 
-def get_commit_by_hash(commit_hash: str) -> Optional[Tuple[str, str, str, str, str, str]]:
+def get_commit_by_hash(
+    commit_hash: str,
+) -> Optional[Tuple[str, str, str, str, str, str]]:
     """Retrieve detailed information about a specific commit by its hash.
 
     Fetches comprehensive commit metadata including message, author, and date.
@@ -830,8 +846,8 @@ def edit_latest_commit_with_amend(
     if new_body:
         full_commit_message += f"\n\n{new_body}"
 
+    temp_file = None
     try:
-        temp_file = None
         try:
             with tempfile.NamedTemporaryFile(mode="w", delete=False) as f:
                 f.write(full_commit_message)
@@ -936,7 +952,9 @@ def edit_commit_message(commit_hash: str, new_message: str, new_body: Optional[s
         Automatically selects the most efficient editing method
     """
     success, latest_commit = run_git_command(
-        ["git", "rev-parse", "HEAD"], "Failed to get latest commit hash", show_output=True
+        ["git", "rev-parse", "HEAD"],
+        "Failed to get latest commit hash",
+        show_output=True,
     )
 
     if not success:
@@ -985,7 +1003,9 @@ def delete_latest_commit() -> bool:
     return success
 
 
-def create_rebase_script_for_deletion(commit_hash: str) -> Tuple[bool, Optional[str], List[str]]:
+def create_rebase_script_for_deletion(
+    commit_hash: str,
+) -> Tuple[bool, Optional[str], List[str]]:
     """Create a rebase script file for deleting a specific commit.
 
     Generates a git rebase todo script that excludes the target commit,
@@ -1004,14 +1024,16 @@ def create_rebase_script_for_deletion(commit_hash: str) -> Tuple[bool, Optional[
         Caller is responsible for cleaning up the temporary script file
     """
     success, all_commits = run_git_command(
-        ["git", "rev-list", "--reverse", "HEAD"], "Failed to get commit history", show_output=True
+        ["git", "rev-list", "--reverse", "HEAD"],
+        "Failed to get commit history",
+        show_output=True,
     )
 
     if not success:
         return False, None, []
 
-    commits = all_commits.strip().split("\n") if all_commits.strip() else []
-    rebase_script = []
+    commits = all_commits.strip().split("\n") if all_commits and all_commits.strip() else []
+    rebase_script: List[str] = []
     found_target = False
 
     for commit in commits:
@@ -1062,6 +1084,7 @@ def delete_old_commit_with_rebase(commit_hash: str) -> bool:
         Automatically aborts rebase on failure to prevent repository corruption.
         If deleting all commits, creates empty repository with update-ref.
     """
+    script_file = None
     try:
         success, script_file, rebase_script = create_rebase_script_for_deletion(commit_hash)
         if not success or not script_file:
@@ -1114,7 +1137,7 @@ def delete_old_commit_with_rebase(commit_hash: str) -> bool:
             except Exception:
                 pass
 
-    return False
+    return False  # pragma: no cover
 
 
 def delete_commit(commit_hash: str) -> bool:
@@ -1143,10 +1166,12 @@ def delete_commit(commit_hash: str) -> bool:
         return False
 
     success, latest_commit = run_git_command(
-        ["git", "rev-parse", "HEAD"], "Failed to get latest commit hash", show_output=True
+        ["git", "rev-parse", "HEAD"],
+        "Failed to get latest commit hash",
+        show_output=True,
     )
 
-    if not success:
+    if not success or not latest_commit:
         return False
 
     is_latest = latest_commit.strip() == commit_hash
@@ -1229,9 +1254,19 @@ def check_and_install_pre_commit() -> bool:
             print_info("No pre-commit configuration found. Skipping pre-commit checks.")
             return True
 
-        pre_commit_installed, _ = run_git_command(
-            ["pre-commit", "--version"], "pre-commit command not found", show_output=True
-        )
+        try:
+            subprocess.run(
+                ["pre-commit", "--version"],
+                capture_output=True,
+                check=True,
+                text=True,
+                timeout=10,
+            )
+            pre_commit_installed = True
+        except FileNotFoundError:
+            pre_commit_installed = False
+        except (subprocess.CalledProcessError, subprocess.TimeoutExpired):
+            pre_commit_installed = True
 
         if not pre_commit_installed:
             print_warning("pre-commit is configured but not installed.")

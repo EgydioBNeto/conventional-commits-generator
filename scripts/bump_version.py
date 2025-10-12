@@ -63,22 +63,35 @@ def format_changelog_section(version: str, categories: Dict[str, List[Dict]]) ->
         lines.append(f"- Version {version} release")
         lines.append("")
     else:
+        # Remove duplicates - keep only the latest commit for each description
+        seen_descriptions = {}
         for category, title in CHANGELOG_SECTION_ORDER:
             if category in categories and categories[category]:
-                lines.append(f"### {title}")
-                lines.append("")
+                # Filter duplicates by keeping last occurrence
+                unique_commits = []
+                for commit in reversed(categories[category]):
+                    desc_key = f"{commit['description'].lower().strip()}"
+                    if desc_key not in seen_descriptions:
+                        seen_descriptions[desc_key] = True
+                        unique_commits.insert(0, commit)
 
-                for commit in categories[category]:
-                    scope_text = f"**{commit['scope'].strip('()')}**: " if commit["scope"] else ""
-                    lines.append(f"- {scope_text}{commit['description']} ([{commit['hash']}])")
+                if unique_commits:
+                    lines.append(f"### {title}")
+                    lines.append("")
 
-                    if commit["body"] and len(commit["body"]) > 10:
-                        body_lines = commit["body"].split("\n")[:3]
-                        for body_line in body_lines:
-                            if body_line.strip():
-                                lines.append(f"  {body_line.strip()}")
+                    for commit in unique_commits:
+                        scope_text = (
+                            f"**{commit['scope'].strip('()')}**: " if commit["scope"] else ""
+                        )
+                        lines.append(f"- {scope_text}{commit['description']} ([{commit['hash']}])")
 
-                lines.append("")
+                        if commit["body"] and len(commit["body"]) > 10:
+                            body_lines = commit["body"].split("\n")[:3]
+                            for body_line in body_lines:
+                                if body_line.strip():
+                                    lines.append(f"  {body_line.strip()}")
+
+                    lines.append("")
 
     return "\n".join(lines)
 
@@ -173,6 +186,7 @@ def update_security_md(new_version: str) -> None:
 def update_changelog_with_real_content(new_version: str) -> None:
     """Update changelog with real content based on commits."""
     changelog_file = Path("CHANGELOG.md")
+    docs_changelog_file = Path("docs/community/changelog.md")
 
     new_section_content = generate_changelog_content(new_version)
 
@@ -184,37 +198,49 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+---
 
 {new_section_content}
 """
     else:
         content = changelog_file.read_text()
 
-        unreleased_section = "## [Unreleased]"
-        new_section = f"## [Unreleased]\n\n{new_section_content}"
+        # Find the first release section (after header)
+        lines = content.split("\n")
+        header_end = 0
+        for i, line in enumerate(lines):
+            if line.startswith("##") and "[" in line:
+                header_end = i
+                break
 
-        if unreleased_section in content:
-            updated_content = content.replace(unreleased_section, new_section, 1)
+        if header_end > 0:
+            # Insert new section with --- separator before existing releases
+            lines.insert(header_end, "---")
+            lines.insert(header_end + 1, "")
+            lines.insert(header_end + 2, new_section_content.strip())
+            lines.insert(header_end + 3, "")
         else:
-            lines = content.split("\n")
-            header_end = 0
+            # No existing releases, add after header
             for i, line in enumerate(lines):
-                if line.startswith("##") and "[" in line:
+                if line.strip() == "":
                     header_end = i
                     break
-
             if header_end > 0:
-                lines.insert(header_end, "")
-                lines.insert(header_end + 1, new_section_content.strip())
-                lines.insert(header_end + 1, "")
+                lines.insert(header_end + 1, "---")
+                lines.insert(header_end + 2, "")
+                lines.insert(header_end + 3, new_section_content.strip())
+                lines.insert(header_end + 4, "")
 
-            updated_content = "\n".join(lines)
+        changelog_content = "\n".join(lines)
 
-        changelog_content = updated_content
-
+    # Write to root changelog
     changelog_file.write_text(changelog_content)
     print(f"✅ Updated {changelog_file} with version {new_version}")
+
+    # Sync to docs changelog
+    if docs_changelog_file.parent.exists():
+        docs_changelog_file.write_text(changelog_content)
+        print(f"✅ Synced changelog to {docs_changelog_file}")
 
 
 def main():

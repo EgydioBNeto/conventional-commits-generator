@@ -70,4 +70,4 @@ Contributors who report valid vulnerabilities will be:
 - **2025-08**: Release of v2.1.0 with security improvements
 - **2023-12**: Implementation of security policy
 
-For more information about security, see the [documentation](README.md) or contact us.
+For more information about security, see the [documentation](../index.md) or contact us.
