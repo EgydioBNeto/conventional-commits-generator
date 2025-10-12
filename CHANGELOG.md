@@ -7,6 +7,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+---
+
+## [2.2.7] - 2025-10-12
+
+### 🔨 Changed
+
+- change refact emoji ([de7efa6])
+
+### 📚 Documentation
+
+- add complete documentation ([2abdc26])
+- update security.md ([4ded379])
+
+### 🧪 Tests
+
+- adding missing tests ([6c3c19b])
+- add complete test suite ([9d868a2])
+
+### 🔧 Maintenance
+
+- simplify labeler and update index.html ([62d6ae3])
+- fix some pylance errors ([47c761a])
+
+### 📦 Other
+
+- add more tests ([c61dbcc])
+
 ## [2.2.6] - 2025-10-05
 
 ### 🐛 Fixed
