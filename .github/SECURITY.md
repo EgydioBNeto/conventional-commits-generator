@@ -4,8 +4,8 @@
 
 | Version | Supported |
 | ------- | --------- |
-| >= 2.0.0   | ✅     |
-| <= 2.1.x   | ❌     |
+| >= 2.2.0   | ✅     |
+| < 2.2.0   | ❌     |
 
 ## Reporting a Vulnerability
 
@@ -66,6 +66,7 @@ Contributors who report valid vulnerabilities will be:
 
 ## Security History
 
+- **2025-10**: Release of v2.2.6 with enhanced testing and validation
 - **2025-08**: Release of v2.1.0 with security improvements
 - **2023-12**: Implementation of security policy
 
