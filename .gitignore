@@ -157,3 +157,7 @@ cython_debug/
 #Claude
 .claude
 CLAUDE.md
+
+#Gemini
+.gemini
+GEMINI.md

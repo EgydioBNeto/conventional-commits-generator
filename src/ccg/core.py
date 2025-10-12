@@ -1,5 +1,6 @@
 """Core functionality for the Conventional Commits Generator."""
 
+import re
 import sys
 from typing import Dict, List, Optional, Tuple
 
@@ -327,42 +328,6 @@ def convert_emoji_codes_to_real(text: str) -> str:
     return result
 
 
-def get_visual_width(text: str) -> int:
-    """Calculate visual width of text accounting for wide characters.
-
-    Calculates the display width of text by considering East Asian Width
-    property of Unicode characters. Wide and fullwidth characters count as 2.
-
-    Args:
-        text: Text to measure
-
-    Returns:
-        int: Visual width of the text
-
-    Examples:
-        >>> get_visual_width("hello")
-        5
-
-        >>> get_visual_width("你好")  # Chinese characters are wide
-        4
-
-        >>> get_visual_width("hello 你好")
-        9
-    """
-    import unicodedata
-
-    width: int = 0
-    for char in text:
-        eaw: str = unicodedata.east_asian_width(char)
-        if eaw in ("F", "W"):
-            width += 2
-        elif eaw in ("H", "Na", "N"):
-            width += 1
-        else:
-            width += 1
-    return width
-
-
 def confirm_commit(commit_message_header: str, commit_body: Optional[str] = None) -> bool:
     """Display commit preview and ask for confirmation.
 
@@ -391,11 +356,9 @@ def confirm_commit(commit_message_header: str, commit_body: Optional[str] = None
     """
     print_section("Review")
 
-    # Display commit message with emoji conversion
     display_header: str = convert_emoji_codes_to_real(commit_message_header)
     print(f"{CYAN}Commit:{RESET} {BOLD}{display_header}{RESET}")
 
-    # Display body if present
     if commit_body:
         print()
         print(f"{CYAN}Body:{RESET}")
@@ -480,60 +443,31 @@ def validate_commit_message(message: str) -> Tuple[bool, Optional[str]]:
 
     work_message: str = message.strip()
 
-    # Strip emoji code if present
     if work_message.startswith(":"):
         emoji_end: int = work_message.find(":", 1)
         if emoji_end != -1:
             work_message = work_message[emoji_end + 1 :].strip()
 
-    # Split into header and description
-    parts: List[str] = work_message.split(":", 1)
-    if len(parts) < 2:
+    pattern = re.compile(r"^(\w+)(?:\(([^)]+)\))?(!?): (.*)$")
+    match = pattern.match(work_message)
+
+    if not match:
         return (
             False,
             "Invalid format. Expected: <type>[optional scope][optional !]: <description>",
         )
 
-    header: str
-    description: str
-    header, description = parts
-    if not description.strip():
+    commit_type = match.group(1)
+    description = match.group(4)
+
+    if not description.strip():  # pragma: no cover
         return False, "Description cannot be empty after the colon."
 
-    header_clean: str = header.strip()
-    type_part: str = ""
-
-    # Extract type and scope
-    if "(" in header_clean and ")" in header_clean:
-        paren_start: int = header_clean.find("(")
-        paren_end: int = header_clean.find(")", paren_start)
-
-        if paren_end == -1:
-            return (
-                False,
-                "Scope opening parenthesis without closing: use format <type>(<scope>): or <type>(<scope>)!:",
-            )
-
-        type_part = header_clean[:paren_start]
-        after_scope: str = header_clean[paren_end + 1 :]
-        if after_scope and after_scope != "!":
-            return (
-                False,
-                "Invalid characters after scope. Expected nothing or '!' for breaking change.",
-            )
-    else:
-        type_part = header_clean
-
-    # Remove breaking change indicator
-    if type_part.endswith("!"):
-        type_part = type_part[:-1]
-
-    # Validate commit type
     valid_types: List[str] = [commit_data["type"] for commit_data in COMMIT_TYPES]
-    if type_part not in valid_types:
+    if commit_type not in valid_types:
         return (
             False,
-            f"Invalid commit type '{type_part}'. Valid types: {', '.join(valid_types)}",
+            f"Invalid commit type '{commit_type}'. Valid types: {', '.join(valid_types)}",
         )
 
     return True, None

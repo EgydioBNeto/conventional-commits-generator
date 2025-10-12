@@ -3,7 +3,7 @@
 from hypothesis import example, given
 from hypothesis import strategies as st
 
-from ccg.core import convert_emoji_codes_to_real, get_visual_width, validate_commit_message
+from ccg.core import convert_emoji_codes_to_real, validate_commit_message
 from ccg.utils import COMMIT_TYPES
 
 # ============================================================================
@@ -173,52 +173,6 @@ class TestConvertEmojiCodesToReal:
         assert isinstance(result, str)
 
 
-class TestGetVisualWidth:
-    """Property-based tests for visual width calculation."""
-
-    @given(st.text(alphabet="abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"))
-    @example("hello")
-    @example("ABC123")
-    def test_ascii_width_equals_length(self, text: str) -> None:
-        """ASCII text width should equal its length."""
-        width = get_visual_width(text)
-        assert width == len(text)
-
-    def test_empty_string(self) -> None:
-        """Should return 0 for empty string."""
-        assert get_visual_width("") == 0
-
-    @given(st.characters(whitelist_categories=("Lu", "Ll", "Nd")))
-    @example("a")
-    @example("Z")
-    def test_single_ascii_character(self, char: str) -> None:
-        """Should return correct width for single character."""
-        width = get_visual_width(char)
-        assert width >= 1
-
-    def test_wide_characters(self) -> None:
-        """Should count wide characters correctly."""
-        width = get_visual_width("你好")
-        assert width == 4  # Each Chinese char is typically 2
-
-    @given(st.text())
-    @example("✨")
-    @example("hello 你好")
-    def test_never_crashes(self, text: str) -> None:
-        """Should never crash regardless of input."""
-        width = get_visual_width(text)
-        assert isinstance(width, int)
-        assert width >= 0
-
-    @given(st.lists(st.text(min_size=1), min_size=2, max_size=5))
-    @example(["hello", "world"])
-    def test_concatenation_property(self, texts: list[str]) -> None:
-        """Width of concatenated texts should equal sum of individual widths."""
-        individual_sum = sum(get_visual_width(t) for t in texts)
-        concatenated_width = get_visual_width("".join(texts))
-        assert concatenated_width == individual_sum
-
-
 # ============================================================================
 # Interactive Functions Tests (with mocking)
 # ============================================================================
@@ -346,6 +300,22 @@ class TestChooseCommitType:
             result = choose_commit_type()
             assert result == "feat"
 
+    def test_choose_type_keyboard_interrupt(self, capsys) -> None:
+        """Should exit gracefully on KeyboardInterrupt."""
+        from unittest.mock import patch
+
+        import pytest
+
+        from ccg.core import choose_commit_type
+
+        with (
+            patch("ccg.core.read_input", side_effect=KeyboardInterrupt()),
+            pytest.raises(SystemExit) as excinfo,
+        ):
+            choose_commit_type()
+
+        assert excinfo.value.code == 0
+
 
 class TestGetScope:
     """Tests for get_scope function."""
@@ -469,14 +439,16 @@ class TestGetCommitBody:
             assert result is None
 
     def test_get_body_keyboard_interrupt(self, capsys) -> None:
-        """Should return None on KeyboardInterrupt."""
+        """Should return None and print message on KeyboardInterrupt."""
         from unittest.mock import patch
 
         from ccg.core import get_commit_body
 
         with patch("ccg.core.read_input", side_effect=KeyboardInterrupt()):
             result = get_commit_body()
+            captured = capsys.readouterr()
             assert result is None
+            assert "Skipping commit body" in captured.out
 
 
 class TestGenerateCommitMessage:
@@ -492,8 +464,9 @@ class TestGenerateCommitMessage:
             side_effect=["1", "auth", "implement OAuth login", "Added Google OAuth"]
         )
 
-        with patch("ccg.core.read_input", mock_read_input), patch(
-            "ccg.core.confirm_user_action", side_effect=[True, True, True]
+        with (
+            patch("ccg.core.read_input", mock_read_input),
+            patch("ccg.core.confirm_user_action", side_effect=[True, True, True]),
         ):
             result = generate_commit_message()
 
@@ -510,8 +483,9 @@ class TestGenerateCommitMessage:
 
         mock_read_input = MagicMock(side_effect=["fix", "", "fix bug", ""])
 
-        with patch("ccg.core.read_input", mock_read_input), patch(
-            "ccg.core.confirm_user_action", side_effect=[False, False, True]
+        with (
+            patch("ccg.core.read_input", mock_read_input),
+            patch("ccg.core.confirm_user_action", side_effect=[False, False, True]),
         ):
             result = generate_commit_message()
 
@@ -527,12 +501,33 @@ class TestGenerateCommitMessage:
 
         mock_read_input = MagicMock(side_effect=["feat", "", "test message", ""])
 
-        with patch("ccg.core.read_input", mock_read_input), patch(
-            "ccg.core.confirm_user_action", side_effect=[False, False, False]
+        with (
+            patch("ccg.core.read_input", mock_read_input),
+            patch("ccg.core.confirm_user_action", side_effect=[False, False, False]),
         ):
             result = generate_commit_message()
 
             assert result is None
+
+    def test_generate_message_keyboard_interrupt(self, capsys) -> None:
+        """Should exit gracefully on KeyboardInterrupt inside the main function."""
+        from unittest.mock import patch
+
+        import pytest
+
+        from ccg.core import generate_commit_message
+
+        # Mock choose_commit_type to ensure the interrupt happens in the main body
+        with (
+            patch("ccg.core.choose_commit_type", return_value="feat"),
+            patch("ccg.core.read_input", side_effect=KeyboardInterrupt()),
+            pytest.raises(SystemExit) as excinfo,
+        ):
+            generate_commit_message()
+
+        assert excinfo.value.code == 0
+        captured = capsys.readouterr()
+        assert "Exiting. Goodbye!" in captured.out
 
 
 class TestValidateCommitMessageEdgeCases:
@@ -554,6 +549,8 @@ class TestValidateCommitMessageEdgeCases:
         """Should reject whitespace-only description."""
         is_valid, error = validate_commit_message("feat:    ")
         assert is_valid is False
+        # Note: This returns format error because .strip() removes trailing whitespace
+        # making "feat:    " become "feat:" which doesn't match the regex pattern
 
     def test_validate_emoji_with_breaking(self) -> None:
         """Should accept emoji with breaking change."""
@@ -563,4 +560,14 @@ class TestValidateCommitMessageEdgeCases:
     def test_validate_emoji_with_scope_and_breaking(self) -> None:
         """Should accept emoji with scope and breaking change."""
         is_valid, error = validate_commit_message(":sparkles: feat(api)!: breaking change")
+        assert is_valid is True
+
+    def test_validate_message_description_only_tab(self) -> None:
+        """Should reject message with only tab character as description."""
+        is_valid, error = validate_commit_message("feat:\t")
+        assert is_valid is False
+
+    def test_validate_message_strips_leading_emoji(self) -> None:
+        """Should strip emoji code from beginning before validation."""
+        is_valid, error = validate_commit_message(":sparkles: feat: add new feature")
         assert is_valid is True

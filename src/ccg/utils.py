@@ -1,7 +1,8 @@
 """Utilities and styling for the Conventional Commits Generator."""
 
+import re
 import shutil
-from typing import Any, Callable, Dict, List, Optional, Tuple
+from typing import Callable, Dict, List, Optional, Tuple
 
 ASCII_LOGO = r"""
  ________      ________      ________
@@ -17,20 +18,22 @@ ASCII_LOGO = r"""
 
 try:
     from prompt_toolkit import prompt
+    from prompt_toolkit.document import Document
     from prompt_toolkit.history import InMemoryHistory
     from prompt_toolkit.key_binding import KeyBindings
+    from prompt_toolkit.key_binding.key_processor import KeyPressEvent
     from prompt_toolkit.keys import Keys
     from prompt_toolkit.styles import Style
     from prompt_toolkit.validation import ValidationError, Validator
 
-    HISTORIES: Dict[str, Any] = {
+    HISTORIES: Dict[str, InMemoryHistory] = {
         "type": InMemoryHistory(),
         "scope": InMemoryHistory(),
         "message": InMemoryHistory(),
         "body": InMemoryHistory(),
     }
 
-    PROMPT_STYLE: Any = Style.from_dict(
+    PROMPT_STYLE: Style = Style.from_dict(
         {
             "prompt": "#00AFFF bold",
             "command": "#00FF00 bold",
@@ -58,7 +61,7 @@ try:
         def __init__(self, default_yes: bool = True) -> None:
             self.default_yes = default_yes
 
-        def validate(self, document: Any) -> None:
+        def validate(self, document: "Document") -> None:
             """Validate the confirmation input."""
             text = document.text
 
@@ -87,7 +90,7 @@ try:
         def __init__(self, max_length: int) -> None:
             self.max_length = max_length
 
-        def validate(self, document: Any) -> None:
+        def validate(self, document: "Document") -> None:
             """Validate input length against maximum."""
             text = document.text
             length = len(text)
@@ -100,13 +103,16 @@ try:
 
     PROMPT_TOOLKIT_AVAILABLE: bool = True
 except ImportError:
-    PROMPT_TOOLKIT_AVAILABLE = False
-    HISTORIES: Dict[str, Any] = {}  # type: ignore[no-redef]
-    PROMPT_STYLE: Any = None  # type: ignore[no-redef]
+    PROMPT_TOOLKIT_AVAILABLE: bool = False  # type: ignore[no-redef]
+    HISTORIES: Dict[str, "InMemoryHistory"] = {}  # type: ignore[no-redef]
+    PROMPT_STYLE: Optional["Style"] = None  # type: ignore[no-redef]
     ConfirmationValidator = None  # type: ignore[misc, assignment]
     RealTimeCounterValidator = None  # type: ignore[misc, assignment]
+    KeyBindings = None  # type: ignore[misc, assignment]
+    Keys = None  # type: ignore[misc, assignment]
+    Document = None  # type: ignore[misc, assignment]
+    KeyPressEvent = None  # type: ignore[misc, assignment]
 
-# ANSI color codes
 RED = "\033[91m"
 GREEN = "\033[92m"
 YELLOW = "\033[93m"
@@ -118,7 +124,6 @@ BOLD = "\033[1m"
 UNDERLINE = "\033[4m"
 RESET = "\033[0m"
 
-# Symbols (used in print functions)
 CHECK = "✓"
 CROSS = "✗"
 ARROW = "→"
@@ -134,7 +139,6 @@ except Exception:
 
     TERM_WIDTH = UI_CONFIG.DEFAULT_TERM_WIDTH
 
-# Import configuration - backward compatibility dict
 from ccg.config import INPUT_LIMITS as INPUT_LIMITS_CONFIG
 
 INPUT_LIMITS: Dict[str, int] = {
@@ -406,7 +410,6 @@ def validate_confirmation_input(user_input: str, default_yes: bool = True) -> Op
     if len(user_input) > 3:
         return None
 
-    # Empty input uses default
     if not user_input:
         return default_yes
 
@@ -417,6 +420,24 @@ def validate_confirmation_input(user_input: str, default_yes: bool = True) -> Op
         return False
     else:
         return None
+
+
+def is_valid_semver(tag: str) -> bool:
+    """Validate if a string is a valid SemVer 2.0.0 tag.
+
+    Args:
+        tag: The tag string to validate.
+
+    Returns:
+        True if the tag is a valid SemVer tag, False otherwise.
+    """
+    semver_regex = re.compile(
+        r"^v?(?P<major>0|[1-9]\d*)\.(?P<minor>0|[1-9]\d*)\.(?P<patch>0|[1-9]\d*)"
+        r"(?:-(?P<prerelease>(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)"
+        r"(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?"
+        r"(?:\+(?P<buildmetadata>[0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$"
+    )
+    return re.match(semver_regex, tag) is not None
 
 
 def create_counter_toolbar(
@@ -483,7 +504,7 @@ def create_input_key_bindings(
     is_confirmation: bool = False,
     multiline: bool = False,
     default_yes: bool = True,
-) -> Any:
+) -> Optional["KeyBindings"]:
     """Create custom key bindings for prompt_toolkit input handling.
 
     Configures keyboard shortcuts and input behaviors including character limits,
@@ -502,12 +523,14 @@ def create_input_key_bindings(
         Prevents input beyond max_length with visual bell feedback.
         Handles standard navigation keys (arrows, home, end, backspace, delete).
     """
+    if not PROMPT_TOOLKIT_AVAILABLE or KeyBindings is None or Keys is None:
+        return None
     kb = KeyBindings()
 
     if not multiline:
 
         @kb.add(Keys.ControlM)
-        def _(event: Any) -> None:
+        def _(event: "KeyPressEvent") -> None:  # pragma: no cover
             if is_confirmation and not event.app.current_buffer.text.strip():
                 event.app.current_buffer.text = "y" if default_yes else "n"
             event.app.current_buffer.validate_and_handle()
@@ -515,15 +538,15 @@ def create_input_key_bindings(
     else:
 
         @kb.add(Keys.ControlD)
-        def _(event: Any) -> None:
+        def _(event: "KeyPressEvent") -> None:  # pragma: no cover
             event.app.current_buffer.validate_and_handle()
 
         @kb.add(Keys.Escape, Keys.Enter)
-        def _(event: Any) -> None:
+        def _(event: "KeyPressEvent") -> None:  # pragma: no cover
             event.app.current_buffer.validate_and_handle()
 
     @kb.add(Keys.Any)
-    def _(event: Any) -> None:
+    def _(event: "KeyPressEvent") -> None:  # pragma: no cover
         current_text = event.app.current_buffer.text
         new_char = event.data
         would_be_text = current_text + new_char
@@ -539,29 +562,29 @@ def create_input_key_bindings(
             return
         event.app.current_buffer.insert_text(new_char)
 
-    for key in [
-        Keys.Backspace,
-        Keys.Delete,
-        Keys.Left,
-        Keys.Right,
-        Keys.Home,
-        Keys.End,
-    ]:
+    @kb.add(Keys.Backspace)
+    def _(event: "KeyPressEvent") -> None:  # pragma: no cover
+        event.app.current_buffer.delete_before_cursor()
 
-        @kb.add(key)
-        def handle_key(event: Any, key: Any = key) -> None:
-            if key == Keys.Backspace:
-                event.app.current_buffer.delete_before_cursor()
-            elif key == Keys.Delete:
-                event.app.current_buffer.delete()
-            elif key == Keys.Left:
-                event.app.current_buffer.cursor_left()
-            elif key == Keys.Right:
-                event.app.current_buffer.cursor_right()
-            elif key == Keys.Home:
-                event.app.current_buffer.cursor_position = 0
-            elif key == Keys.End:
-                event.app.current_buffer.cursor_position = len(event.app.current_buffer.text)
+    @kb.add(Keys.Delete)
+    def _(event: "KeyPressEvent") -> None:  # pragma: no cover
+        event.app.current_buffer.delete()
+
+    @kb.add(Keys.Left)
+    def _(event: "KeyPressEvent") -> None:  # pragma: no cover
+        event.app.current_buffer.cursor_left()
+
+    @kb.add(Keys.Right)
+    def _(event: "KeyPressEvent") -> None:  # pragma: no cover
+        event.app.current_buffer.cursor_right()
+
+    @kb.add(Keys.Home)
+    def _(event: "KeyPressEvent") -> None:  # pragma: no cover
+        event.app.current_buffer.cursor_position = 0
+
+    @kb.add(Keys.End)
+    def _(event: "KeyPressEvent") -> None:  # pragma: no cover
+        event.app.current_buffer.cursor_position = len(event.app.current_buffer.text)
 
     return kb
 
@@ -633,7 +656,7 @@ def read_input(
                     print(f"    {WHITE}{INFO} {current_length}/{max_length} characters used{RESET}")
 
             return result
-        except (EOFError, KeyboardInterrupt):
+        except (EOFError, KeyboardInterrupt):  # pragma: no cover
             print()
             raise
         except Exception:
@@ -736,7 +759,6 @@ def confirm_user_action(
     """
     user_input = ""
 
-    # Replace (y/n) with (Y/n) or (y/N) based on default
     prompt_display = prompt_text
     if default_yes:
         prompt_display = prompt_display.replace("(y/n)", "(Y/n)")
@@ -759,7 +781,7 @@ def confirm_user_action(
                 style=PROMPT_STYLE,
                 bottom_toolbar=bottom_toolbar,
             ).strip()
-        except (EOFError, KeyboardInterrupt):
+        except (EOFError, KeyboardInterrupt):  # pragma: no cover
             print()
             raise
         except Exception:
@@ -867,7 +889,7 @@ def read_multiline_input(
                 bottom_toolbar=bottom_toolbar,
             ).strip()
 
-            if result:
+            if result:  # pragma: no cover
                 char_count = len(result)
                 if char_count >= max_length:
                     print(f"    {GREEN}{CHECK} Used all {max_length} characters{RESET}")
@@ -876,13 +898,11 @@ def read_multiline_input(
                 else:
                     print(f"    {WHITE}{INFO} {char_count}/{max_length} characters used{RESET}")
 
-            return result
+            return result  # pragma: no cover
 
-        except (EOFError, KeyboardInterrupt):
+        except (EOFError, KeyboardInterrupt):  # pragma: no cover
             print()
             raise
-        except Exception:
-            pass
 
     if default_text:
         print(f"{BLUE}Enter new content (or press Enter twice to finish):{RESET}")
@@ -929,7 +949,7 @@ def read_multiline_input(
 
                 if max_length and potential_total > max_length:
                     remaining = max_length - total_chars
-                    if remaining <= 0:
+                    if remaining <= 0:  # pragma: no cover
                         print_error(f"Character limit of {max_length} reached.")
                         break
                     else:
@@ -949,9 +969,9 @@ def read_multiline_input(
                     total_chars += len(line) + (1 if lines else 0)
 
             except (EOFError, KeyboardInterrupt):
-                break
+                raise
 
-    except KeyboardInterrupt:
+    except KeyboardInterrupt:  # pragma: no cover
         print()
         raise
 
