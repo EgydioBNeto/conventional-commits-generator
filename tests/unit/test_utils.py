@@ -1611,7 +1611,55 @@ class TestReadMultilineInputAllPaths:
     """Test all code paths in read_multiline_input."""
 
     @patch("ccg.utils.PROMPT_TOOLKIT_AVAILABLE", True)
-    @patch("ccg.utils.prompt")
+    @patch("prompt_toolkit.prompt")
+    def test_multiline_prompt_toolkit_success_with_result(self, mock_prompt: Mock, capsys) -> None:
+        """Should successfully return result with feedback when using prompt_toolkit."""
+        from ccg.utils import read_multiline_input
+
+        # Simulate successful input with prompt_toolkit
+        mock_prompt.return_value = "test multiline content"
+
+        result = read_multiline_input(max_length=100)
+
+        assert result == "test multiline content"
+        captured = capsys.readouterr()
+        # Should show character usage feedback
+        assert "characters" in captured.out.lower()
+
+    @patch("ccg.utils.PROMPT_TOOLKIT_AVAILABLE", True)
+    @patch("prompt_toolkit.prompt")
+    def test_multiline_prompt_toolkit_exact_limit(self, mock_prompt: Mock, capsys) -> None:
+        """Should show 'Used all N characters' when at exact limit."""
+        from ccg.utils import read_multiline_input
+
+        # Simulate input exactly at limit
+        mock_prompt.return_value = "x" * 100
+
+        result = read_multiline_input(max_length=100)
+
+        assert result == "x" * 100
+        captured = capsys.readouterr()
+        # Should show "Used all 100 characters"
+        assert "Used all 100 characters" in captured.out
+
+    @patch("ccg.utils.PROMPT_TOOLKIT_AVAILABLE", True)
+    @patch("prompt_toolkit.prompt")
+    def test_multiline_prompt_toolkit_warning_threshold(self, mock_prompt: Mock, capsys) -> None:
+        """Should show warning when >= 80% but < 100% of limit."""
+        from ccg.utils import read_multiline_input
+
+        # Simulate input at 85% of limit (85 chars)
+        mock_prompt.return_value = "x" * 85
+
+        result = read_multiline_input(max_length=100)
+
+        assert result == "x" * 85
+        captured = capsys.readouterr()
+        # Should show warning feedback like "85/100 characters used"
+        assert "85/100 characters used" in captured.out
+
+    @patch("ccg.utils.PROMPT_TOOLKIT_AVAILABLE", True)
+    @patch("prompt_toolkit.prompt")
     def test_multiline_prompt_toolkit_eof_error(self, mock_prompt: Mock, capsys) -> None:
         """Should handle EOFError in prompt_toolkit path."""
         from ccg.utils import read_multiline_input

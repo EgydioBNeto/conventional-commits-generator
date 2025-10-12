@@ -923,7 +923,7 @@ def read_multiline_input(
                 bottom_toolbar=bottom_toolbar,
             ).strip()
 
-            if result:  # pragma: no cover
+            if result:
                 char_count = len(result)
                 if char_count >= max_length:
                     print(f"    {GREEN}{CHECK} Used all {max_length} characters{RESET}")
@@ -932,7 +932,7 @@ def read_multiline_input(
                 else:
                     print(f"    {WHITE}{INFO} {char_count}/{max_length} characters used{RESET}")
 
-            return result  # pragma: no cover
+            return result
 
         except (EOFError, KeyboardInterrupt):  # pragma: no cover
             print()

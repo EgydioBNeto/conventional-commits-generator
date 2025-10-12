@@ -1,133 +1,39 @@
 # Automatic labeling configuration for CCG project
-# Based on file paths and patterns
+# Simplified to reduce label pollution on PRs
 
-# Core functionality changes
-'core':
+# Source code changes (any Python code in src/)
+'source':
   - changed-files:
-    - any-glob-to-any-file: 'src/ccg/core.py'
-
-# CLI interface changes
-'cli':
-  - changed-files:
-    - any-glob-to-any-file: 'src/ccg/cli.py'
-    - any-glob-to-any-file: 'src/ccg/__main__.py'
-
-# Git operations changes
-'git':
-  - changed-files:
-    - any-glob-to-any-file: 'src/ccg/git.py'
-
-# Utilities changes
-'utils':
-  - changed-files:
-    - any-glob-to-any-file: 'src/ccg/utils.py'
-
-# Configuration module changes
-'config':
-  - changed-files:
-    - any-glob-to-any-file: 'src/ccg/config.py'
-
-# Package initialization changes
-'package':
-  - changed-files:
-    - any-glob-to-any-file: 'src/ccg/__init__.py'
+    - any-glob-to-any-file: 'src/**/*.py'
 
 # Test changes
 'tests':
   - changed-files:
     - any-glob-to-any-file: 'tests/**'
     - any-glob-to-any-file: 'pytest.ini'
-    - any-glob-to-any-file: 'conftest.py'
-
-# Script changes
-'scripts':
-  - changed-files:
-    - any-glob-to-any-file: 'scripts/**'
+    - any-glob-to-any-file: 'tox.ini'
 
 # Documentation changes
 'documentation':
   - changed-files:
-    - any-glob-to-any-file: '*.md'
+    - any-glob-to-any-file: '**/*.md'
     - any-glob-to-any-file: 'docs/**'
-    - any-glob-to-any-file: '.github/*.md'
-    - any-glob-to-any-file: '.github/ISSUE_TEMPLATE/**'
     - any-glob-to-any-file: 'index.html'
 
-# Project configuration changes
-'project-config':
-  - changed-files:
-    - any-glob-to-any-file: 'pyproject.toml'
-    - any-glob-to-any-file: '.pre-commit-config.yaml'
-    - any-glob-to-any-file: '.gitignore'
-    - any-glob-to-any-file: 'mypy.ini'
-
-# GitHub Actions and CI changes
+# CI/CD and GitHub workflows
 'ci':
   - changed-files:
     - any-glob-to-any-file: '.github/workflows/**'
     - any-glob-to-any-file: '.github/dependabot.yml'
     - any-glob-to-any-file: '.github/labeler.yml'
+    - any-glob-to-any-file: '.pre-commit-config.yaml'
 
-# Dependencies changes
+# Dependencies (pyproject.toml only when deps change)
 'dependencies':
   - changed-files:
     - any-glob-to-any-file: 'pyproject.toml'
     - any-glob-to-any-file: 'requirements*.txt'
 
-# Version and release changes
-'release':
-  - changed-files:
-    - any-glob-to-any-file: 'CHANGELOG.md'
-    - any-glob-to-any-file: 'src/ccg/__init__.py'
-    - any-glob-to-any-file: 'scripts/bump_version.py'
-    - any-glob-to-any-file: 'scripts/generate_changelog.py'
-    - any-glob-to-any-file: 'scripts/extract_current_changelog.py'
-    - any-glob-to-any-file: 'scripts/changelog_utils.py'
-
-# Build and packaging changes
-'build':
-  - changed-files:
-    - any-glob-to-any-file: 'pyproject.toml'
-    - any-glob-to-any-file: 'scripts/setup_venv.sh'
-    - any-glob-to-any-file: 'scripts/manage_env.sh'
-
-# Security related changes
-'security':
-  - changed-files:
-    - any-glob-to-any-file: '.github/SECURITY.md'
-
-# Community and contribution changes
-'community':
-  - changed-files:
-    - any-glob-to-any-file: '.github/CODE_OF_CONDUCT.md'
-    - any-glob-to-any-file: '.github/CONTRIBUTING.md'
-    - any-glob-to-any-file: '.github/PULL_REQUEST_TEMPLATE.md'
-    - any-glob-to-any-file: '.github/FUNDING.yml'
-
-# Breaking changes (look for breaking change indicators)
+# Breaking changes indicator
 'breaking':
-  - title: ['^.*!:', 'BREAKING CHANGE', 'BREAKING:', '^feat!:', '^fix!:', '^refactor!:']
-
-# Feature branches
-'feature':
-  - title: ['^feat:', '^feature:']
-
-# Bug fix branches
-'bug':
-  - title: ['^fix:', '^bug:']
-
-# Chore branches
-'chore':
-  - title: ['^chore:']
-
-# Refactor branches
-'refactor':
-  - title: ['^refactor:']
-
-# Style changes
-'style':
-  - title: ['^style:']
-
-# Performance improvements
-'performance':
-  - title: ['^perf:']
+  - title: ['^.*!:', 'BREAKING CHANGE', 'BREAKING:']
