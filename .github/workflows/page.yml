@@ -1,7 +1,11 @@
 name: Deploy to Pages
 
 on:
-  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - 'index.html'
 
 permissions:
   contents: read

@@ -513,7 +513,7 @@ def create_input_key_bindings(
     Args:
         max_length: Maximum characters allowed (0 = no limit)
         is_confirmation: If True, auto-fill default on Enter
-        multiline: If True, enable multiline mode with Ctrl+D/Escape+Enter to submit
+        multiline: If True, enable multiline mode with Ctrl+D to submit
         default_yes: Default confirmation value (only used if is_confirmation=True)
 
     Returns:
@@ -862,7 +862,7 @@ def read_multiline_input(
         KeyboardInterrupt: If user presses Ctrl+C
 
     Note:
-        With prompt_toolkit: Use Ctrl+D or Escape+Enter to submit
+        With prompt_toolkit: Use Ctrl+D to submit
         Without prompt_toolkit: Press Enter twice (empty line) to finish
         Maximum 80 characters per line in fallback mode
         Displays character usage feedback after input
@@ -871,7 +871,7 @@ def read_multiline_input(
         try:
             from prompt_toolkit import prompt
 
-            print(f"{BLUE}Press Ctrl+D or Escape+Enter to finish. Press Enter for new line.{RESET}")
+            print(f"{BLUE}Press Ctrl+D to finish. Press Enter for new line.{RESET}")
             print(f"{BLUE}Maximum {max_length} characters allowed{RESET}")
 
             validator = RealTimeCounterValidator(max_length)

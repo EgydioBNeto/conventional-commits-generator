@@ -3,8 +3,12 @@
 <div align="center">
 <img src="https://github.com/EgydioBNeto/conventional-commits-generator/assets/84047984/53f38934-16bb-40f6-aff7-a5800c4bd706" width="300px"/>
 
-[![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
-[![PyPI version](https://badge.fury.io/py/conventional-commits-generator.svg)](https://badge.fury.io/py/conventional-commits-generator)
+<p>
+  <a href="https://www.python.org/downloads/"><img src="https://img.shields.io/badge/python-3.9+-blue.svg" alt="Python 3.9+"></a>
+  <a href="https://pypi.org/project/conventional-commits-generator/"><img src="https://img.shields.io/pypi/v/conventional-commits-generator.svg" alt="PyPI version"></a>
+  <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License: MIT"></a>
+  <a href="https://github.com/EgydioBNeto/conventional-commits-generator/actions"><img src="https://github.com/EgydioBNeto/conventional-commits-generator/workflows/Tests/badge.svg" alt="Tests"></a>
+</p>
 
 </div>
 
@@ -105,12 +109,12 @@ Repository: my-project  Branch: main
 │ Commit Types         │
 └──────────────────────┘
 
-1. ✨ feat     - A new feature
-2. 🐛 fix      - A bug fix
-3. 🔧 chore    - Maintenance tasks
-4. 🔨 refactor - Code refactoring
-5. 💄 style    - Style changes
-6. 📚 docs     - Documentation
+1. feat     - A new feature
+2. fix      - A bug fix
+3. chore    - Maintenance tasks
+4. refactor - Code refactoring
+5. style    - Style changes
+6. docs     - Documentation
 ...
 
 Choose the commit type: 1
@@ -162,19 +166,19 @@ Do you want to push these changes? (Y/n): y
 
 ## Commit Types
 
-| Type       | Emoji | Description               |
-| ---------- | ----- | ------------------------- |
-| `feat`     | ✨    | A new feature             |
-| `fix`      | 🐛    | A bug fix                 |
-| `chore`    | 🔧    | Maintenance tasks         |
-| `refactor` | 🔨    | Code refactoring          |
-| `style`    | 💄    | Style/formatting changes  |
-| `docs`     | 📚    | Documentation changes     |
-| `test`     | 🧪    | Adding or modifying tests |
-| `build`    | 📦    | Build system changes      |
-| `revert`   | ⏪    | Reverts a previous commit |
-| `ci`       | 👷    | CI/CD changes             |
-| `perf`     | ⚡    | Performance improvements  |
+| Type       | Description               |
+| ---------- | ------------------------- |
+| `feat`     | A new feature             |
+| `fix`      | A bug fix                 |
+| `chore`    | Maintenance tasks         |
+| `refactor` | Code refactoring          |
+| `style`    | Style/formatting changes  |
+| `docs`     | Documentation changes     |
+| `test`     | Adding or modifying tests |
+| `build`    | Build system changes      |
+| `revert`   | Reverts a previous commit |
+| `ci`       | CI/CD changes             |
+| `perf`     | Performance improvements  |
 
 ## Requirements
 

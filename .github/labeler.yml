@@ -52,7 +52,6 @@
     - any-glob-to-any-file: '.github/*.md'
     - any-glob-to-any-file: '.github/ISSUE_TEMPLATE/**'
     - any-glob-to-any-file: 'index.html'
-    - any-glob-to-any-file: 'CLAUDE.md'
 
 # Project configuration changes
 'project-config':

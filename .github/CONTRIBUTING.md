@@ -1,132 +1,424 @@
-# Contributing to the Project
+# Contributing to Conventional Commits Generator
 
-Thank you for considering contributing to this project! We encourage participation from everyone.
+Thank you for your interest in contributing to CCG! We welcome contributions from everyone, whether you're fixing a bug, adding a feature, improving documentation, or sharing ideas.
 
-## How to Contribute
+## Table of Contents
 
-### 1. Create an Issue
+- [Getting Started](#getting-started)
+- [Development Setup](#development-setup)
+- [Making Changes](#making-changes)
+- [Testing](#testing)
+- [Code Standards](#code-standards)
+- [Commit Guidelines](#commit-guidelines)
+- [Pull Request Process](#pull-request-process)
+- [Project Structure](#project-structure)
+- [Getting Help](#getting-help)
 
-Before starting work on a new feature or fix, create an issue for discussion and feedback.
+## Getting Started
 
-### 2. Fork the Repository
+### Before You Begin
 
-Fork the repository to your account.
+1. **Check existing issues**: Search the [issue tracker](https://github.com/EgydioBNeto/conventional-commits-generator/issues) to see if your bug or feature request already exists
+2. **Create an issue**: For significant changes, create an issue first to discuss your approach
+3. **Read the docs**: Familiarize yourself with the [documentation](https://egydioBNeto.github.io/conventional-commits-generator/)
 
-### 3. Create a Branch
+### Prerequisites
 
-Create a branch for your contribution:
+- **Python 3.9+**: Required for development
+- **Git**: For version control
+- **pipx or pip**: For installing dependencies
+
+## Development Setup
+
+### Quick Setup (Recommended)
+
+We provide an automated setup script that handles everything:
 
 ```bash
-git checkout -b feature/new-feature
+# Clone your fork
+git clone https://github.com/YOUR_USERNAME/conventional-commits-generator.git
+cd conventional-commits-generator
+
+# Run automated setup
+./scripts/setup_venv.sh
+
+# Activate virtual environment
+source .venv/bin/activate
 ```
 
-### 4. Make Changes
+The setup script will:
 
-Implement the desired changes following existing coding conventions.
+- Check Python version compatibility (3.9+)
+- Create `.venv` virtual environment
+- Upgrade pip
+- Install project in development mode with all dependencies
+- Verify CCG installation
 
-### 5. Test Your Changes
-
-Run the test suite to ensure your changes don't break existing functionality:
+### Manual Setup (Alternative)
 
 ```bash
-# Run tests with your current Python version
+# Clone your fork
+git clone https://github.com/YOUR_USERNAME/conventional-commits-generator.git
+cd conventional-commits-generator
+
+# Create virtual environment
+python3 -m venv .venv
+
+# Activate virtual environment
+source .venv/bin/activate  # Linux/macOS
+
+# Install in development mode with all dependencies
+pip install -e ".[dev,test,docs]"
+```
+
+### Installing Pre-commit Hooks
+
+We use pre-commit hooks to maintain code quality. Install them after setting up your environment:
+
+```bash
+# Install pre-commit hooks
+pre-commit install
+
+# Run hooks on all files to verify setup
+pre-commit run --all-files
+```
+
+Pre-commit hooks will automatically run on every commit and check:
+
+- Trailing whitespace removal
+- End-of-file fixer (ensures newline at end)
+- TOML file validation
+- No debug statements (prevents accidental commits)
+- Large file prevention
+- Python syntax validation
+- YAML syntax validation
+
+If hooks fail, fix the issues and try committing again. Many issues are auto-fixed by the hooks.
+
+## Making Changes
+
+### 1. Create a Branch
+
+Use conventional commit naming for branches:
+
+```bash
+# For new features
+git checkout -b feat/add-new-feature
+
+# For bug fixes
+git checkout -b fix/resolve-issue-123
+
+# For documentation
+git checkout -b docs/update-readme
+
+# For refactoring
+git checkout -b refactor/improve-module
+```
+
+### 2. Make Your Changes
+
+Follow the project's code standards (see [Code Standards](#code-standards)).
+
+**Key principles:**
+
+- One feature/fix per branch
+- Keep changes focused and atomic
+- Write tests for new functionality
+- Update documentation when needed
+
+### 3. Write Tests
+
+All new code must have tests:
+
+```python
+# tests/unit/test_new_feature.py
+def test_new_feature():
+    """Test description following Google style docstrings."""
+    result = new_feature_function("input")
+    assert result == expected_output
+```
+
+### 4. Run Tests Locally
+
+Before pushing, ensure all tests pass:
+
+```bash
+# Quick test with current Python version
 pytest
 
-# Test across all supported Python versions (3.9-3.13)
-# The script automatically checks dependencies and helps install missing ones
+# Test across all supported versions (3.9-3.13)
 ./scripts/tox-mise.sh
 
-# Test specific Python version
-./scripts/tox-mise.sh -e py39
+# Test specific version
+./scripts/tox-mise.sh -e py312
 
 # Test in parallel (faster)
 ./scripts/tox-mise.sh -p auto
 ```
 
-The `tox-mise.sh` script will:
-- ✓ Check if mise is installed (offers to install if missing)
-- ✓ Check if tox is installed (offers to install if missing)
-- ✓ Check if Python 3.9-3.13 are installed (offers to install missing versions)
-- ✓ Provide clear instructions if auto-installation fails
+## Testing
 
-Make sure all tests pass across all Python versions.
+### Testing Across Multiple Python Versions
 
-### 6. Commit Changes
+**We strongly recommend testing with all supported Python versions before submitting a PR.**
 
-Use CCG itself to create standardized commits:
+Use our `tox-mise.sh` script for easy multi-version testing:
 
 ```bash
-ccg
+# Test all Python versions (3.9-3.13)
+./scripts/tox-mise.sh
+
+# Test specific version
+./scripts/tox-mise.sh -e py39
+./scripts/tox-mise.sh -e py312
+
+# Test in parallel (faster)
+./scripts/tox-mise.sh -p auto
+
+# Run type checking
+./scripts/tox-mise.sh -e mypy
 ```
 
-### 7. Push to Your Fork
+**First-time setup**: The script will automatically:
+
+- Check if `mise` is installed (offers to install if missing)
+- Check if `tox` is installed (offers to install if missing)
+- Check if Python 3.9-3.13 are installed (offers to install missing versions)
+- Provide clear instructions if auto-installation isn't possible
+
+### Manual Testing with Tox
+
+If you prefer to set up tox manually:
 
 ```bash
-git push origin feature/new-feature
+# Install tox
+pip install tox
+
+# Install Python versions with mise
+mise install python@3.9
+mise install python@3.10
+mise install python@3.11
+mise install python@3.12
+mise install python@3.13
+
+# Run tox
+tox
 ```
 
-### 8. Create Pull Request
+### Type Checking
 
-Create a PR to the main branch of this repository.
+We enforce strict type checking with mypy:
 
-### 9. Await Review
+```bash
+# Run mypy type checker
+mypy src/ccg
 
-Be willing to make adjustments as requested.
-
-## Development Standards
-
-### Project Structure
-
-```
-src/ccg/
-├── __init__.py      # Version and exports
-├── cli.py          # Command line interface
-├── core.py         # Core logic
-├── config.py       # Configuration dataclasses
-├── git.py          # Git operations
-└── utils.py        # Utilities and formatting
-
-tests/
-├── unit/           # Unit tests
-├── conftest.py     # Pytest fixtures
-└── __init__.py
+# Via tox
+tox -e mypy
 ```
 
-### Code Conventions
+## Code Standards
 
-- Use type hints whenever possible (enforced by mypy strict mode)
-- Docstrings for public functions (Google-style)
-- Descriptive names for variables and functions
-- Maximum 100 characters per line
-- Use f-strings for string formatting
+### Style Guidelines
 
-### Testing Requirements
+- **Type Hints**: Required for all function signatures
+- **Docstrings**: [Google Style](https://google.github.io/styleguide/pyguide.html#38-comments-and-docstrings) for all public functions and classes
+- **Line Length**: Maximum 100 characters
+- **String Formatting**: Use f-strings
+- **Imports**: Organized by standard library, third-party, local
+- **Naming**:
+  - Functions/variables: `snake_case`
+  - Classes: `PascalCase`
+  - Constants: `UPPER_CASE`
 
-- Minimum code coverage (see `pytest.ini`)
-- All tests must pass on Python 3.9-3.13
-- Use `pytest-mock` for mocking git operations
-- Mock user input via `prompt_toolkit.prompt`
-- Run `tox` before submitting PRs to verify multi-version compatibility
+### Docstring Example
 
-### Pre-commit Hooks
+```python
+def validate_commit_message(message: str) -> tuple[bool, str]:
+    """Validate a commit message against Conventional Commits specification.
 
-The project uses pre-commit to ensure quality:
+    Args:
+        message: The commit message to validate.
 
-- `trailing-whitespace`: Remove trailing whitespace
-- `end-of-file-fixer`: Ensure newline at end of files
-- `check-toml`: Validate TOML files
-- `debug-statements`: Remove debug statements
-- `check-added-large-files`: Prevent large files
+    Returns:
+        A tuple containing:
+        - bool: True if valid, False otherwise
+        - str: Error message if invalid, empty string if valid
+
+    Raises:
+        ValueError: If message is None or empty.
+
+    Examples:
+        >>> validate_commit_message("feat: add new feature")
+        (True, "")
+        >>> validate_commit_message("invalid message")
+        (False, "Invalid format")
+    """
+    if not message:
+        raise ValueError("Message cannot be empty")
+    # Implementation...
+```
+
+**Reference**: [Google Python Style Guide - Docstrings](https://google.github.io/styleguide/pyguide.html#38-comments-and-docstrings)
+
+### Testing Standards
+
+- **Coverage**: 100% required (enforced by pytest configuration)
+- **Test Isolation**: Each test should be independent
+- **Mocking**: Use `pytest-mock` for external dependencies
+- **Property Testing**: Use `hypothesis` for complex validation functions
+- **Test Names**: Descriptive and follow `test_<functionality>_<condition>` pattern
+
+Example:
+
+```python
+def test_validate_commit_message_with_valid_format():
+    """Test that valid conventional commit messages are accepted."""
+    assert validate_commit_message("feat: add feature")[0] is True
+
+def test_validate_commit_message_with_invalid_format():
+    """Test that invalid messages are rejected with error."""
+    is_valid, error = validate_commit_message("not valid")
+    assert is_valid is False
+    assert "Invalid format" in error
+```
+
+## Commit Guidelines
+
+### Use CCG Itself!
+
+The best way to create commits is to use CCG
+
+### Commit Message Format
+
+Follow [Conventional Commits](https://www.conventionalcommits.org/) specification:
+
+```
+<type>[optional scope]: <description>
+
+[optional body]
+
+[optional footer(s)]
+```
+
+**Types:**
+
+- `feat`: New feature
+- `fix`: Bug fix
+- `docs`: Documentation only
+- `style`: Code style/formatting (no logic change)
+- `refactor`: Code refactoring
+- `test`: Adding or updating tests
+- `chore`: Maintenance tasks
+- `perf`: Performance improvements
+- `ci`: CI/CD changes
+- `build`: Build system changes
+
+## Pull Request Process
+
+### 1. Update Your Branch
+
+Before creating a PR, sync with the main branch:
+
+```bash
+git checkout main
+git pull upstream main
+git checkout your-feature-branch
+git rebase main
+```
+
+### 2. Run Full Test Suite
+
+Ensure everything passes:
+
+```bash
+# Run tests across all Python versions
+./scripts/tox-mise.sh
+
+# Run pre-commit checks
+pre-commit run --all-files
+
+# Verify type checking
+mypy src/ccg
+```
+
+### 3. Push Your Changes
+
+```bash
+git push origin your-feature-branch
+```
+
+### 4. Create Pull Request
+
+On GitHub, create a PR with:
+
+**Title**: Use conventional commit format
+
+```
+feat(cli): add support for custom commit templates
+```
+
+**Description**: Include:
+
+- What changes were made
+- Why these changes were needed
+- How to test the changes
+- Screenshots/examples (if applicable)
+- Related issue numbers (e.g., "Closes #123")
+
+**PR Template Example:**
+
+```markdown
+## Description
+
+Brief description of changes
+
+## Motivation
+
+Why is this change needed?
+
+## Changes
+
+- Change 1
+- Change 2
+
+## Testing
+
+- [ ] All tests pass
+- [ ] Tested across Python 3.9-3.13
+- [ ] Pre-commit hooks pass
+- [ ] Documentation updated
+
+## Related Issues
+
+Closes #123
+```
+
+### 5. Respond to Review Feedback
+
+- Be open to feedback and suggestions
+- Make requested changes promptly
+- Push additional commits to the same branch
+- Request re-review after addressing feedback
+
+## Getting Help
+
+### Resources
+
+- **Issue Tracker**: [GitHub Issues](https://github.com/EgydioBNeto/conventional-commits-generator/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/EgydioBNeto/conventional-commits-generator/discussions)
+
+### Questions?
+
+- **Bug Reports**: Use the bug report template in issues
+- **Feature Requests**: Use the feature request template
+- **Questions**: Create an issue with the "question" label
+- **Email**: egydiobolonhezi@gmail.com
 
 ## Code of Conduct
 
-This project follows our [Code of Conduct](CODE_OF_CONDUCT.md). By participating, all contributors and maintainers are expected to uphold this code.
+This project follows our [Code of Conduct](CODE_OF_CONDUCT.md). By participating, you agree to uphold this code. Please report unacceptable behavior to egydiobolonhezi@gmail.com.
 
-## Need Help?
+## License
 
-If you need assistance:
-
-- Create an issue with the "question" tag
-- Contact us: egydiobolonhezi@gmail.com
-
-Thank you for your interest in contributing! 🚀
+By contributing, you agree that your contributions will be licensed under the same [MIT License](../LICENSE) that covers this project.
