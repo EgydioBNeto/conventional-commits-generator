@@ -4,9 +4,9 @@ import argparse
 import os
 import sys
 import traceback
-from argparse import Action, _MutuallyExclusiveGroup
+from argparse import Action
 from functools import wraps
-from typing import TYPE_CHECKING, Callable, List, Optional, Tuple, TypeVar, cast
+from typing import TYPE_CHECKING, Any, Callable, List, Optional, Tuple, TypeVar, cast
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
@@ -111,7 +111,7 @@ class CustomHelpFormatter(argparse.HelpFormatter):
         self,
         usage: object,
         actions: "Iterable[Action]",
-        groups: "Iterable[_MutuallyExclusiveGroup]",
+        groups: "Iterable[Any]",
         prefix: Optional[str],
     ) -> str:
         """Format usage text with logo prepended."""

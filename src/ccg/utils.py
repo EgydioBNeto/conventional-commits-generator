@@ -2,7 +2,12 @@
 
 import re
 import shutil
-from typing import Callable, Dict, List, Optional, Tuple
+from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Tuple
+
+if TYPE_CHECKING:
+    from prompt_toolkit.history import InMemoryHistory
+    from prompt_toolkit.styles import Style
+    from prompt_toolkit.validation import Validator
 
 ASCII_LOGO = r"""
  ________      ________      ________
@@ -16,24 +21,40 @@ ASCII_LOGO = r"""
  Conventional Commits Generator
 """
 
+# Module-level type annotations (declared once)
+prompt_toolkit_available: bool
+histories: Dict[str, Any]
+prompt_style: Optional[Any]
+KeyBindings: Optional[Any] = None
+Keys: Optional[Any] = None
+Document: Optional[Any] = None
+KeyPressEvent: Optional[Any] = None
+prompt: Optional[Any] = None
+
+# These will be defined as classes or None depending on import success
+ConfirmationValidator: Optional[Any] = None
+RealTimeCounterValidator: Optional[Any] = None
+
 try:
-    from prompt_toolkit import prompt
-    from prompt_toolkit.document import Document
+    from prompt_toolkit import prompt as _prompt
+
+    prompt = _prompt
+    from prompt_toolkit.document import Document as _Document
     from prompt_toolkit.history import InMemoryHistory
-    from prompt_toolkit.key_binding import KeyBindings
-    from prompt_toolkit.key_binding.key_processor import KeyPressEvent
-    from prompt_toolkit.keys import Keys
+    from prompt_toolkit.key_binding import KeyBindings as _KeyBindings
+    from prompt_toolkit.key_binding.key_processor import KeyPressEvent as _KeyPressEvent
+    from prompt_toolkit.keys import Keys as _Keys
     from prompt_toolkit.styles import Style
     from prompt_toolkit.validation import ValidationError, Validator
 
-    HISTORIES: Dict[str, InMemoryHistory] = {
+    histories = {
         "type": InMemoryHistory(),
         "scope": InMemoryHistory(),
         "message": InMemoryHistory(),
         "body": InMemoryHistory(),
     }
 
-    PROMPT_STYLE: Style = Style.from_dict(
+    prompt_style = Style.from_dict(
         {
             "prompt": "#00AFFF bold",
             "command": "#00FF00 bold",
@@ -48,7 +69,7 @@ try:
         }
     )
 
-    class ConfirmationValidator(Validator):
+    class _ConfirmationValidator(Validator):
         """Validator for yes/no confirmation prompts in prompt_toolkit.
 
         Validates that user input is a valid confirmation response (y/yes/n/no)
@@ -61,7 +82,7 @@ try:
         def __init__(self, default_yes: bool = True) -> None:
             self.default_yes = default_yes
 
-        def validate(self, document: "Document") -> None:
+        def validate(self, document: _Document) -> None:
             """Validate the confirmation input."""
             text = document.text
 
@@ -77,7 +98,7 @@ try:
                         message="Please enter 'y' or 'n'", cursor_position=len(text)
                     )
 
-    class RealTimeCounterValidator(Validator):
+    class _RealTimeCounterValidator(Validator):
         """Validator for enforcing character limits in prompt_toolkit.
 
         Prevents user from entering more than the maximum allowed characters
@@ -90,7 +111,7 @@ try:
         def __init__(self, max_length: int) -> None:
             self.max_length = max_length
 
-        def validate(self, document: "Document") -> None:
+        def validate(self, document: _Document) -> None:
             """Validate input length against maximum."""
             text = document.text
             length = len(text)
@@ -101,17 +122,25 @@ try:
                     cursor_position=self.max_length,
                 )
 
-    PROMPT_TOOLKIT_AVAILABLE: bool = True
+    prompt_toolkit_available = True
+    ConfirmationValidator = _ConfirmationValidator
+    RealTimeCounterValidator = _RealTimeCounterValidator
+    Document = _Document
+    KeyBindings = _KeyBindings
+    Keys = _Keys
+    KeyPressEvent = _KeyPressEvent
+
 except ImportError:
-    PROMPT_TOOLKIT_AVAILABLE: bool = False  # type: ignore[no-redef]
-    HISTORIES: Dict[str, "InMemoryHistory"] = {}  # type: ignore[no-redef]
-    PROMPT_STYLE: Optional["Style"] = None  # type: ignore[no-redef]
-    ConfirmationValidator = None  # type: ignore[misc, assignment]
-    RealTimeCounterValidator = None  # type: ignore[misc, assignment]
-    KeyBindings = None  # type: ignore[misc, assignment]
-    Keys = None  # type: ignore[misc, assignment]
-    Document = None  # type: ignore[misc, assignment]
-    KeyPressEvent = None  # type: ignore[misc, assignment]
+    prompt_toolkit_available = False
+    histories = {}
+    prompt_style = None
+    # ConfirmationValidator and RealTimeCounterValidator already initialized to None
+    # KeyBindings, Keys, Document and KeyPressEvent already initialized to None
+
+# Export with uppercase names for backwards compatibility
+PROMPT_TOOLKIT_AVAILABLE = prompt_toolkit_available
+HISTORIES = histories
+PROMPT_STYLE = prompt_style
 
 RED = "\033[91m"
 GREEN = "\033[92m"
@@ -131,13 +160,16 @@ WARNING = "⚠"
 INFO = "ℹ"
 BULLET = "•"
 
+# Terminal width detection
+term_width: int
 try:
-    TERM_WIDTH: int
-    TERM_WIDTH, _ = shutil.get_terminal_size()
+    term_width, _ = shutil.get_terminal_size()
 except Exception:
     from ccg.config import UI_CONFIG
 
-    TERM_WIDTH = UI_CONFIG.DEFAULT_TERM_WIDTH
+    term_width = UI_CONFIG.DEFAULT_TERM_WIDTH
+
+TERM_WIDTH = term_width
 
 from ccg.config import INPUT_LIMITS as INPUT_LIMITS_CONFIG
 
@@ -485,15 +517,15 @@ def create_counter_toolbar(
                         counter_text = f"LIMIT: {counter_text}"
 
                 try:
-                    term_width = shutil.get_terminal_size().columns
-                except:
-                    term_width = 80
+                    term_width_local = shutil.get_terminal_size().columns
+                except Exception:
+                    term_width_local = 80
 
-                padding = max(0, term_width - len(counter_text) - 4)
+                padding = max(0, term_width_local - len(counter_text) - 4)
 
                 return [("", " " * padding), (color, counter_text)]
             return [("class:toolbar.text", f"0/{3 if is_confirmation else max_length}")]
-        except:
+        except Exception:
             return [("class:toolbar.text", f"0/{3 if is_confirmation else max_length}")]
 
     return get_toolbar_tokens
@@ -504,7 +536,7 @@ def create_input_key_bindings(
     is_confirmation: bool = False,
     multiline: bool = False,
     default_yes: bool = True,
-) -> Optional["KeyBindings"]:
+) -> Any:
     """Create custom key bindings for prompt_toolkit input handling.
 
     Configures keyboard shortcuts and input behaviors including character limits,
@@ -523,30 +555,30 @@ def create_input_key_bindings(
         Prevents input beyond max_length with visual bell feedback.
         Handles standard navigation keys (arrows, home, end, backspace, delete).
     """
-    if not PROMPT_TOOLKIT_AVAILABLE or KeyBindings is None or Keys is None:
+    if not prompt_toolkit_available or KeyBindings is None or Keys is None:
         return None
     kb = KeyBindings()
 
     if not multiline:
 
-        @kb.add(Keys.ControlM)
-        def _(event: "KeyPressEvent") -> None:  # pragma: no cover
+        @kb.add(Keys.ControlM)  # type: ignore[misc]
+        def _(event: Any) -> None:  # pragma: no cover
             if is_confirmation and not event.app.current_buffer.text.strip():
                 event.app.current_buffer.text = "y" if default_yes else "n"
             event.app.current_buffer.validate_and_handle()
 
     else:
 
-        @kb.add(Keys.ControlD)
-        def _(event: "KeyPressEvent") -> None:  # pragma: no cover
+        @kb.add(Keys.ControlD)  # type: ignore[misc]
+        def _(event: Any) -> None:  # pragma: no cover
             event.app.current_buffer.validate_and_handle()
 
-        @kb.add(Keys.Escape, Keys.Enter)
-        def _(event: "KeyPressEvent") -> None:  # pragma: no cover
+        @kb.add(Keys.Escape, Keys.Enter)  # type: ignore[misc]
+        def _(event: Any) -> None:  # pragma: no cover
             event.app.current_buffer.validate_and_handle()
 
-    @kb.add(Keys.Any)
-    def _(event: "KeyPressEvent") -> None:  # pragma: no cover
+    @kb.add(Keys.Any)  # type: ignore[misc]
+    def _(event: Any) -> None:  # pragma: no cover
         current_text = event.app.current_buffer.text
         new_char = event.data
         would_be_text = current_text + new_char
@@ -556,34 +588,34 @@ def create_input_key_bindings(
         elif max_length > 0 and len(would_be_text) > max_length:
             try:
                 event.app.output.bell()
-            except:
+            except Exception:
                 pass
             event.app.invalidate()
             return
         event.app.current_buffer.insert_text(new_char)
 
-    @kb.add(Keys.Backspace)
-    def _(event: "KeyPressEvent") -> None:  # pragma: no cover
+    @kb.add(Keys.Backspace)  # type: ignore[misc]
+    def _(event: Any) -> None:  # pragma: no cover
         event.app.current_buffer.delete_before_cursor()
 
-    @kb.add(Keys.Delete)
-    def _(event: "KeyPressEvent") -> None:  # pragma: no cover
+    @kb.add(Keys.Delete)  # type: ignore[misc]
+    def _(event: Any) -> None:  # pragma: no cover
         event.app.current_buffer.delete()
 
-    @kb.add(Keys.Left)
-    def _(event: "KeyPressEvent") -> None:  # pragma: no cover
+    @kb.add(Keys.Left)  # type: ignore[misc]
+    def _(event: Any) -> None:  # pragma: no cover
         event.app.current_buffer.cursor_left()
 
-    @kb.add(Keys.Right)
-    def _(event: "KeyPressEvent") -> None:  # pragma: no cover
+    @kb.add(Keys.Right)  # type: ignore[misc]
+    def _(event: Any) -> None:  # pragma: no cover
         event.app.current_buffer.cursor_right()
 
-    @kb.add(Keys.Home)
-    def _(event: "KeyPressEvent") -> None:  # pragma: no cover
+    @kb.add(Keys.Home)  # type: ignore[misc]
+    def _(event: Any) -> None:  # pragma: no cover
         event.app.current_buffer.cursor_position = 0
 
-    @kb.add(Keys.End)
-    def _(event: "KeyPressEvent") -> None:  # pragma: no cover
+    @kb.add(Keys.End)  # type: ignore[misc]
+    def _(event: Any) -> None:  # pragma: no cover
         event.app.current_buffer.cursor_position = len(event.app.current_buffer.text)
 
     return kb
@@ -624,24 +656,26 @@ def read_input(
     if history_type == "body":
         return read_multiline_input(default_text, max_length)
 
-    if PROMPT_TOOLKIT_AVAILABLE:
+    if PROMPT_TOOLKIT_AVAILABLE and prompt is not None:
         try:
             clean_prompt = strip_color_codes(prompt_text)
 
             history = HISTORIES.get(history_type) if history_type else None
-            validator = RealTimeCounterValidator(max_length) if max_length else None
+            validator = RealTimeCounterValidator(max_length) if max_length else None  # type: ignore[misc]
             key_bindings = create_input_key_bindings(max_length if max_length else 0)
             bottom_toolbar = create_counter_toolbar(max_length) if max_length else None
 
-            result = prompt(
-                f"{clean_prompt}: ",
-                history=history,
-                style=PROMPT_STYLE,
-                default=default_text or "",
-                validator=validator,
-                validate_while_typing=True,
-                key_bindings=key_bindings,
-                bottom_toolbar=bottom_toolbar,
+            result = str(
+                prompt(
+                    f"{clean_prompt}: ",
+                    history=history,
+                    style=PROMPT_STYLE,
+                    default=default_text or "",
+                    validator=validator,
+                    validate_while_typing=True,
+                    key_bindings=key_bindings,
+                    bottom_toolbar=bottom_toolbar,
+                )
             ).strip()
 
             if result and max_length:
@@ -765,11 +799,11 @@ def confirm_user_action(
     else:
         prompt_display = prompt_display.replace("(y/n)", "(y/N)")
 
-    if PROMPT_TOOLKIT_AVAILABLE:
+    if PROMPT_TOOLKIT_AVAILABLE and prompt is not None:
         try:
             clean_prompt = strip_color_codes(prompt_display)
 
-            validator = ConfirmationValidator(default_yes)
+            validator = ConfirmationValidator(default_yes)  # type: ignore[misc]
             key_bindings = create_input_key_bindings(is_confirmation=True, default_yes=default_yes)
             bottom_toolbar = create_counter_toolbar(3, is_confirmation=True)
 
@@ -869,16 +903,16 @@ def read_multiline_input(
     """
     if PROMPT_TOOLKIT_AVAILABLE and max_length:
         try:
-            from prompt_toolkit import prompt
+            from prompt_toolkit import prompt as prompt_multiline
 
             print(f"{BLUE}Press Ctrl+D to finish. Press Enter for new line.{RESET}")
             print(f"{BLUE}Maximum {max_length} characters allowed{RESET}")
 
-            validator = RealTimeCounterValidator(max_length)
+            validator = RealTimeCounterValidator(max_length)  # type: ignore[misc]
             key_bindings = create_input_key_bindings(max_length, multiline=True)
             bottom_toolbar = create_counter_toolbar(max_length)
 
-            result = prompt(
+            result = prompt_multiline(
                 "",
                 multiline=True,
                 style=PROMPT_STYLE,
