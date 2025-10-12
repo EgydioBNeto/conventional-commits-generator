@@ -33,7 +33,17 @@ jobs:
           pip install mkdocs mkdocs-material mkdocs-git-revision-date-localized-plugin mkdocs-minify-plugin pymdown-extensions
 
       - name: Build documentation
-        run: mkdocs build --strict
+        run: mkdocs build --strict --site-dir site
 
       - name: Deploy to GitHub Pages
-        run: mkdocs gh-deploy --force
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git fetch origin gh-pages
+          git checkout gh-pages
+          rm -rf docs/*
+          cp -r site/* docs/
+          git add docs/
+          git commit -m "docs: update documentation" || echo "No changes to commit"
+          git push origin gh-pages
+          git checkout -
