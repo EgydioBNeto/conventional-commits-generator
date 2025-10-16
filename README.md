@@ -84,6 +84,14 @@ ccg --path /path/to/repo
 # Combine --path with other flags
 ccg --path /path/to/repo --push
 
+# Enable verbose logging for debugging
+ccg --verbose
+ccg -v
+
+# Combine verbose with other flags
+ccg --verbose --push
+ccg -v --edit
+
 # Show version
 ccg --version
 ```

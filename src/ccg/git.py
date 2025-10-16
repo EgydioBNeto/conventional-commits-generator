@@ -1,11 +1,15 @@
 """Git operations for the Conventional Commits Generator."""
 
+import logging
 import os
 import subprocess
 import tempfile
+from pathlib import Path
 from typing import List, Optional, Tuple
 
+from ccg.cache import get_cache, invalidate_repository_cache
 from ccg.config import GIT_CONFIG
+from ccg.progress import ProgressSpinner
 from ccg.utils import (
     print_error,
     print_info,
@@ -14,6 +18,8 @@ from ccg.utils import (
     print_success,
     print_warning,
 )
+
+logger = logging.getLogger("ccg.git")
 
 
 def run_git_command(
@@ -53,24 +59,32 @@ def run_git_command(
         Special handling for "Changes pushed successfully!" message - displays
         it in a "Remote Push" section for visual clarity
     """
+    logger.debug(f"Executing git command: {' '.join(command)}")
+
     try:
         result = subprocess.run(
             command, capture_output=True, check=True, text=True, timeout=timeout
         )
 
+        logger.debug(f"Git command succeeded: {' '.join(command)}")
         if success_message:
             if success_message == "Changes pushed successfully!":
                 print_section("Remote Push")
-            print_success(success_message)
-
+                print_success(success_message)
+            else:
+                print_success(success_message)
         if show_output:
             return True, result.stdout.strip()
         return True, None
 
     except subprocess.TimeoutExpired:
+        logger.error(f"Git command timed out after {timeout}s: {' '.join(command)}")
         print_error(f"Command timed out after {timeout} seconds: {' '.join(command)}")
         return False, f"Command timed out after {timeout} seconds"
     except subprocess.CalledProcessError as error:
+        logger.error(f"Git command failed (exit {error.returncode}): {' '.join(command)}")
+        if error.stderr:
+            logger.error(f"Git stderr: {error.stderr[:500]}")  # Log first 500 chars
         if error_message:
             print_error(error_message)
         if show_output:
@@ -81,6 +95,7 @@ def run_git_command(
                 print(f"\033[91m{error.stderr}\033[0m")
             return False, None
     except FileNotFoundError:
+        logger.critical("Git executable not found in PATH")
         print_error("Git is not installed. Please install Git and try again.")
         return False, None
 
@@ -132,21 +147,33 @@ def git_commit(commit_message: str) -> bool:
     Note:
         Message should already be in conventional commit format when passed here
     """
+    logger.info(f"Creating commit with message: {commit_message[:80]}...")
     print_process("Committing changes...")
-    success, _ = run_git_command(
-        ["git", "commit", "-m", commit_message],
-        "Error during 'git commit'",
-        "New commit successfully created!",
-    )
+
+    with ProgressSpinner("Creating commit"):
+        success, _ = run_git_command(
+            ["git", "commit", "-m", commit_message],
+            "Error during 'git commit'",
+            None,  # Don't print success message inside spinner
+        )
+
+    if success:
+        logger.info("Commit created successfully")
+        print_success("New commit successfully created!")
+        invalidate_repository_cache()
+    else:
+        logger.error("Commit creation failed")
+
     return success
 
 
 def get_remote_name() -> Optional[str]:
-    """Get the name of the primary git remote.
+    """Get the name of the primary git remote (cached).
 
     Retrieves the first configured remote name (typically 'origin').
     This helper function eliminates code duplication across git operations
-    that need to know the remote name.
+    that need to know the remote name. Results are cached to reduce
+    redundant git command executions.
 
     Returns:
         Remote name as string, or None if no remote configured
@@ -159,15 +186,19 @@ def get_remote_name() -> Optional[str]:
         Returns the first remote in the list. If multiple remotes exist,
         this returns the first one alphabetically.
     """
-    success, output = run_git_command(
-        ["git", "remote"], "Failed to get remote name", show_output=True
-    )
 
-    if not success or not output:
-        print_error("No remote repository configured")
-        return None
+    def fetch_remote_name() -> Optional[str]:
+        success, output = run_git_command(
+            ["git", "remote"], "Failed to get remote name", show_output=True
+        )
 
-    return str(output.split()[0])
+        if not success or not output:
+            print_error("No remote repository configured")
+            return None
+
+        return str(output.split()[0])
+
+    return get_cache().get_or_fetch("remote_name", fetch_remote_name)
 
 
 def handle_upstream_error(branch_name: str, remote_name: str, error_output: str) -> bool:
@@ -219,13 +250,16 @@ def git_push(set_upstream: bool = False, force: bool = False) -> bool:
         When both set_upstream and force are True, combines both flags.
         Regular push attempts upstream error recovery automatically.
     """
+    logger.info(f"Pushing to remote (set_upstream={set_upstream}, force={force})")
     branch_name = get_current_branch()
     if not branch_name:
+        logger.error("Could not determine current branch name")
         print_error("Failed to determine current branch name")
         return False
 
     remote_name = get_remote_name()
     if not remote_name:
+        logger.error("No remote repository configured")
         return False
 
     if set_upstream:
@@ -234,29 +268,47 @@ def git_push(set_upstream: bool = False, force: bool = False) -> bool:
             command.append("--force")
         command.extend([remote_name, branch_name])
 
-        success, _ = run_git_command(
-            command,
-            f"Error setting upstream and pushing to '{remote_name}/{branch_name}'",
-            f"Branch '{branch_name}' created on remote and changes pushed successfully!",
-        )
+        with ProgressSpinner(f"Pushing to {remote_name}/{branch_name}"):
+            success, _ = run_git_command(
+                command,
+                f"Error setting upstream and pushing to '{remote_name}/{branch_name}'",
+                None,  # Don't print success message inside spinner
+            )
+
+        if success:
+            print_success(
+                f"Branch '{branch_name}' created on remote and changes pushed successfully!"
+            )
+
         return success
     elif force:
         message = f"Force pushing changes to '{remote_name}/{branch_name}'..."
         success_msg = f"Changes force pushed to '{remote_name}/{branch_name}' successfully!"
 
         print_process(message)
-        success, _ = run_git_command(
-            ["git", "push", "--force"], "Error during force push", success_msg
-        )
+        with ProgressSpinner(f"Force pushing to {remote_name}/{branch_name}"):
+            success, _ = run_git_command(
+                ["git", "push", "--force"], "Error during force push", None
+            )
+
+        if success:
+            print_success(success_msg)
+
         return success
     else:
         print_process("Pushing changes...")
-        success, error_output = run_git_command(
-            ["git", "push"],
-            "Error during 'git push'",
-            "Changes pushed successfully!",
-            show_output=True,
-        )
+        with ProgressSpinner(f"Pushing to {remote_name}/{branch_name}"):
+            success, error_output = run_git_command(
+                ["git", "push"],
+                "Error during 'git push'",
+                None,  # Don't print success message inside spinner
+                show_output=True,
+            )
+
+        # Print success message after spinner has stopped
+        if success:
+            print_section("Remote Push")
+            print_success("Changes pushed successfully!")
 
         if not success and error_output:
             if handle_upstream_error(branch_name, remote_name, error_output):
@@ -394,11 +446,12 @@ def pull_from_remote() -> bool:
         print_error("Failed to determine current branch name")
         return False
 
-    success, _ = run_git_command(
-        ["git", "pull", remote_name, branch_name],
-        f"Error pulling from {remote_name}/{branch_name}",
-        timeout=120,
-    )
+    with ProgressSpinner(f"Pulling from {remote_name}/{branch_name}"):
+        success, _ = run_git_command(
+            ["git", "pull", remote_name, branch_name],
+            f"Error pulling from {remote_name}/{branch_name}",
+            timeout=120,
+        )
 
     return success
 
@@ -423,6 +476,38 @@ def get_staged_files() -> List[str]:
 
     if success and output:
         return [file for file in output.split("\n") if file]
+    return []
+
+
+def get_staged_file_changes() -> List[Tuple[str, str]]:
+    """Get list of staged files with their status (A, M, D).
+
+    Retrieves the status (Added, Modified, Deleted) and path of all files
+    currently staged for commit.
+
+    Returns:
+        List of tuples, where each tuple contains (status, file_path).
+        Returns an empty list on error or if no files are staged.
+
+    Examples:
+        >>> get_staged_file_changes()
+        [('A', 'new_file.txt'), ('M', 'modified_file.py'), ('D', 'deleted_file.js')]
+    """
+    success, output = run_git_command(
+        ["git", "diff", "--name-status", "--cached"],
+        "Failed to get staged file changes",
+        show_output=True,
+    )
+
+    if success and output:
+        changes = []
+        for line in output.split("\n"):
+            if line:
+                parts = line.split(maxsplit=1)
+                if len(parts) == 2:
+                    status, file_path = parts
+                    changes.append((status.strip(), file_path.strip()))
+        return changes
     return []
 
 
@@ -565,7 +650,6 @@ def check_remote_access() -> bool:
                     print_error("   You have push access to this repository")
                     print_error("   The repository URL is correct")
                     print_error("   You're logged in with the correct account")
-                    print()
                     print_error("Cannot proceed without repository access. Exiting.")
                     return False
                 else:
@@ -580,15 +664,16 @@ def check_remote_access() -> bool:
         print_error("Remote repository check timed out")
         print_error("This could indicate network issues or authentication problems.")
         return False
-    except Exception as e:
+    except (OSError, subprocess.SubprocessError, Exception) as e:
         print_error(f"Failed to check remote repository access: {str(e)}")
         return False
 
 
 def get_current_branch() -> Optional[str]:
-    """Get the name of the current git branch.
+    """Get the name of the current git branch (cached).
 
     Retrieves the name of the currently checked out branch.
+    Results are cached to reduce redundant git command executions.
 
     Returns:
         Branch name as string, or None if unable to determine (e.g., detached HEAD)
@@ -596,49 +681,65 @@ def get_current_branch() -> Optional[str]:
     Note:
         Returns branch name only, not full ref path (e.g., "main" not "refs/heads/main")
     """
-    success, output = run_git_command(
-        ["git", "rev-parse", "--abbrev-ref", "HEAD"],
-        "Failed to get current branch name",
-        show_output=True,
-    )
 
-    if success and output:
-        return output
-    return None
+    def fetch_branch() -> Optional[str]:
+        success, output = run_git_command(
+            ["git", "rev-parse", "--abbrev-ref", "HEAD"],
+            "Failed to get current branch name",
+            show_output=True,
+        )
+
+        if success and output:
+            return output
+        return None
+
+    return get_cache().get_or_fetch("branch", fetch_branch)
 
 
 def get_repository_name() -> Optional[str]:
-    """Get the name of the current git repository.
+    """Get the name of the current git repository (cached).
+
+    Results are cached to reduce redundant git command executions.
 
     Returns:
         Repository name or None if unable to determine
     """
-    success, output = run_git_command(
-        ["git", "rev-parse", "--show-toplevel"],
-        "Failed to get repository root",
-        show_output=True,
-    )
 
-    if success and output:
-        return os.path.basename(output)
-    return None
+    def fetch_repo_name() -> Optional[str]:
+        success, output = run_git_command(
+            ["git", "rev-parse", "--show-toplevel"],
+            "Failed to get repository root",
+            show_output=True,
+        )
+
+        if success and output:
+            return os.path.basename(output)
+        return None
+
+    return get_cache().get_or_fetch("repo_name", fetch_repo_name)
 
 
 def get_repository_root() -> Optional[str]:
-    """Get the root directory of the current git repository.
+    """Get the root directory of the current git repository (cached).
+
+    Results are cached to reduce redundant git command executions.
 
     Returns:
         Absolute path to repository root or None if unable to determine
     """
-    success, output = run_git_command(
-        ["git", "rev-parse", "--show-toplevel"],
-        "Failed to get repository root",
-        show_output=True,
-    )
 
-    if success and output:
-        return output
-    return None
+    def fetch_repo_root() -> Optional[str]:
+        success, output = run_git_command(
+            ["git", "rev-parse", "--show-toplevel"],
+            "Failed to get repository root",
+            show_output=True,
+        )
+
+        if success and output:
+            return output
+        return None
+
+    return get_cache().get_or_fetch("repo_root", fetch_repo_root)
 
 
 def is_path_in_repository(path: str, repo_root: str) -> bool:
@@ -852,7 +953,7 @@ def edit_latest_commit_with_amend(
             with tempfile.NamedTemporaryFile(mode="w", delete=False) as f:
                 f.write(full_commit_message)
                 temp_file = f.name
-        except Exception as e:
+        except (IOError, OSError, PermissionError) as e:
             print_error(f"Failed to create temporary commit message file: {str(e)}")
             return False
 
@@ -861,6 +962,9 @@ def edit_latest_commit_with_amend(
             f"Failed to amend commit message for '{commit_hash[:7]}'",
             f"Commit message for '{commit_hash[:7]}' updated successfully",
         )
+
+        if success:
+            invalidate_repository_cache()
 
         return success
     finally:
@@ -894,51 +998,119 @@ def edit_old_commit_with_filter_branch(
     Note:
         REWRITES HISTORY - Changes all descendant commit hashes.
         Uses 300 second (5 minute) timeout for large repositories.
-        Escapes single quotes in message for shell safety.
+        Uses temporary files in ~/.ccg/ directory for secure message handling.
     """
     full_commit_message = new_message
     if new_body:
         full_commit_message += f"\n\n{new_body}"
 
-    escaped_message = full_commit_message.replace("'", "'\\''")
-
-    command = [
-        "git",
-        "filter-branch",
-        "--force",
-        "--msg-filter",
-        f'if [ "$(git rev-parse --short $GIT_COMMIT)" = "{commit_hash[:7]}" ]; then echo \'{escaped_message}\'; else cat; fi',
-    ]
-
-    if is_initial_commit:
-        command.extend(["--", "--all"])
-    else:
-        command.append(f"{commit_hash}^..HEAD")
-
-    print_process(f"Updating commit message for '{commit_hash[:7]}'...")
-    print_info("This may take a moment for repositories with many commits...")
-
-    success, output = run_git_command(
-        command,
-        f"Failed to edit commit message for '{commit_hash[:7]}'",
-        f"Commit message for '{commit_hash[:7]}' updated successfully",
-        show_output=True,
-        timeout=300,
-    )
-
-    if not success:
-        print_error("Error details:")
-        print(output)
+    # Create CCG directory in user's home (same location as logs)
+    ccg_dir = Path.home() / ".ccg"
+    try:
+        ccg_dir.mkdir(parents=True, exist_ok=True)
+    except (OSError, PermissionError) as e:
+        logger.error(f"Failed to create CCG directory: {str(e)}")
+        print_error(f"Failed to create directory {ccg_dir}: {str(e)}")
         return False
 
-    return True
+    message_file = None
+    script_file = None
+    try:
+        # Create temporary file for commit message in ~/.ccg/
+        try:
+            message_file = ccg_dir / f"commit_message_{commit_hash[:7]}.tmp"
+            message_file.write_text(full_commit_message, encoding="utf-8")
+            logger.debug(f"Created message file: {message_file}")
+        except (IOError, OSError, PermissionError) as e:
+            logger.error(f"Failed to create message file: {str(e)}")
+            print_error(f"Failed to create temporary message file: {str(e)}")
+            return False
+
+        # Create Python script that reads from message file
+        # This avoids shell injection by not interpolating user content
+        # Python is cross-platform and already a dependency of CCG
+        import sys as _sys
+
+        script_content = f"""#!/usr/bin/env python3
+import subprocess
+import sys
+
+# Get current commit hash being processed by filter-branch
+result = subprocess.run(
+    ["git", "rev-parse", "--short", "HEAD"],
+    capture_output=True,
+    text=True
+)
+current_hash = result.stdout.strip()
+
+# If this is the target commit, use new message from file
+if current_hash == "{commit_hash[:7]}":
+    with open(r"{message_file}", "r", encoding="utf-8") as f:
+        sys.stdout.write(f.read())
+else:
+    # Otherwise, preserve original message from stdin
+    sys.stdout.write(sys.stdin.read())
+"""
+
+        try:
+            script_file = ccg_dir / f"msg_filter_{commit_hash[:7]}.py"
+            script_file.write_text(script_content, encoding="utf-8")
+            script_file.chmod(0o755)  # Make script executable
+            logger.debug(f"Created Python script file: {script_file}")
+        except (IOError, OSError, PermissionError) as e:
+            logger.error(f"Failed to create Python script file: {str(e)}")
+            print_error(f"Failed to create temporary Python script file: {str(e)}")
+            return False
+
+        command = [
+            "git",
+            "filter-branch",
+            "--force",
+            "--msg-filter",
+            str(script_file),
+        ]
+
+        if is_initial_commit:
+            command.extend(["--", "--all"])
+        else:
+            command.append(f"{commit_hash}^..HEAD")
+
+        print_process(f"Updating commit message for '{commit_hash[:7]}'...")
+        print_info("This may take a moment for repositories with many commits...")
+
+        with ProgressSpinner("Rewriting git history"):
+            success, output = run_git_command(
+                command,
+                f"Failed to edit commit message for '{commit_hash[:7]}'",
+                f"Commit message for '{commit_hash[:7]}' updated successfully",
+                show_output=True,
+                timeout=300,
+            )
+
+        if not success:
+            print_error("Error details:")
+            print(output)
+            return False
+
+        invalidate_repository_cache()
+        return True
+
+    finally:
+        # Clean up temporary files
+        for temp_file in [message_file, script_file]:
+            if temp_file and temp_file.exists():
+                try:
+                    temp_file.unlink()
+                    logger.debug(f"Cleaned up temporary file: {temp_file}")
+                except Exception as e:
+                    logger.warning(f"Failed to clean up {temp_file}: {str(e)}")
 
 
 def edit_commit_message(commit_hash: str, new_message: str, new_body: Optional[str] = None) -> bool:
-    """Edit a commit message by hash, using appropriate method based on position.
+    """Edit a commit message by hash, using appropriate strategy based on position.
 
-    Intelligently chooses between amend (for latest commit) and filter-branch
-    (for older commits). Detects if editing the initial commit and handles accordingly.
+    Uses the Strategy Pattern to automatically choose between amend (for latest commit)
+    and filter-branch (for older commits). Detects if editing the initial commit.
 
     Args:
         commit_hash: Full hash of commit to edit
@@ -949,23 +1121,21 @@ def edit_commit_message(commit_hash: str, new_message: str, new_body: Optional[s
         True if edit succeeded, False on error
 
     Note:
-        Automatically selects the most efficient editing method
+        Automatically selects the most efficient editing method using strategies
     """
+    from ccg.git_strategies import edit_commit_with_strategy
+
     success, latest_commit = run_git_command(
         ["git", "rev-parse", "HEAD"],
         "Failed to get latest commit hash",
         show_output=True,
     )
 
-    if not success:
+    if not success or not latest_commit:
         return False
 
-    is_latest = latest_commit == commit_hash
-
-    if is_latest:
-        return edit_latest_commit_with_amend(commit_hash, new_message, new_body)
-    else:
-        is_initial_commit = False
+    is_initial_commit = False
+    if latest_commit != commit_hash:
         success, output = run_git_command(
             ["git", "rev-list", "--max-parents=0", "HEAD"],
             "Failed to find initial commit",
@@ -976,9 +1146,13 @@ def edit_commit_message(commit_hash: str, new_message: str, new_body: Optional[s
             is_initial_commit = True
             print_info("Detected that you're editing the initial commit")
 
-        return edit_old_commit_with_filter_branch(
-            commit_hash, new_message, new_body, is_initial_commit
-        )
+    return edit_commit_with_strategy(
+        commit_hash=commit_hash,
+        latest_commit_hash=latest_commit,
+        new_message=new_message,
+        new_body=new_body,
+        is_initial_commit=is_initial_commit,
+    )
 
 
 def delete_latest_commit() -> bool:
@@ -1059,7 +1233,7 @@ def create_rebase_script_for_deletion(
         with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".txt") as f:
             f.write("\n".join(rebase_script) + "\n")
             script_file = f.name
-    except Exception as e:
+    except (IOError, OSError, PermissionError) as e:
         print_error(f"Failed to create temporary rebase script: {str(e)}")
         return False, None, []
 
@@ -1104,13 +1278,14 @@ def delete_old_commit_with_rebase(commit_hash: str) -> bool:
             env["GIT_SEQUENCE_EDITOR"] = f"cp {script_file}"
             env["GIT_EDITOR"] = "true"
 
-            result = subprocess.run(
-                ["git", "rebase", "-i", "--root"],
-                env=env,
-                capture_output=True,
-                text=True,
-                timeout=120,
-            )
+            with ProgressSpinner("Deleting commit via rebase"):
+                result = subprocess.run(
+                    ["git", "rebase", "-i", "--root"],
+                    env=env,
+                    capture_output=True,
+                    text=True,
+                    timeout=120,
+                )
 
             if result.returncode == 0:
                 print_success(f"Commit '{commit_hash[:7]}' deleted successfully")
@@ -1126,7 +1301,7 @@ def delete_old_commit_with_rebase(commit_hash: str) -> bool:
             print_error("Rebase operation timed out")
             run_git_command(["git", "rebase", "--abort"], "", "")
             return False
-        except Exception as e:
+        except (OSError, subprocess.SubprocessError, Exception) as e:
             print_error(f"Error during rebase: {str(e)}")
             run_git_command(["git", "rebase", "--abort"], "", "")
             return False
@@ -1199,12 +1374,13 @@ def run_pre_commit_hooks(staged_files: List[str]) -> bool:
         Displays hook output to user for debugging failed checks.
     """
     try:
-        result = subprocess.run(
-            ["pre-commit", "run", "--files"] + staged_files,
-            capture_output=True,
-            text=True,
-            timeout=120,
-        )
+        with ProgressSpinner("Running pre-commit hooks"):
+            result = subprocess.run(
+                ["pre-commit", "run", "--files"] + staged_files,
+                capture_output=True,
+                text=True,
+                timeout=120,
+            )
 
         if result.returncode != 0:
             print_error("Some pre-commit checks failed:")
@@ -1229,7 +1405,7 @@ def run_pre_commit_hooks(staged_files: List[str]) -> bool:
             print(f"\033[91m{e.stderr}\033[0m")
         print_warning("Please ensure pre-commit is configured correctly and run ccg again.")
         return False
-    except Exception as e:
+    except (OSError, subprocess.SubprocessError, Exception) as e:
         print_error(f"Unexpected error running pre-commit checks: {str(e)}")
         print_warning("Please fix the issues and run ccg again.")
         return False
@@ -1292,6 +1468,6 @@ def check_and_install_pre_commit() -> bool:
 
         return True
 
-    except Exception as e:
+    except (OSError, subprocess.SubprocessError, FileNotFoundError, Exception) as e:
         print_error(f"Unexpected error during pre-commit checks: {str(e)}")
         return False

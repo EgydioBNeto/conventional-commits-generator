@@ -4,11 +4,14 @@ import re
 import sys
 from typing import Dict, List, Optional, Tuple
 
+from ccg.git import get_staged_file_changes
 from ccg.utils import (
     BOLD,
     BULLET,
     COMMIT_TYPES,
     CYAN,
+    GREEN,
+    RED,
     RESET,
     WHITE,
     YELLOW,
@@ -20,6 +23,11 @@ from ccg.utils import (
     print_success,
     read_input,
 )
+
+# Pre-compiled regex patterns for performance optimization
+# Compiling at module level avoids re-compilation on every function call
+_COMMIT_MESSAGE_PATTERN = re.compile(r"^(\w+)(?:\(([^)]+)\))?(!?): (.*)$")
+_EMOJI_CODE_PATTERN = re.compile(r"^:([\w_]+):\s*")
 
 
 def display_commit_types() -> None:
@@ -74,8 +82,6 @@ def choose_commit_type() -> str:
         'fix'
     """
     display_commit_types()
-    print()
-
     while True:
         try:
             user_input: str = read_input(
@@ -328,7 +334,9 @@ def convert_emoji_codes_to_real(text: str) -> str:
     return result
 
 
-def confirm_commit(commit_message_header: str, commit_body: Optional[str] = None) -> bool:
+def confirm_commit(
+    commit_message_header: str, commit_body: Optional[str] = None, show_file_changes: bool = False
+) -> bool:
     """Display commit preview and ask for confirmation.
 
     Shows the formatted commit message with emoji conversion and optional
@@ -337,6 +345,7 @@ def confirm_commit(commit_message_header: str, commit_body: Optional[str] = None
     Args:
         commit_message_header: Main commit message header
         commit_body: Optional commit body with additional details
+        show_file_changes: If True, display staged file changes before review section
 
     Returns:
         bool: True if confirmed, False otherwise
@@ -354,18 +363,32 @@ def confirm_commit(commit_message_header: str, commit_body: Optional[str] = None
         Confirm this commit message? (Y/n): y
         True
     """
+    # Show file changes in separate section BEFORE review
+    if show_file_changes:
+        print_section("File Changes")
+        file_changes = get_staged_file_changes()
+        if file_changes:
+            for status, file_path in file_changes:
+                if status == "A":
+                    print(f"{BOLD}{GREEN}Added:{RESET} {file_path}")
+                elif status == "M":
+                    print(f"{BOLD}{YELLOW}Modified:{RESET} {file_path}")
+                elif status == "D":
+                    print(f"{BOLD}{RED}Deleted:{RESET} {file_path}")
+                else:
+                    print(f"{BOLD}{WHITE}{status}:{RESET} {file_path}")
+        else:
+            print_info("No staged file changes to display.")
+
+    # Now show the review section
     print_section("Review")
 
     display_header: str = convert_emoji_codes_to_real(commit_message_header)
     print(f"{CYAN}Commit:{RESET} {BOLD}{display_header}{RESET}")
-
     if commit_body:
-        print()
         print(f"{CYAN}Body:{RESET}")
         for line in commit_body.split("\n"):
             print(line)
-
-    print()
     return confirm_user_action(
         f"{YELLOW}Confirm this commit message? (y/n){RESET}",
         success_message="Commit message confirmed!",
@@ -443,13 +466,12 @@ def validate_commit_message(message: str) -> Tuple[bool, Optional[str]]:
 
     work_message: str = message.strip()
 
+    # Remove emoji code prefix if present using pre-compiled regex
     if work_message.startswith(":"):
-        emoji_end: int = work_message.find(":", 1)
-        if emoji_end != -1:
-            work_message = work_message[emoji_end + 1 :].strip()
+        work_message = _EMOJI_CODE_PATTERN.sub("", work_message).strip()
 
-    pattern = re.compile(r"^(\w+)(?:\(([^)]+)\))?(!?): (.*)$")
-    match = pattern.match(work_message)
+    # Use pre-compiled regex pattern for validation
+    match = _COMMIT_MESSAGE_PATTERN.match(work_message)
 
     if not match:
         return (
@@ -473,7 +495,7 @@ def validate_commit_message(message: str) -> Tuple[bool, Optional[str]]:
     return True, None
 
 
-def generate_commit_message() -> Optional[str]:
+def generate_commit_message(show_file_changes: bool = False) -> Optional[str]:
     """Generate a complete conventional commit message interactively.
 
     Orchestrates the entire workflow of creating a conventional commit message:
@@ -484,6 +506,9 @@ def generate_commit_message() -> Optional[str]:
     5. Enter commit message
     6. Enter optional body
     7. Confirm the complete message
+
+    Args:
+        show_file_changes: If True, display a list of staged file changes during confirmation.
 
     Returns:
         Optional[str]: Complete commit message if confirmed, None if cancelled
@@ -523,7 +548,7 @@ def generate_commit_message() -> Optional[str]:
         if body:
             full_commit_message += f"\n\n{body}"
 
-        if confirm_commit(header, body):
+        if confirm_commit(header, body, show_file_changes):
             return full_commit_message
 
         print_error("Commit message rejected. Exiting.")

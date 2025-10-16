@@ -1,11 +1,20 @@
 """Unit tests for git.py module."""
 
 import subprocess
-from unittest.mock import Mock, patch
+from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 
+from ccg.cache import invalidate_repository_cache
 from ccg.git import check_has_changes, check_is_git_repo, git_add, git_commit, run_git_command
+
+
+@pytest.fixture(autouse=True)
+def clear_cache():
+    """Clear the repository cache before each test."""
+    invalidate_repository_cache()
+    yield
+    invalidate_repository_cache()
 
 
 class TestRunGitCommand:
@@ -150,10 +159,13 @@ class TestGitAdd:
 class TestGitCommit:
     """Tests for git_commit function."""
 
+    @patch("ccg.git.ProgressSpinner")
     @patch("ccg.git.run_git_command")
-    def test_successful_commit(self, mock_run: Mock) -> None:
+    def test_successful_commit(self, mock_run: Mock, mock_spinner: Mock) -> None:
         """Should create commit successfully."""
         mock_run.return_value = (True, None)
+        mock_spinner_instance = MagicMock()
+        mock_spinner.return_value = mock_spinner_instance
 
         result = git_commit("feat: test commit")
 
@@ -161,13 +173,16 @@ class TestGitCommit:
         mock_run.assert_called_once_with(
             ["git", "commit", "-m", "feat: test commit"],
             "Error during 'git commit'",
-            "New commit successfully created!",
+            None,  # Success message is None, printed separately after spinner
         )
 
+    @patch("ccg.git.ProgressSpinner")
     @patch("ccg.git.run_git_command")
-    def test_commit_with_body(self, mock_run: Mock) -> None:
+    def test_commit_with_body(self, mock_run: Mock, mock_spinner: Mock) -> None:
         """Should handle commit with message and body."""
         mock_run.return_value = (True, None)
+        mock_spinner_instance = MagicMock()
+        mock_spinner.return_value = mock_spinner_instance
 
         message = "feat: new feature\n\nDetailed description"
         result = git_commit(message)
@@ -178,10 +193,13 @@ class TestGitCommit:
         assert call_args[0] == "git"
         assert call_args[1] == "commit"
 
+    @patch("ccg.git.ProgressSpinner")
     @patch("ccg.git.run_git_command")
-    def test_commit_failure(self, mock_run: Mock) -> None:
+    def test_commit_failure(self, mock_run: Mock, mock_spinner: Mock) -> None:
         """Should return False on failure."""
         mock_run.return_value = (False, "Error")
+        mock_spinner_instance = MagicMock()
+        mock_spinner.return_value = mock_spinner_instance
 
         result = git_commit("feat: test")
 
@@ -365,11 +383,11 @@ class TestGitPush:
         mock_confirm.return_value = user_confirms
 
         # Mock git push failing with an upstream error
+        # Note: get_remote_name is cached, so it's only called once
         mock_run.side_effect = [
-            (True, "origin"),  # First call to get_remote_name
+            (True, "origin"),  # First call to get_remote_name (cached for subsequent calls)
             (False, "no upstream branch"),  # git push fails
-            # The following mocks are only for the user_confirms=True case
-            (True, "origin"),  # get_remote_name on recursive call
+            # The following mock is only for the user_confirms=True case
             (True, None),  # git_push(set_upstream=True) succeeds
         ]
 
@@ -379,8 +397,8 @@ class TestGitPush:
         mock_confirm.assert_called_once()
 
         if user_confirms:
-            # 4 calls: get_remote, push, get_remote (recursive), push (recursive)
-            assert mock_run.call_count == 4
+            # 3 calls: get_remote (cached), push, push (set-upstream)
+            assert mock_run.call_count == 3
         else:
             # 2 calls: get_remote, push
             assert mock_run.call_count == 2
@@ -785,36 +803,48 @@ class TestGetCommitByHash:
 class TestEditCommitMessage:
     """Tests for edit_commit_message function."""
 
-    @patch("ccg.git.edit_latest_commit_with_amend")
+    @patch("ccg.git_strategies.edit_commit_with_strategy")
     @patch("ccg.git.run_git_command")
-    def test_edit_latest_commit(self, mock_run: Mock, mock_amend: Mock) -> None:
-        """Should use amend for latest commit."""
+    def test_edit_latest_commit(self, mock_run: Mock, mock_strategy: Mock) -> None:
+        """Should use strategy for latest commit."""
         from ccg.git import edit_commit_message
 
         mock_run.return_value = (True, "abc123")
-        mock_amend.return_value = True
+        mock_strategy.return_value = True
 
         result = edit_commit_message("abc123", "new: message")
 
         assert result is True
-        mock_amend.assert_called_once()
+        mock_strategy.assert_called_once_with(
+            commit_hash="abc123",
+            latest_commit_hash="abc123",
+            new_message="new: message",
+            new_body=None,
+            is_initial_commit=False,
+        )
 
-    @patch("ccg.git.edit_old_commit_with_filter_branch")
+    @patch("ccg.git_strategies.edit_commit_with_strategy")
     @patch("ccg.git.run_git_command")
-    def test_edit_old_commit(self, mock_run: Mock, mock_filter: Mock) -> None:
-        """Should use filter-branch for old commit."""
+    def test_edit_old_commit(self, mock_run: Mock, mock_strategy: Mock) -> None:
+        """Should use strategy for old commit."""
         from ccg.git import edit_commit_message
 
         mock_run.side_effect = [
             (True, "def456"),  # latest commit (different)
             (True, ""),  # not initial commit
         ]
-        mock_filter.return_value = True
+        mock_strategy.return_value = True
 
         result = edit_commit_message("abc123", "new: message")
 
         assert result is True
-        mock_filter.assert_called_once()
+        mock_strategy.assert_called_once_with(
+            commit_hash="abc123",
+            latest_commit_hash="def456",
+            new_message="new: message",
+            new_body=None,
+            is_initial_commit=False,
+        )
 
 
 class TestDeleteCommit:
@@ -1092,31 +1122,271 @@ class TestEditLatestCommitWithAmend:
 class TestEditOldCommitWithFilterBranch:
     """Tests for edit_old_commit_with_filter_branch function."""
 
+    @patch("ccg.git.ProgressSpinner")
+    @patch("ccg.git.Path")
     @patch("ccg.git.run_git_command")
-    def test_filter_branch_success(self, mock_run: Mock) -> None:
-        """Should edit old commit with filter-branch."""
+    def test_filter_branch_success(
+        self,
+        mock_run: Mock,
+        mock_path_class: Mock,
+        mock_spinner: Mock,
+    ) -> None:
+        """Should edit old commit with filter-branch using secure temp files."""
         from ccg.git import edit_old_commit_with_filter_branch
 
+        # Setup mocks for Path operations - use MagicMock for magic method support
+        mock_home = MagicMock()
+        mock_ccg_dir = MagicMock()
+        mock_message_file = MagicMock()
+        mock_script_file = MagicMock()
+
+        # Path.home() returns mock_home
+        mock_path_class.home.return_value = mock_home
+
+        # mock_home / '.ccg' returns mock_ccg_dir
+        mock_home.__truediv__.return_value = mock_ccg_dir
+
+        # mock_ccg_dir / 'file...' returns message_file, then script_file
+        mock_ccg_dir.__truediv__.side_effect = [mock_message_file, mock_script_file]
+
+        # Mock file exists() for cleanup
+        mock_message_file.exists.return_value = True
+        mock_script_file.exists.return_value = True
+
+        # Mock successful git command
         mock_run.return_value = (True, "Rewriting history...")
+
+        # Mock spinner context manager
+        mock_spinner_instance = MagicMock()
+        mock_spinner.return_value = mock_spinner_instance
 
         result = edit_old_commit_with_filter_branch("abc123", "feat: updated")
 
         assert result is True
+        # Verify CCG directory was created
+        mock_ccg_dir.mkdir.assert_called_once_with(parents=True, exist_ok=True)
+        # Verify message file was written
+        assert mock_message_file.write_text.called
+        # Verify script file was written and made executable
+        assert mock_script_file.write_text.called
+        assert mock_script_file.chmod.called
+        # Verify files were cleaned up
+        assert mock_message_file.unlink.called
+        assert mock_script_file.unlink.called
 
+    @patch("ccg.git.ProgressSpinner")
+    @patch("ccg.git.Path")
     @patch("ccg.git.run_git_command")
-    def test_filter_branch_initial_commit(self, mock_run: Mock) -> None:
-        """Should handle initial commit editing."""
+    def test_filter_branch_with_body(
+        self,
+        mock_run: Mock,
+        mock_path_class: Mock,
+        mock_spinner: Mock,
+    ) -> None:
+        """Should handle message with body."""
         from ccg.git import edit_old_commit_with_filter_branch
 
+        # Setup mocks
+        mock_home = MagicMock()
+        mock_ccg_dir = MagicMock()
+        mock_message_file = MagicMock()
+        mock_script_file = MagicMock()
+
+        mock_path_class.home.return_value = mock_home
+        mock_home.__truediv__.return_value = mock_ccg_dir
+        mock_ccg_dir.__truediv__.side_effect = [mock_message_file, mock_script_file]
+        mock_message_file.exists.return_value = True
+        mock_script_file.exists.return_value = True
         mock_run.return_value = (True, None)
+
+        # Mock spinner
+        mock_spinner_instance = MagicMock()
+        mock_spinner.return_value = mock_spinner_instance
+
+        result = edit_old_commit_with_filter_branch("abc123", "feat: new", "detailed body")
+
+        assert result is True
+        # Verify message file was created with subject and body
+        call_args = mock_message_file.write_text.call_args
+        assert "feat: new\n\ndetailed body" in call_args[0]
+
+    @patch("ccg.git.ProgressSpinner")
+    @patch("ccg.git.Path")
+    @patch("ccg.git.run_git_command")
+    def test_filter_branch_initial_commit(
+        self,
+        mock_run: Mock,
+        mock_path_class: Mock,
+        mock_spinner: Mock,
+    ) -> None:
+        """Should use --all flag for initial commit."""
+        from ccg.git import edit_old_commit_with_filter_branch
+
+        # Setup mocks
+        mock_home = MagicMock()
+        mock_ccg_dir = MagicMock()
+        mock_message_file = MagicMock()
+        mock_script_file = MagicMock()
+
+        mock_path_class.home.return_value = mock_home
+        mock_home.__truediv__.return_value = mock_ccg_dir
+        mock_ccg_dir.__truediv__.side_effect = [mock_message_file, mock_script_file]
+        mock_message_file.exists.return_value = True
+        mock_script_file.exists.return_value = True
+        mock_run.return_value = (True, None)
+
+        # Mock spinner
+        mock_spinner_instance = MagicMock()
+        mock_spinner.return_value = mock_spinner_instance
 
         result = edit_old_commit_with_filter_branch("abc123", "feat: init", is_initial_commit=True)
 
         assert result is True
-        # Check that --all flag is used for initial commit
+        # Check that --all flag is used
         call_args = mock_run.call_args[0][0]
         assert "--" in call_args
         assert "--all" in call_args
+
+    @patch("ccg.git.Path")
+    def test_filter_branch_ccg_dir_creation_failure(self, mock_path_class: Mock) -> None:
+        """Should return False when CCG directory creation fails."""
+        from ccg.git import edit_old_commit_with_filter_branch
+
+        mock_home = MagicMock()
+        mock_ccg_dir = MagicMock()
+
+        mock_path_class.home.return_value = mock_home
+        mock_home.__truediv__.return_value = mock_ccg_dir
+
+        # Simulate directory creation failure
+        mock_ccg_dir.mkdir.side_effect = PermissionError("Cannot create directory")
+
+        result = edit_old_commit_with_filter_branch("abc123", "feat: new")
+
+        assert result is False
+
+    @patch("ccg.git.Path")
+    def test_filter_branch_message_file_creation_failure(self, mock_path_class: Mock) -> None:
+        """Should return False when message file creation fails."""
+        from ccg.git import edit_old_commit_with_filter_branch
+
+        mock_home = MagicMock()
+        mock_ccg_dir = MagicMock()
+        mock_message_file = MagicMock()
+
+        mock_path_class.home.return_value = mock_home
+        mock_home.__truediv__.return_value = mock_ccg_dir
+        mock_ccg_dir.__truediv__.return_value = mock_message_file
+
+        # Simulate message file creation failure
+        mock_message_file.write_text.side_effect = IOError("Cannot write file")
+
+        result = edit_old_commit_with_filter_branch("abc123", "feat: new")
+
+        assert result is False
+
+    @patch("ccg.git.Path")
+    def test_filter_branch_script_file_creation_failure(self, mock_path_class: Mock) -> None:
+        """Should return False when script file creation fails."""
+        from ccg.git import edit_old_commit_with_filter_branch
+
+        mock_home = MagicMock()
+        mock_ccg_dir = MagicMock()
+        mock_message_file = MagicMock()
+        mock_script_file = MagicMock()
+
+        mock_path_class.home.return_value = mock_home
+        mock_home.__truediv__.return_value = mock_ccg_dir
+
+        # First call is for message file, second for script file
+        mock_ccg_dir.__truediv__.side_effect = [mock_message_file, mock_script_file]
+
+        # Message file succeeds, script file fails
+        mock_message_file.exists.return_value = True
+        mock_script_file.write_text.side_effect = OSError("Cannot create script")
+
+        result = edit_old_commit_with_filter_branch("abc123", "feat: new")
+
+        assert result is False
+        # Verify message file cleanup was attempted
+        assert mock_message_file.exists.called or mock_message_file.unlink.called
+
+    @patch("ccg.git.ProgressSpinner")
+    @patch("ccg.git.Path")
+    @patch("ccg.git.run_git_command")
+    def test_filter_branch_git_command_failure(
+        self,
+        mock_run: Mock,
+        mock_path_class: Mock,
+        mock_spinner: Mock,
+    ) -> None:
+        """Should return False and cleanup when git command fails."""
+        from ccg.git import edit_old_commit_with_filter_branch
+
+        # Setup mocks
+        mock_home = MagicMock()
+        mock_ccg_dir = MagicMock()
+        mock_message_file = MagicMock()
+        mock_script_file = MagicMock()
+
+        mock_path_class.home.return_value = mock_home
+        mock_home.__truediv__.return_value = mock_ccg_dir
+        mock_ccg_dir.__truediv__.side_effect = [mock_message_file, mock_script_file]
+        mock_message_file.exists.return_value = True
+        mock_script_file.exists.return_value = True
+
+        # Mock spinner
+        mock_spinner_instance = MagicMock()
+        mock_spinner.return_value = mock_spinner_instance
+
+        # Git command fails
+        mock_run.return_value = (False, "error output")
+
+        result = edit_old_commit_with_filter_branch("abc123", "feat: new")
+
+        assert result is False
+        # Verify cleanup still happened
+        assert mock_message_file.unlink.called
+        assert mock_script_file.unlink.called
+
+    @patch("ccg.git.ProgressSpinner")
+    @patch("ccg.git.Path")
+    @patch("ccg.git.run_git_command")
+    def test_filter_branch_cleanup_failure_ignored(
+        self,
+        mock_run: Mock,
+        mock_path_class: Mock,
+        mock_spinner: Mock,
+    ) -> None:
+        """Should ignore cleanup failures and still return success."""
+        from ccg.git import edit_old_commit_with_filter_branch
+
+        # Setup mocks
+        mock_home = MagicMock()
+        mock_ccg_dir = MagicMock()
+        mock_message_file = MagicMock()
+        mock_script_file = MagicMock()
+
+        mock_path_class.home.return_value = mock_home
+        mock_home.__truediv__.return_value = mock_ccg_dir
+        mock_ccg_dir.__truediv__.side_effect = [mock_message_file, mock_script_file]
+        mock_message_file.exists.return_value = True
+        mock_script_file.exists.return_value = True
+
+        # Cleanup fails
+        mock_message_file.unlink.side_effect = Exception("Cannot delete")
+        mock_script_file.unlink.side_effect = Exception("Cannot delete")
+
+        mock_run.return_value = (True, "Success")
+
+        # Mock spinner
+        mock_spinner_instance = MagicMock()
+        mock_spinner.return_value = mock_spinner_instance
+
+        result = edit_old_commit_with_filter_branch("abc123", "feat: new")
+
+        # Should still succeed despite cleanup failure
+        assert result is True
 
 
 class TestDeleteLatestCommit:
@@ -1270,6 +1540,47 @@ class TestDeleteOldCommitWithRebase:
 
 from hypothesis import given
 from hypothesis import strategies as st
+
+
+class TestGetStagedFileChanges:
+    """Tests for get_staged_file_changes function."""
+
+    @patch("ccg.git.run_git_command")
+    def test_get_staged_file_changes_success(self, mock_run: Mock) -> None:
+        """Should return list of staged file changes with status."""
+        from ccg.git import get_staged_file_changes
+
+        mock_run.return_value = (True, "A\tnew_file.txt\nM\tmodified_file.py\nD\tdeleted_file.js\n")
+
+        result = get_staged_file_changes()
+
+        assert result == [
+            ("A", "new_file.txt"),
+            ("M", "modified_file.py"),
+            ("D", "deleted_file.js"),
+        ]
+
+    @patch("ccg.git.run_git_command")
+    def test_get_staged_file_changes_empty(self, mock_run: Mock) -> None:
+        """Should return empty list if no staged file changes."""
+        from ccg.git import get_staged_file_changes
+
+        mock_run.return_value = (True, "")
+
+        result = get_staged_file_changes()
+
+        assert result == []
+
+    @patch("ccg.git.run_git_command")
+    def test_get_staged_file_changes_failure(self, mock_run: Mock) -> None:
+        """Should return empty list on failure."""
+        from ccg.git import get_staged_file_changes
+
+        mock_run.return_value = (False, None)
+
+        result = get_staged_file_changes()
+
+        assert result == []
 
 
 class TestIsPathInRepositoryProperties:
@@ -1495,11 +1806,32 @@ class TestCheckRemoteAccessAdvanced:
 class TestEditOldCommitWithFilterBranchAdvanced:
     """Advanced tests for edit_old_commit_with_filter_branch."""
 
+    @patch("ccg.git.ProgressSpinner")
+    @patch("ccg.git.Path")
     @patch("ccg.git.run_git_command")
-    def test_filter_branch_failure_shows_output(self, mock_run: Mock, capsys) -> None:
+    def test_filter_branch_failure_shows_output(
+        self, mock_run: Mock, mock_path_class: Mock, mock_spinner: Mock, capsys
+    ) -> None:
         """Should show error output when filter-branch fails."""
         from ccg.git import edit_old_commit_with_filter_branch
 
+        # Setup mocks
+        mock_home = MagicMock()
+        mock_ccg_dir = MagicMock()
+        mock_message_file = MagicMock()
+        mock_script_file = MagicMock()
+
+        mock_path_class.home.return_value = mock_home
+        mock_home.__truediv__.return_value = mock_ccg_dir
+        mock_ccg_dir.__truediv__.side_effect = [mock_message_file, mock_script_file]
+        mock_message_file.exists.return_value = True
+        mock_script_file.exists.return_value = True
+
+        # Mock spinner
+        mock_spinner_instance = MagicMock()
+        mock_spinner.return_value = mock_spinner_instance
+
+        # Git command fails
         mock_run.return_value = (False, "detailed error output")
 
         result = edit_old_commit_with_filter_branch("abc123", "feat: new")
@@ -1772,9 +2104,9 @@ class TestEditCommitMessageAdvanced:
 
         assert result is False
 
-    @patch("ccg.git.edit_old_commit_with_filter_branch")
+    @patch("ccg.git_strategies.edit_commit_with_strategy")
     @patch("ccg.git.run_git_command")
-    def test_edit_initial_commit_detected(self, mock_run: Mock, mock_filter: Mock) -> None:
+    def test_edit_initial_commit_detected(self, mock_run: Mock, mock_strategy: Mock) -> None:
         """Should detect and handle initial commit editing."""
         from ccg.git import edit_commit_message
 
@@ -1782,13 +2114,19 @@ class TestEditCommitMessageAdvanced:
             (True, "def456"),  # latest commit (different)
             (True, "abc123"),  # initial commit check - contains our hash
         ]
-        mock_filter.return_value = True
+        mock_strategy.return_value = True
 
         result = edit_commit_message("abc123", "feat: new")
 
         assert result is True
         # Check that is_initial_commit was set to True
-        mock_filter.assert_called_once_with("abc123", "feat: new", None, True)
+        mock_strategy.assert_called_once_with(
+            commit_hash="abc123",
+            latest_commit_hash="def456",
+            new_message="feat: new",
+            new_body=None,
+            is_initial_commit=True,
+        )
 
 
 class TestGetCommitByHashAdvanced:
@@ -2079,10 +2417,30 @@ class TestEditLatestCommitWithAmendWithBody:
 class TestEditOldCommitWithFilterBranchWithBody:
     """Test edit_old_commit_with_filter_branch with body parameter."""
 
+    @patch("ccg.git.ProgressSpinner")
+    @patch("ccg.git.Path")
     @patch("ccg.git.run_git_command")
-    def test_filter_branch_with_body(self, mock_run: Mock) -> None:
+    def test_filter_branch_with_body(
+        self, mock_run: Mock, mock_path_class: Mock, mock_spinner: Mock
+    ) -> None:
         """Should edit old commit with subject and body."""
         from ccg.git import edit_old_commit_with_filter_branch
+
+        # Setup mocks - use MagicMock for magic method support
+        mock_home = MagicMock()
+        mock_ccg_dir = MagicMock()
+        mock_message_file = MagicMock()
+        mock_script_file = MagicMock()
+
+        mock_path_class.home.return_value = mock_home
+        mock_home.__truediv__.return_value = mock_ccg_dir
+        mock_ccg_dir.__truediv__.side_effect = [mock_message_file, mock_script_file]
+        mock_message_file.exists.return_value = True
+        mock_script_file.exists.return_value = True
+
+        # Mock spinner
+        mock_spinner_instance = MagicMock()
+        mock_spinner.return_value = mock_spinner_instance
 
         mock_run.return_value = (True, "Rewriting history...")
 

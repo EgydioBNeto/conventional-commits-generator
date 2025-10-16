@@ -1,6 +1,7 @@
 """Command-line interface for Conventional Commits Generator."""
 
 import argparse
+import logging
 import os
 import sys
 import traceback
@@ -12,6 +13,10 @@ if TYPE_CHECKING:
     from collections.abc import Iterable
 
 from ccg import __version__
+from ccg.logging import setup_logging
+from ccg.repository import GitRepository
+
+logger = logging.getLogger("ccg.cli")
 from ccg.core import confirm_commit, confirm_push, generate_commit_message, validate_commit_message
 from ccg.git import (
     branch_exists_on_remote,
@@ -66,6 +71,32 @@ def show_repository_info() -> None:
 
     repo_name = get_repository_name()
     branch_name = get_current_branch()
+
+    if repo_name and branch_name:
+        print(
+            f"{CYAN}Repository:{RESET} {BOLD}{repo_name}{RESET}  {CYAN}Branch:{RESET} {BOLD}{branch_name}{RESET}"
+        )
+
+
+def show_repository_info_oop(repo: GitRepository) -> None:  # pragma: no cover
+    """Display current repository and branch information using GitRepository instance.
+
+    This is the OOP version of show_repository_info() that demonstrates usage
+    of the GitRepository class. Can be used as a drop-in replacement for the
+    functional version when migrating to the OOP pattern.
+
+    Args:
+        repo: GitRepository instance to query for information
+
+    Note:
+        Silently returns if repository name or branch cannot be determined.
+        This function demonstrates the improved testability and maintainability
+        of the GitRepository class (Improvement #9 from CODE_ANALYSIS.md).
+    """
+    from ccg.utils import BOLD, CYAN, RESET
+
+    repo_name = repo.get_repository_name()
+    branch_name = repo.get_current_branch()
 
     if repo_name and branch_name:
         print(
@@ -168,6 +199,12 @@ def parse_args(args: Optional[List[str]] = None) -> argparse.Namespace:
         "--path",
         nargs="+",
         help="Specify path(s) to stage or directory to work in",
+    )
+    parser.add_argument(
+        "--verbose",
+        "-v",
+        action="store_true",
+        help="Enable verbose logging output for debugging",
     )
 
     parsed_args, unknown = parser.parse_known_args(args)
@@ -277,12 +314,9 @@ def handle_commit_operation(operation_type: str) -> int:
         print_info(f"Showing all {len(commits)} commits:")
     else:
         print_info(f"Showing last {len(commits)} commits:")
-    print()
-
     for i, commit in enumerate(commits, start=1):
         _, short_hash, subject, author, date = commit
         print(f"{i}. [{short_hash}] {subject} - {author} ({date})")
-    print()
 
     print_section("Commit Selection")
     while True:
@@ -456,14 +490,10 @@ def confirm_commit_edit(
 
     display_header = convert_emoji_codes_to_real(original_subject)
     print(f"{CYAN}Commit:{RESET} {BOLD}{display_header}{RESET}")
-
     if original_body:
-        print()
         print(f"{CYAN}Body:{RESET}")
         for line in original_body.split("\n"):
             print(line)
-
-    print()
     return confirm_commit(new_message, new_body)
 
 
@@ -807,7 +837,9 @@ def validate_repository_state(commit_only: bool = False, paths: Optional[List[st
     return True
 
 
-def handle_git_workflow(commit_only: bool = False, paths: Optional[List[str]] = None) -> int:
+def handle_git_workflow(
+    commit_only: bool = False, paths: Optional[List[str]] = None, show_file_changes: bool = False
+) -> int:
     """Execute the main CCG workflow for creating and pushing commits.
 
     Orchestrates the complete commit workflow: validate repository state, stage
@@ -840,7 +872,7 @@ def handle_git_workflow(commit_only: bool = False, paths: Optional[List[str]] = 
 
     print_section("Commit Message Generation")
     print_process("Building conventional commit message...")
-    commit_message = generate_commit_message()
+    commit_message = generate_commit_message(show_file_changes=show_file_changes)
     if not commit_message:
         return 1
 
@@ -946,7 +978,7 @@ def change_to_working_directory(paths: Optional[List[str]]) -> Optional[List[str
         try:
             os.chdir(target_dir)
             return None
-        except Exception as e:
+        except (OSError, PermissionError, FileNotFoundError) as e:
             print_error(f"Failed to change to directory '{paths[0]}': {e}")
             sys.exit(1)
 
@@ -981,7 +1013,18 @@ def main(args: Optional[List[str]] = None) -> int:
         Catches EOFError and KeyboardInterrupt for graceful cancellation
     """
     try:
+        # Initialize logging before any operations (including arg parsing)
+        # so that exceptions during parsing can be logged
+        setup_logging(verbose=False)  # Default to non-verbose initially
+
         parsed_args = parse_args(args)
+
+        # Re-initialize logging with correct verbosity if --verbose was passed
+        if parsed_args.verbose:
+            setup_logging(verbose=True)
+
+        logger.info(f"CCG started (version {__version__})")
+        logger.info(f"Command line arguments: {args if args else sys.argv[1:]}")
 
         if not any(help_flag in sys.argv for help_flag in ["-h", "--help"]):
             print_logo()
@@ -1002,29 +1045,44 @@ def main(args: Optional[List[str]] = None) -> int:
             working_dir_changed = True
 
         if parsed_args.edit:
+            logger.info("Running edit workflow")
             return handle_edit()
         elif parsed_args.delete:
+            logger.info("Running delete workflow")
             return handle_delete()
         elif parsed_args.push:
+            logger.info("Running push-only workflow")
             return handle_push_only()
         elif parsed_args.reset:
+            logger.info("Running reset workflow")
             return handle_reset()
         elif parsed_args.tag:
+            logger.info("Running tag creation workflow")
             return handle_tag()
         else:
             if not working_dir_changed and parsed_args.path:
                 stage_paths = change_to_working_directory(parsed_args.path)
-            return handle_git_workflow(commit_only=parsed_args.commit, paths=stage_paths)
+
+            show_file_changes = True
+            return handle_git_workflow(
+                commit_only=parsed_args.commit,
+                paths=stage_paths,
+                show_file_changes=show_file_changes,
+            )
 
     except (EOFError, KeyboardInterrupt):
+        logger.info("Operation cancelled by user (Ctrl+C or EOF)")
         print()
         print_warning("Operation cancelled by user")
         return 130
     except Exception as e:
+        logger.exception("Unexpected error in main()")
         print_error("An unexpected error occurred")
         print(f"\033[91m{str(e)}\033[0m")
         traceback.print_exc()
         return 1
+    finally:
+        logger.info("CCG session ended")
 
 
 if __name__ == "__main__":  # pragma: no cover

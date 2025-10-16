@@ -227,6 +227,37 @@ ccg
 
 ---
 
+### How do I debug issues?
+
+**Solution**: Use verbose mode to see detailed logs:
+
+```bash
+ccg --verbose
+# or
+ccg -v
+```
+
+**What verbose mode shows**:
+
+- All git commands executed
+- Detailed error messages
+- Step-by-step operation flow
+- Timestamps for all operations
+
+**Log file location**:
+
+- Linux/Mac: `~/.ccg/ccg.log`
+- Windows: `%USERPROFILE%\.ccg\ccg.log`
+
+**When to use verbose mode**:
+
+- Debugging authentication issues
+- Understanding unexpected behavior
+- Reporting bugs (include logs)
+- Troubleshooting pre-commit hooks
+
+---
+
 ## Features & Behavior
 
 ### Can I customize commit types?
