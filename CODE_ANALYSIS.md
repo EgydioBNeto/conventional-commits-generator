@@ -1503,10 +1503,11 @@ def test_semver_with_prerelease(major, minor, patch, prerelease):
 
 ## 📚 Melhorias de UX
 
-### 14. Modo Interativo com Preview ao Vivo
+### 14. Modo Interativo com Preview ao Vivo ❌ NÃO SERÁ IMPLEMENTADO
 
 **Severidade**: 🟡 Alta
 **Impacto**: Melhor experiência do usuário
+**Status**: ❌ Descartado - Decisão de não implementar esta funcionalidade
 
 **Solução**:
 ```python
@@ -1605,10 +1606,11 @@ def generate_commit_message_with_preview(
 
 ---
 
-### 15. Sugestões de Commit Type Baseadas em Diff
+### 15. Sugestões de Commit Type Baseadas em Diff ❌ NÃO SERÁ IMPLEMENTADO
 
 **Severidade**: 🟢 Média
 **Impacto**: Economiza tempo do usuário
+**Status**: ❌ Descartado - Decisão de não implementar esta funcionalidade
 
 **Solução**:
 ```python
@@ -1760,10 +1762,11 @@ def choose_commit_type() -> str:
 
 ---
 
-### 16. Templates de Commit Customizados
+### 16. Templates de Commit Customizados ❌ NÃO SERÁ IMPLEMENTADO
 
 **Severidade**: 🟢 Média
 **Impacto**: Produtividade para usuários frequentes
+**Status**: ❌ Descartado - Decisão de não implementar esta funcionalidade
 
 **Solução**:
 ```python
@@ -1938,8 +1941,9 @@ $ ccg --template api-fix
 
 ## 🔧 Refatorações Recomendadas
 
-### 17. Extrair Constantes Mágicas
+### 17. ✅ Extrair Constantes Mágicas [RESOLVIDO]
 
+**Status**: ✅ **RESOLVIDO** (2025-10-16)
 **Severidade**: 🟢 Média
 **Impacto**: Melhor manutenibilidade
 
@@ -1999,10 +2003,42 @@ if len(user_input) > UI_CONFIG.CONFIRMATION_MAX_LENGTH:
 timeout=GIT_CONFIG.PULL_TIMEOUT
 ```
 
+**Mudanças Implementadas**:
+
+Todas as constantes mágicas foram extraídas para `config.py`:
+
+**config.py** - Novas constantes adicionadas:
+- `GitConfig.REBASE_TIMEOUT = 120`
+- `GitConfig.REMOTE_CHECK_TIMEOUT = 15`
+- `GitConfig.TAG_PUSH_TIMEOUT = 30`
+- `GitConfig.STATUS_CHECK_TIMEOUT = 10`
+- `GitConfig.SCRIPT_EXECUTABLE_PERMISSION = 0o755`
+- `UIConfig.MULTILINE_MAX_LINE_LENGTH = 80`
+- `UIConfig.CONFIRMATION_MAX_LENGTH = 3`
+- `UIConfig.HELP_FLAGS: tuple[str, ...] = ("-h", "--help")`
+- `LoggingConfig` (nova classe): `MAX_LOG_SIZE_BYTES`, `BACKUP_COUNT`, `THREAD_JOIN_TIMEOUT`
+
+**Arquivos refatorados**:
+- ✅ `cli.py` - 1 valor hardcoded substituído (HELP_FLAGS)
+- ✅ `git.py` - 8 valores hardcoded substituídos (timeouts e permissão)
+- ✅ `git_strategies.py` - 2 valores hardcoded substituídos
+- ✅ `utils.py` - 15+ valores hardcoded substituídos (CONFIRMATION_MAX_LENGTH)
+- ✅ `logging.py` - 2 valores hardcoded substituídos (log rotation)
+- ✅ `progress.py` - 1 valor hardcoded substituído (thread timeout)
+
+**Benefícios Alcançados**:
+- ✅ Configuração centralizada e mais fácil de manter
+- ✅ Redução de "magic numbers" no código
+- ✅ Facilita ajustes futuros de timeouts e limites
+- ✅ Código mais legível e autodocumentado
+- ✅ Todos os 751 testes passando com 100% de cobertura
+- ✅ Type checking (mypy) sem erros
+
 ---
 
-### 18. Remover Código Duplicado
+### 18. ✅ Remover Código Duplicado [RESOLVIDO]
 
+**Status**: ✅ **RESOLVIDO** (2025-10-16)
 **Severidade**: 🟢 Média
 **Impacto**: DRY principle, menos bugs
 
@@ -2042,6 +2078,33 @@ def confirm_reset() -> bool:
         cancel_message="Reset cancelled"
     )
 ```
+
+**Mudanças Implementadas**:
+
+Todas as funções de confirmação agora usam `confirm_user_action()` de forma consistente:
+
+**cli.py** - Funções refatoradas:
+- ✅ `confirm_create_branch()` - usa `confirm_user_action()`
+- ✅ `confirm_reset()` - usa `confirm_user_action()`
+- ✅ `handle_push_after_edit()` (force push) - usa `confirm_user_action()`
+- ✅ `handle_commit_edit_input()` (retry confirmation) - usa `confirm_user_action()`
+- ✅ `delete_specific_commit()` (delete confirmation) - usa `confirm_user_action()`
+- ✅ `handle_tag()` (annotated tag, push tag) - usa `confirm_user_action()`
+- ✅ `handle_reset()` (pull confirmation) - usa `confirm_user_action()`
+
+**core.py** - Funções refatoradas:
+- ✅ `is_breaking_change()` - usa `confirm_user_action()`
+- ✅ `want_emoji()` - usa `confirm_user_action()`
+- ✅ `confirm_commit()` - usa `confirm_user_action()`
+- ✅ `confirm_push()` - usa `confirm_user_action()`
+
+**Benefícios Alcançados**:
+- ✅ **DRY Principle**: Código de confirmação não está mais duplicado
+- ✅ **Manutenibilidade**: Mudanças na lógica de confirmação afetam todos os lugares automaticamente
+- ✅ **Consistência**: Todas as confirmações têm o mesmo comportamento e UX
+- ✅ **Menos Bugs**: Redução de código duplicado diminui chance de bugs
+- ✅ Todos os 751 testes passando com 100% de cobertura
+- ✅ Type checking (mypy) sem erros
 
 ---
 
@@ -2094,7 +2157,7 @@ def create_counter_toolbar(
 
 ## 🌟 Novas Features Sugeridas
 
-### 20. Modo AI-Assisted (Opcional)
+### 20. ~~Modo AI-Assisted (Opcional)~~ ❌ CANCELADA
 
 **Severidade**: 🔵 Baixa (Feature)
 **Impacto**: Diferenciação competitiva
@@ -2217,7 +2280,7 @@ $ ccg --ai
 
 ---
 
-### 21. Hooks de Validação Customizados
+### 21. ~~Hooks de Validação Customizados~~ ❌ CANCELADA
 
 **Severidade**: 🔵 Baixa (Feature)
 **Impacto**: Flexibilidade para times
@@ -2320,7 +2383,7 @@ def validate(message: str) -> tuple[bool, str | None]:
 
 ---
 
-### 22. Modo Batch para CI/CD
+### 22. ~~Modo Batch para CI/CD~~ ❌ CANCELADA
 
 **Severidade**: 🔵 Baixa (Feature)
 **Impacto**: Automação

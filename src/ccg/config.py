@@ -26,6 +26,11 @@ class GitConfig:
     PULL_TIMEOUT: int = 120
     FILTER_BRANCH_TIMEOUT: int = 300
     PRE_COMMIT_TIMEOUT: int = 120
+    REBASE_TIMEOUT: int = 120
+    REMOTE_CHECK_TIMEOUT: int = 15
+    TAG_PUSH_TIMEOUT: int = 30
+    STATUS_CHECK_TIMEOUT: int = 10
+    SCRIPT_EXECUTABLE_PERMISSION: int = 0o755
 
 
 @dataclass(frozen=True)
@@ -36,8 +41,21 @@ class UIConfig:
     MAX_BOX_WIDTH: int = 100
     DEFAULT_TERM_WIDTH: int = 80
     DEFAULT_TERM_HEIGHT: int = 24
+    MULTILINE_MAX_LINE_LENGTH: int = 80
+    CONFIRMATION_MAX_LENGTH: int = 3
+    HELP_FLAGS: tuple[str, ...] = ("-h", "--help")
+
+
+@dataclass(frozen=True)
+class LoggingConfig:
+    """Logging configuration."""
+
+    MAX_LOG_SIZE_BYTES: int = 10 * 1024 * 1024  # 10MB
+    BACKUP_COUNT: int = 5
+    THREAD_JOIN_TIMEOUT: float = 1.0
 
 
 INPUT_LIMITS = InputLimits()
 GIT_CONFIG = GitConfig()
 UI_CONFIG = UIConfig()
+LOGGING_CONFIG = LoggingConfig()

@@ -4,6 +4,8 @@ import logging
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
 
+from ccg.config import LOGGING_CONFIG
+
 
 def setup_logging(verbose: bool = False) -> None:
     r"""Configure structured logging for CCG.
@@ -45,7 +47,10 @@ def setup_logging(verbose: bool = False) -> None:
 
     # File handler with rotation (10MB, 5 backups)
     file_handler = RotatingFileHandler(
-        log_file, maxBytes=10 * 1024 * 1024, backupCount=5, encoding="utf-8"  # 10MB
+        log_file,
+        maxBytes=LOGGING_CONFIG.MAX_LOG_SIZE_BYTES,
+        backupCount=LOGGING_CONFIG.BACKUP_COUNT,
+        encoding="utf-8",
     )
     file_handler.setFormatter(formatter)
     file_handler.setLevel(logging.DEBUG)

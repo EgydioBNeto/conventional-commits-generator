@@ -17,6 +17,7 @@ from ccg.logging import setup_logging
 from ccg.repository import GitRepository
 
 logger = logging.getLogger("ccg.cli")
+from ccg.config import UI_CONFIG
 from ccg.core import confirm_commit, confirm_push, generate_commit_message, validate_commit_message
 from ccg.git import (
     branch_exists_on_remote,
@@ -1026,7 +1027,7 @@ def main(args: Optional[List[str]] = None) -> int:
         logger.info(f"CCG started (version {__version__})")
         logger.info(f"Command line arguments: {args if args else sys.argv[1:]}")
 
-        if not any(help_flag in sys.argv for help_flag in ["-h", "--help"]):
+        if not any(help_flag in sys.argv for help_flag in UI_CONFIG.HELP_FLAGS):
             print_logo()
 
         stage_paths = parsed_args.path
