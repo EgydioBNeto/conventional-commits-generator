@@ -35,6 +35,8 @@
 
 - **Pre-commit Integration** - Automatic detection and execution of pre-commit hooks for code quality assurance
 
+- **Debug Logging** - Comprehensive logging system with verbose mode for troubleshooting and debugging
+
 ---
 
 ## Why Use CCG?

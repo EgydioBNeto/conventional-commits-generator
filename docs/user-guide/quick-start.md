@@ -363,6 +363,28 @@ pre-commit run --all-files  # See what's failing
 
 ---
 
+### Debug with Verbose Mode
+
+**Problem**: Something isn't working as expected
+
+**Solution**: Use verbose mode to see detailed logs:
+
+```bash
+ccg --verbose
+# or
+ccg -v
+```
+
+This enables debug output showing:
+
+- All git commands being executed
+- Detailed error messages
+- Step-by-step operation flow
+
+**Log File**: Check `~/.ccg/ccg.log` for the complete log history.
+
+---
+
 ## Congratulations!
 
 You've successfully created your first conventional commit with CCG!

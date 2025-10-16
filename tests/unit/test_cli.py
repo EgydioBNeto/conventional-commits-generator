@@ -1,5 +1,6 @@
 """Unit tests for cli.py module."""
 
+from pathlib import Path
 from unittest.mock import Mock, patch
 
 import pytest
@@ -82,6 +83,21 @@ class TestArgumentParsing:
         with patch.object(sys, "exit") as mock_exit:
             parse_args(["--unknown"])
             mock_exit.assert_called_once_with(1)
+
+    def test_parse_verbose_flag(self) -> None:
+        """Should parse --verbose flag."""
+        args = parse_args(["--verbose"])
+        assert args.verbose is True
+
+    def test_parse_verbose_short_flag(self) -> None:
+        """Should parse -v short flag for verbose."""
+        args = parse_args(["-v"])
+        assert args.verbose is True
+
+    def test_parse_no_verbose_defaults_to_false(self) -> None:
+        """Should default verbose to False when not specified."""
+        args = parse_args([])
+        assert args.verbose is False
 
 
 class TestRepositoryInfo:
@@ -2053,6 +2069,194 @@ class TestMainModuleExecution:
 
         result = ccg.cli.main([])
         assert isinstance(result, int)
+
+
+class TestLoggingIntegration:
+    """Tests for logging integration in CLI."""
+
+    @patch("ccg.logging.Path.home")
+    @patch("ccg.cli.handle_git_workflow")
+    @patch("ccg.cli.parse_args")
+    def test_main_initializes_logging_verbose(
+        self, mock_parse: Mock, mock_workflow: Mock, mock_home: Mock, tmp_path: Path
+    ) -> None:
+        """Should initialize logging with verbose=True when --verbose flag is used."""
+        from ccg.cli import main
+
+        mock_home.return_value = tmp_path
+        log_file = tmp_path / ".ccg" / "ccg.log"
+
+        mock_args = Mock()
+        mock_args.verbose = True
+        mock_args.push = False
+        mock_args.commit = False
+        mock_args.edit = False
+        mock_args.delete = False
+        mock_args.reset = False
+        mock_args.tag = False
+        mock_args.path = None
+        mock_parse.return_value = mock_args
+        mock_workflow.return_value = 0
+
+        with patch("sys.argv", ["ccg", "--verbose"]):
+            result = main()
+
+        assert result == 0
+        assert log_file.exists()
+
+    @patch("ccg.logging.Path.home")
+    @patch("ccg.cli.handle_git_workflow")
+    @patch("ccg.cli.parse_args")
+    def test_main_initializes_logging_non_verbose(
+        self, mock_parse: Mock, mock_workflow: Mock, mock_home: Mock, tmp_path: Path
+    ) -> None:
+        """Should initialize logging with verbose=False by default."""
+        from ccg.cli import main
+
+        mock_home.return_value = tmp_path
+        log_file = tmp_path / ".ccg" / "ccg.log"
+
+        mock_args = Mock()
+        mock_args.verbose = False
+        mock_args.push = False
+        mock_args.commit = False
+        mock_args.edit = False
+        mock_args.delete = False
+        mock_args.reset = False
+        mock_args.tag = False
+        mock_args.path = None
+        mock_parse.return_value = mock_args
+        mock_workflow.return_value = 0
+
+        with patch("sys.argv", ["ccg"]):
+            result = main()
+
+        assert result == 0
+        assert log_file.exists()
+
+    @patch("ccg.logging.Path.home")
+    @patch("ccg.cli.parse_args")
+    def test_main_logs_startup_info(
+        self, mock_parse: Mock, mock_home: Mock, tmp_path: Path
+    ) -> None:
+        """Should log startup information."""
+        from ccg.cli import main
+
+        mock_home.return_value = tmp_path
+        log_file = tmp_path / ".ccg" / "ccg.log"
+
+        mock_args = Mock()
+        mock_args.verbose = False
+        mock_args.push = False
+        mock_args.commit = False
+        mock_args.edit = False
+        mock_args.delete = False
+        mock_args.reset = False
+        mock_args.tag = False
+        mock_args.path = None
+        mock_parse.return_value = mock_args
+
+        with patch("sys.argv", ["ccg"]):
+            with patch("ccg.cli.handle_git_workflow", return_value=0):
+                main()
+
+        # Read log file
+        log_content = log_file.read_text(encoding="utf-8")
+        assert "CCG started" in log_content
+
+    @patch("ccg.logging.Path.home")
+    @patch("ccg.cli.parse_args")
+    def test_main_logs_workflow_routes(
+        self, mock_parse: Mock, mock_home: Mock, tmp_path: Path
+    ) -> None:
+        """Should log which workflow is running."""
+        from ccg.cli import main
+
+        mock_home.return_value = tmp_path
+        log_file = tmp_path / ".ccg" / "ccg.log"
+
+        mock_args = Mock()
+        mock_args.verbose = False
+        mock_args.push = False
+        mock_args.commit = False
+        mock_args.edit = True
+        mock_args.delete = False
+        mock_args.reset = False
+        mock_args.tag = False
+        mock_args.path = None
+        mock_parse.return_value = mock_args
+
+        with patch("sys.argv", ["ccg", "--edit"]):
+            with patch("ccg.cli.handle_edit", return_value=0):
+                main()
+
+        log_content = log_file.read_text(encoding="utf-8")
+        assert "Running edit workflow" in log_content
+
+    @patch("ccg.logging.Path.home")
+    @patch("ccg.cli.parse_args")
+    def test_main_logs_user_cancellation(
+        self, mock_parse: Mock, mock_home: Mock, tmp_path: Path
+    ) -> None:
+        """Should log when operation is cancelled by user."""
+        from ccg.cli import main
+
+        mock_home.return_value = tmp_path
+        log_file = tmp_path / ".ccg" / "ccg.log"
+
+        mock_parse.side_effect = KeyboardInterrupt()
+
+        with patch("sys.argv", ["ccg"]):
+            result = main()
+
+        assert result == 130
+        log_content = log_file.read_text(encoding="utf-8")
+        assert "Operation cancelled by user" in log_content
+
+    @patch("ccg.logging.Path.home")
+    @patch("ccg.cli.parse_args")
+    def test_main_logs_exceptions(self, mock_parse: Mock, mock_home: Mock, tmp_path: Path) -> None:
+        """Should log unexpected exceptions."""
+        from ccg.cli import main
+
+        mock_home.return_value = tmp_path
+        log_file = tmp_path / ".ccg" / "ccg.log"
+
+        mock_parse.side_effect = Exception("Test error")
+
+        with patch("sys.argv", ["ccg"]):
+            result = main()
+
+        assert result == 1
+        log_content = log_file.read_text(encoding="utf-8")
+        assert "Unexpected error in main()" in log_content
+
+    @patch("ccg.logging.Path.home")
+    @patch("ccg.cli.parse_args")
+    def test_main_logs_session_end(self, mock_parse: Mock, mock_home: Mock, tmp_path: Path) -> None:
+        """Should log session end."""
+        from ccg.cli import main
+
+        mock_home.return_value = tmp_path
+        log_file = tmp_path / ".ccg" / "ccg.log"
+
+        mock_args = Mock()
+        mock_args.verbose = False
+        mock_args.push = False
+        mock_args.commit = False
+        mock_args.edit = False
+        mock_args.delete = False
+        mock_args.reset = False
+        mock_args.tag = False
+        mock_args.path = None
+        mock_parse.return_value = mock_args
+
+        with patch("sys.argv", ["ccg"]):
+            with patch("ccg.cli.handle_git_workflow", return_value=0):
+                main()
+
+        log_content = log_file.read_text(encoding="utf-8")
+        assert "CCG session ended" in log_content
 
 
 class TestMainFunction:

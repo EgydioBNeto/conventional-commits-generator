@@ -246,6 +246,66 @@ ccg --path /path/to/repo --tag
 
 ---
 
+### `--verbose`: Enable Debug Logging
+
+Enable verbose logging for debugging and troubleshooting:
+
+```bash
+ccg --verbose
+ccg -v
+```
+
+**Features**:
+
+- Logs all operations to `~/.ccg/ccg.log` (always enabled)
+- Shows debug output in console when `--verbose` is used
+- Logs include timestamps, module names, function names, and line numbers
+- Rotating log files (10MB max, keeps 5 backups)
+
+**Use Cases**:
+
+- Debugging issues with git commands
+- Troubleshooting authentication problems
+- Understanding what CCG is doing behind the scenes
+- Reporting bugs with detailed logs
+
+**Combined with Other Flags**:
+
+```bash
+# Debug push issues
+ccg --verbose --push
+
+# Debug commit editing
+ccg -v --edit
+
+# Debug with specific paths
+ccg --verbose --path /path/to/repo
+```
+
+**Log Format**:
+
+```
+2025-10-13 23:58:34 - ccg.cli - INFO - main:123 - CCG started (version 2.2.8)
+2025-10-13 23:58:35 - ccg.git - DEBUG - run_git_command:145 - Executing git command: git status
+2025-10-13 23:58:35 - ccg.git - INFO - git_commit:289 - Creating commit with message: feat: add...
+```
+
+**Log Location**:
+
+- **Linux/Mac**: `~/.ccg/ccg.log`
+- **Windows**: `%USERPROFILE%\.ccg\ccg.log`
+
+!!! tip "When to Use Verbose Mode"
+
+    Use `--verbose` when:
+
+    - Reporting bugs or issues
+    - Troubleshooting git authentication
+    - Understanding unexpected behavior
+    - Debugging pre-commit hooks
+
+---
+
 ### `--version`: Show Version
 
 Display CCG version information:
