@@ -3,9 +3,13 @@
 import sys
 import threading
 import time
-from typing import Any, Callable, Optional
+from types import TracebackType
+from typing import Any, Callable, Optional, TypeVar
 
+from ccg.config import LOGGING_CONFIG
 from ccg.utils import RESET, YELLOW
+
+T = TypeVar("T")
 
 
 class ProgressSpinner:
@@ -28,7 +32,12 @@ class ProgressSpinner:
         self.start()
         return self
 
-    def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
+    def __exit__(
+        self,
+        exc_type: Optional[type[BaseException]],
+        exc_val: Optional[BaseException],
+        exc_tb: Optional[TracebackType],
+    ) -> None:
         """Context manager exit - stop spinner."""
         self.stop()
 
@@ -48,7 +57,7 @@ class ProgressSpinner:
 
         # Wait for thread to finish
         if self.thread:
-            self.thread.join(timeout=1.0)
+            self.thread.join(timeout=LOGGING_CONFIG.THREAD_JOIN_TIMEOUT)
 
         # Clear again to ensure spinner is completely gone
         sys.stdout.write("\r" + " " * 100 + "\r")
@@ -66,7 +75,7 @@ class ProgressSpinner:
             time.sleep(self._frame_delay)
 
 
-def with_spinner(message: str) -> Callable[[Callable[..., Any]], Callable[..., Any]]:
+def with_spinner(message: str) -> Callable[[Callable[..., T]], Callable[..., T]]:
     """Decorator to add spinner to a function.
 
     Args:
@@ -78,8 +87,8 @@ def with_spinner(message: str) -> Callable[[Callable[..., Any]], Callable[..., A
             time.sleep(5)
     """
 
-    def decorator(func: Callable[..., Any]) -> Callable[..., Any]:
-        def wrapper(*args: Any, **kwargs: Any) -> Any:
+    def decorator(func: Callable[..., T]) -> Callable[..., T]:
+        def wrapper(*args: Any, **kwargs: Any) -> T:
             with ProgressSpinner(message):
                 return func(*args, **kwargs)
 

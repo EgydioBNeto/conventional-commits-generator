@@ -13,6 +13,7 @@ from pathlib import Path
 from typing import List, Optional
 
 from ccg.cache import invalidate_repository_cache
+from ccg.config import GIT_CONFIG
 from ccg.progress import ProgressSpinner
 from ccg.utils import print_error, print_info, print_process
 
@@ -225,7 +226,7 @@ else:
             try:
                 script_file = ccg_dir / f"msg_filter_{commit_hash[:7]}.py"
                 script_file.write_text(script_content, encoding="utf-8")
-                script_file.chmod(0o755)
+                script_file.chmod(GIT_CONFIG.SCRIPT_EXECUTABLE_PERMISSION)
                 logger.debug(f"Created Python script file: {script_file}")
             except (IOError, OSError, PermissionError) as e:
                 logger.error(f"Failed to create Python script file: {str(e)}")
@@ -254,7 +255,7 @@ else:
                     f"Failed to edit commit message for '{commit_hash[:7]}'",
                     f"Commit message for '{commit_hash[:7]}' updated successfully",
                     show_output=True,
-                    timeout=300,
+                    timeout=GIT_CONFIG.FILTER_BRANCH_TIMEOUT,
                 )
 
             if not success:

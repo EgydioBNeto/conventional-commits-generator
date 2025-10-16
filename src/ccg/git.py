@@ -450,7 +450,7 @@ def pull_from_remote() -> bool:
         success, _ = run_git_command(
             ["git", "pull", remote_name, branch_name],
             f"Error pulling from {remote_name}/{branch_name}",
-            timeout=120,
+            timeout=GIT_CONFIG.PULL_TIMEOUT,
         )
 
     return success
@@ -580,6 +580,56 @@ def check_has_changes(paths: Optional[List[str]] = None) -> bool:
     return False
 
 
+def _is_permission_error(error_text: str) -> bool:
+    """Check if error text indicates a permission/authentication issue.
+
+    Args:
+        error_text: Lowercased error message from git command
+
+    Returns:
+        True if error indicates permission/auth issue, False otherwise
+    """
+    permission_indicators = [
+        "permission denied",
+        "access denied",
+        "authentication failed",
+        "fatal: could not read from remote repository",
+        "please make sure you have the correct access rights",
+        "repository not found",
+        "403 forbidden",
+        "401 unauthorized",
+        "ssh: connect to host",
+        "connection refused",
+        "terminal prompts disabled",
+        "could not read username",
+    ]
+    return any(indicator in error_text for indicator in permission_indicators)
+
+
+def _handle_remote_access_error(remote_name: str, error_output: Optional[str]) -> None:
+    """Display appropriate error messages based on remote access failure.
+
+    Args:
+        remote_name: Name of the remote repository
+        error_output: Error output from git ls-remote command
+    """
+    if not error_output:
+        print_error(f"Cannot access remote repository '{remote_name}'")
+        return
+
+    error_text = error_output.lower()
+    if _is_permission_error(error_text):
+        print_error("ACCESS DENIED: You don't have permission to access this repository.")
+        print_error("Please check:")
+        print_error("   You have push access to this repository")
+        print_error("   The repository URL is correct")
+        print_error("   You're logged in with the correct account")
+        print_error("Cannot proceed without repository access. Exiting.")
+    else:
+        print_error(f"Cannot access remote repository '{remote_name}'")
+        print_error("This could be due to network issues or repository configuration.")
+
+
 def check_remote_access() -> bool:
     """Verify that the remote repository is accessible and user has permissions.
 
@@ -616,49 +666,17 @@ def check_remote_access() -> bool:
             ["git", "ls-remote", "--exit-code", remote_name],
             capture_output=True,
             text=True,
-            timeout=15,
+            timeout=GIT_CONFIG.REMOTE_CHECK_TIMEOUT,
             env=env,
         )
 
         if result.returncode == 0:
             print_success(f"Remote repository '{remote_name}' is accessible")
             return True
-        else:
-            error_output = result.stderr if result.stderr else result.stdout
-            if error_output:
-                error_text = error_output.lower()
-                permission_indicators = [
-                    "permission denied",
-                    "access denied",
-                    "authentication failed",
-                    "fatal: could not read from remote repository",
-                    "please make sure you have the correct access rights",
-                    "repository not found",
-                    "403 forbidden",
-                    "401 unauthorized",
-                    "ssh: connect to host",
-                    "connection refused",
-                    "terminal prompts disabled",
-                    "could not read username",
-                ]
 
-                if any(indicator in error_text for indicator in permission_indicators):
-                    print_error(
-                        "ACCESS DENIED: You don't have permission to access this repository."
-                    )
-                    print_error("Please check:")
-                    print_error("   You have push access to this repository")
-                    print_error("   The repository URL is correct")
-                    print_error("   You're logged in with the correct account")
-                    print_error("Cannot proceed without repository access. Exiting.")
-                    return False
-                else:
-                    print_error(f"Cannot access remote repository '{remote_name}'")
-                    print_error("This could be due to network issues or repository configuration.")
-                    return False
-            else:
-                print_error(f"Cannot access remote repository '{remote_name}'")
-                return False
+        error_output = result.stderr if result.stderr else result.stdout
+        _handle_remote_access_error(remote_name, error_output)
+        return False
 
     except subprocess.TimeoutExpired:
         print_error("Remote repository check timed out")
@@ -788,7 +806,7 @@ def branch_exists_on_remote(branch_name: str) -> bool:
         ["git", "ls-remote", "--heads", remote_name, branch_name],
         f"Failed to check if branch '{branch_name}' exists on remote",
         show_output=True,
-        timeout=30,
+        timeout=GIT_CONFIG.TAG_PUSH_TIMEOUT,
     )
 
     return success and bool(output)
@@ -1055,7 +1073,7 @@ else:
         try:
             script_file = ccg_dir / f"msg_filter_{commit_hash[:7]}.py"
             script_file.write_text(script_content, encoding="utf-8")
-            script_file.chmod(0o755)  # Make script executable
+            script_file.chmod(GIT_CONFIG.SCRIPT_EXECUTABLE_PERMISSION)  # Make script executable
             logger.debug(f"Created Python script file: {script_file}")
         except (IOError, OSError, PermissionError) as e:
             logger.error(f"Failed to create Python script file: {str(e)}")
@@ -1084,7 +1102,7 @@ else:
                 f"Failed to edit commit message for '{commit_hash[:7]}'",
                 f"Commit message for '{commit_hash[:7]}' updated successfully",
                 show_output=True,
-                timeout=300,
+                timeout=GIT_CONFIG.FILTER_BRANCH_TIMEOUT,
             )
 
         if not success:
@@ -1284,7 +1302,7 @@ def delete_old_commit_with_rebase(commit_hash: str) -> bool:
                     env=env,
                     capture_output=True,
                     text=True,
-                    timeout=120,
+                    timeout=GIT_CONFIG.REBASE_TIMEOUT,
                 )
 
             if result.returncode == 0:
@@ -1379,7 +1397,7 @@ def run_pre_commit_hooks(staged_files: List[str]) -> bool:
                 ["pre-commit", "run", "--files"] + staged_files,
                 capture_output=True,
                 text=True,
-                timeout=120,
+                timeout=GIT_CONFIG.PRE_COMMIT_TIMEOUT,
             )
 
         if result.returncode != 0:
@@ -1436,7 +1454,7 @@ def check_and_install_pre_commit() -> bool:
                 capture_output=True,
                 check=True,
                 text=True,
-                timeout=10,
+                timeout=GIT_CONFIG.STATUS_CHECK_TIMEOUT,
             )
             pre_commit_installed = True
         except FileNotFoundError:

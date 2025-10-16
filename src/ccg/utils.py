@@ -87,8 +87,13 @@ def _ensure_prompt_toolkit() -> bool:
 
                 result = validate_confirmation_input(text, self.default_yes)
                 if result is None:
-                    if len(text) > 3:
-                        raise ValidationError(message="Please enter 'y' or 'n'", cursor_position=3)
+                    from ccg.config import UI_CONFIG as UI_CFG
+
+                    if len(text) > UI_CFG.CONFIRMATION_MAX_LENGTH:
+                        raise ValidationError(
+                            message="Please enter 'y' or 'n'",
+                            cursor_position=UI_CFG.CONFIRMATION_MAX_LENGTH,
+                        )
                     else:
                         raise ValidationError(
                             message="Please enter 'y' or 'n'", cursor_position=len(text)
@@ -493,7 +498,9 @@ def validate_confirmation_input(user_input: str, default_yes: bool = True) -> Op
     Note:
         Case-insensitive. Maximum 3 characters allowed to prevent accidental long inputs.
     """
-    if len(user_input) > 3:
+    from ccg.config import UI_CONFIG as UI_CFG
+
+    if len(user_input) > UI_CFG.CONFIRMATION_MAX_LENGTH:
         return None
 
     if not user_input:
@@ -562,8 +569,11 @@ def create_counter_toolbar(
                     color = "class:toolbar.danger"
 
                 if is_confirmation:
-                    counter_text = f"{current_length}/3"
-                    if current_length >= 3:
+                    from ccg.config import UI_CONFIG as UI_CFG
+
+                    max_conf = UI_CFG.CONFIRMATION_MAX_LENGTH
+                    counter_text = f"{current_length}/{max_conf}"
+                    if current_length >= max_conf:
                         counter_text = f"LIMIT: {counter_text}"
                 else:
                     counter_text = f"{current_length}/{max_length}"
@@ -578,9 +588,15 @@ def create_counter_toolbar(
                 padding = max(0, term_width_local - len(counter_text) - 4)
 
                 return [("", " " * padding), (color, counter_text)]
-            return [("class:toolbar.text", f"0/{3 if is_confirmation else max_length}")]
+            from ccg.config import UI_CONFIG as UI_CFG
+
+            default_max = UI_CFG.CONFIRMATION_MAX_LENGTH if is_confirmation else max_length
+            return [("class:toolbar.text", f"0/{default_max}")]
         except Exception:
-            return [("class:toolbar.text", f"0/{3 if is_confirmation else max_length}")]
+            from ccg.config import UI_CONFIG as UI_CFG
+
+            default_max = UI_CFG.CONFIRMATION_MAX_LENGTH if is_confirmation else max_length
+            return [("class:toolbar.text", f"0/{default_max}")]
 
     return get_toolbar_tokens
 
@@ -646,7 +662,9 @@ def create_input_key_bindings(
         new_char = event.data
         would_be_text = current_text + new_char
 
-        if is_confirmation and len(would_be_text) > 3:
+        from ccg.config import UI_CONFIG as UI_CFG
+
+        if is_confirmation and len(would_be_text) > UI_CFG.CONFIRMATION_MAX_LENGTH:
             return
         elif max_length > 0 and len(would_be_text) > max_length:
             try:
@@ -887,7 +905,11 @@ def confirm_user_action(
 
             validator = ConfirmationValidator_cls(default_yes) if ConfirmationValidator_cls else None  # type: ignore[operator]
             key_bindings = create_input_key_bindings(is_confirmation=True, default_yes=default_yes)
-            bottom_toolbar = create_counter_toolbar(3, is_confirmation=True)
+            from ccg.config import UI_CONFIG as UI_CFG
+
+            bottom_toolbar = create_counter_toolbar(
+                UI_CFG.CONFIRMATION_MAX_LENGTH, is_confirmation=True
+            )
 
             user_input = prompt_fn(  # type: ignore[operator]
                 f"{clean_prompt}: ",
@@ -911,8 +933,12 @@ def confirm_user_action(
                     )
                     user_input = input(f"{clean_prompt}: ").strip()
 
-                    if len(user_input) > 3:
-                        print_error("CHARACTER LIMIT EXCEEDED! (3 characters maximum)")
+                    from ccg.config import UI_CONFIG as UI_CFG
+
+                    if len(user_input) > UI_CFG.CONFIRMATION_MAX_LENGTH:
+                        print_error(
+                            f"CHARACTER LIMIT EXCEEDED! ({UI_CFG.CONFIRMATION_MAX_LENGTH} characters maximum)"
+                        )
                         continue
 
                     result = validate_confirmation_input(user_input, default_yes)
@@ -933,8 +959,12 @@ def confirm_user_action(
                 )
                 user_input = input(f"{clean_prompt}: ").strip()
 
-                if len(user_input) > 3:
-                    print_error("CHARACTER LIMIT EXCEEDED! (3 characters maximum)")
+                from ccg.config import UI_CONFIG as UI_CFG
+
+                if len(user_input) > UI_CFG.CONFIRMATION_MAX_LENGTH:
+                    print_error(
+                        f"CHARACTER LIMIT EXCEEDED! ({UI_CFG.CONFIRMATION_MAX_LENGTH} characters maximum)"
+                    )
                     continue
 
                 result = validate_confirmation_input(user_input, default_yes)
@@ -957,80 +987,34 @@ def confirm_user_action(
         return False
 
 
-def read_multiline_input(
-    default_text: Optional[str] = None, max_length: Optional[int] = None
-) -> str:
-    """Read multiline input from user with character limit validation.
-
-    Allows users to enter multiple lines of text for commit bodies or other
-    long-form content. Uses prompt_toolkit for enhanced experience if available,
-    otherwise falls back to basic multiline input with double-Enter to finish.
+def _display_char_usage(char_count: int, max_length: Optional[int]) -> None:
+    """Display character usage feedback with color coding.
 
     Args:
-        default_text: Optional default text to pre-fill
-        max_length: Optional maximum total character limit
+        char_count: Number of characters used
+        max_length: Maximum allowed characters (None to skip display)
+    """
+    if not max_length:
+        return
+
+    if char_count >= max_length:
+        print(f"    {GREEN}{CHECK} Used all {max_length} characters{RESET}")
+    elif char_count >= max_length * 0.8:
+        print(f"    {YELLOW}{WARNING} {char_count}/{max_length} characters used{RESET}")
+    else:
+        print(f"    {WHITE}{INFO} {char_count}/{max_length} characters used{RESET}")
+
+
+def _read_multiline_fallback(default_text: Optional[str], max_length: Optional[int]) -> str:
+    """Fallback multiline input when prompt_toolkit is unavailable.
+
+    Args:
+        default_text: Optional default text
+        max_length: Optional maximum character limit
 
     Returns:
-        Multiline input as a single string (with newlines), or default_text if empty
-
-    Raises:
-        EOFError: If user presses Ctrl+D
-        KeyboardInterrupt: If user presses Ctrl+C
-
-    Note:
-        With prompt_toolkit: Use Ctrl+D to submit
-        Without prompt_toolkit: Press Enter twice (empty line) to finish
-        Maximum 80 characters per line in fallback mode
-        Displays character usage feedback after input
+        User input as string with newlines, or default_text if empty
     """
-    from ccg import utils as utils_module
-
-    if _ensure_prompt_toolkit() and utils_module.PROMPT_TOOLKIT_AVAILABLE and max_length:
-        try:
-            prompt_multiline = utils_module.prompt
-            prompt_style = utils_module.PROMPT_STYLE
-            RealTimeCounterValidator_cls = utils_module.RealTimeCounterValidator
-
-            if prompt_multiline is None:  # pragma: no cover
-                raise AttributeError("prompt_multiline is None")
-
-            print(f"{BLUE}Press Ctrl+D to finish. Press Enter for new line.{RESET}")
-            print(f"{BLUE}Maximum {max_length} characters allowed{RESET}")
-
-            validator = RealTimeCounterValidator_cls(max_length) if RealTimeCounterValidator_cls else None  # type: ignore[operator]
-            key_bindings = create_input_key_bindings(max_length, multiline=True)
-            bottom_toolbar = create_counter_toolbar(max_length)
-
-            result_str = str(
-                prompt_multiline(  # type: ignore[operator]
-                    "",
-                    multiline=True,
-                    style=prompt_style,
-                    default=default_text or "",
-                    validator=validator,
-                    validate_while_typing=True,
-                    key_bindings=key_bindings,
-                    bottom_toolbar=bottom_toolbar,
-                )
-            ).strip()
-
-            if result_str:
-                char_count = len(result_str)
-                if char_count >= max_length:
-                    print(f"    {GREEN}{CHECK} Used all {max_length} characters{RESET}")
-                elif char_count >= max_length * 0.8:
-                    print(f"    {YELLOW}{WARNING} {char_count}/{max_length} characters used{RESET}")
-                else:
-                    print(f"    {WHITE}{INFO} {char_count}/{max_length} characters used{RESET}")
-
-            return result_str
-
-        except (EOFError, KeyboardInterrupt):  # pragma: no cover
-            print()
-            raise
-        except (ImportError, AttributeError, TypeError, Exception):  # pragma: no cover
-            pass
-
     if default_text:
         print(f"{BLUE}Enter new content (or press Enter twice to finish):{RESET}")
     else:
@@ -1041,7 +1025,9 @@ def read_multiline_input(
     lines: List[str] = []
     empty_line_count = 0
     total_chars = 0
-    max_line_length = 80
+    from ccg.config import UI_CONFIG as UI_CFG
+
+    max_line_length = UI_CFG.MULTILINE_MAX_LINE_LENGTH
 
     try:
         while True:
@@ -1111,16 +1097,80 @@ def read_multiline_input(
         return default_text
 
     if result:
-        char_count = len(result)
-        if max_length:
-            if char_count >= max_length:
-                print(f"    {GREEN}{CHECK} Used all {max_length} characters{RESET}")
-            elif char_count >= max_length * 0.8:
-                print(f"    {YELLOW}{WARNING} {char_count}/{max_length} characters used{RESET}")
-            else:
-                print(f"    {WHITE}{INFO} {char_count}/{max_length} characters used{RESET}")
+        _display_char_usage(len(result), max_length)
 
     return result
+
+
+def read_multiline_input(
+    default_text: Optional[str] = None, max_length: Optional[int] = None
+) -> str:
+    """Read multiline input from user with character limit validation.
+
+    Allows users to enter multiple lines of text for commit bodies or other
+    long-form content. Uses prompt_toolkit for enhanced experience if available,
+    otherwise falls back to basic multiline input with double-Enter to finish.
+
+    Args:
+        default_text: Optional default text to pre-fill
+        max_length: Optional maximum total character limit
+
+    Returns:
+        Multiline input as a single string (with newlines), or default_text if empty
+
+    Raises:
+        EOFError: If user presses Ctrl+D
+        KeyboardInterrupt: If user presses Ctrl+C
+
+    Note:
+        With prompt_toolkit: Use Ctrl+D to submit
+        Without prompt_toolkit: Press Enter twice (empty line) to finish
+        Maximum 80 characters per line in fallback mode
+        Displays character usage feedback after input
+    """
+    from ccg import utils as utils_module
+
+    if _ensure_prompt_toolkit() and utils_module.PROMPT_TOOLKIT_AVAILABLE and max_length:
+        try:
+            prompt_multiline = utils_module.prompt
+            prompt_style = utils_module.PROMPT_STYLE
+            RealTimeCounterValidator_cls = utils_module.RealTimeCounterValidator
+
+            if prompt_multiline is None:  # pragma: no cover
+                raise AttributeError("prompt_multiline is None")
+
+            print(f"{BLUE}Press Ctrl+D to finish. Press Enter for new line.{RESET}")
+            print(f"{BLUE}Maximum {max_length} characters allowed{RESET}")
+
+            validator = RealTimeCounterValidator_cls(max_length) if RealTimeCounterValidator_cls else None  # type: ignore[operator]
+            key_bindings = create_input_key_bindings(max_length, multiline=True)
+            bottom_toolbar = create_counter_toolbar(max_length)
+
+            result_str = str(
+                prompt_multiline(  # type: ignore[operator]
+                    "",
+                    multiline=True,
+                    style=prompt_style,
+                    default=default_text or "",
+                    validator=validator,
+                    validate_while_typing=True,
+                    key_bindings=key_bindings,
+                    bottom_toolbar=bottom_toolbar,
+                )
+            ).strip()
+
+            if result_str:
+                _display_char_usage(len(result_str), max_length)
+
+            return result_str
+
+        except (EOFError, KeyboardInterrupt):  # pragma: no cover
+            print()
+            raise
+        except (ImportError, AttributeError, TypeError, Exception):  # pragma: no cover
+            pass
+
+    return _read_multiline_fallback(default_text, max_length)
 
 
 _ensure_prompt_toolkit()
