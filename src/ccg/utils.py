@@ -4,9 +4,6 @@ import re
 import shutil
 from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Tuple, TypeVar
 
-if TYPE_CHECKING:
-    pass
-
 ASCII_LOGO = r"""
  ________      ________      ________
 |\   ____\    |\   ____\    |\   ____\
@@ -219,17 +216,6 @@ ARROW = "→"
 WARNING = "⚠"
 INFO = "ℹ"
 BULLET = "•"
-
-# Terminal width detection
-term_width: int
-try:
-    term_width, _ = shutil.get_terminal_size()
-except (OSError, ValueError, AttributeError, Exception):
-    from ccg.config import UI_CONFIG
-
-    term_width = UI_CONFIG.DEFAULT_TERM_WIDTH
-
-TERM_WIDTH = term_width
 
 from ccg.config import INPUT_LIMITS as INPUT_LIMITS_CONFIG
 

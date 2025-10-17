@@ -342,39 +342,6 @@ class TestCacheIntegration:
         assert cache._branch is None
 
     @patch("ccg.git.run_git_command")
-    @patch("ccg.git.print_error")
-    @patch("ccg.git.print_process")
-    @patch("ccg.git.print_success")
-    def test_edit_latest_commit_invalidates_cache(
-        self, mock_print_success, mock_print_process, mock_print_error, mock_run_git
-    ) -> None:
-        """Should invalidate cache after editing commit."""
-        from ccg.git import edit_latest_commit_with_amend, get_current_branch
-
-        # Setup mock
-        mock_run_git.side_effect = [
-            (True, "main"),  # get_current_branch
-            (True, None),  # git commit --amend
-        ]
-
-        # Clear cache first
-        invalidate_repository_cache()
-
-        # Get branch (should cache it)
-        branch1 = get_current_branch()
-        assert branch1 == "main"
-
-        # Edit commit (should invalidate cache)
-        with patch("tempfile.NamedTemporaryFile"):
-            with patch("os.path.exists", return_value=False):
-                result = edit_latest_commit_with_amend("abc123", "new message")
-                assert result is True
-
-        # Cache should be cleared
-        cache = get_cache()
-        assert cache._branch is None
-
-    @patch("ccg.git.run_git_command")
     def test_cache_invalidates_on_directory_change(self, mock_run_git, tmp_path) -> None:
         """Should invalidate cache when changing directories."""
         from ccg.git import get_current_branch

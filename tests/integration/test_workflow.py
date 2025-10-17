@@ -20,7 +20,6 @@ from ccg.git import (
     git_add,
     git_commit,
 )
-from ccg.repository import GitRepository
 
 
 class TestCommitWorkflow:
@@ -111,37 +110,6 @@ class TestCommitWorkflow:
         finally:
             temp_git_repo.exit()
 
-    def test_repository_abstraction(self, temp_git_repo):
-        """Test GitRepository abstraction for commit workflow."""
-        temp_git_repo.enter()
-
-        try:
-            repo = GitRepository()
-
-            # Verify we're in a git repo
-            assert repo.is_git_repo() is True
-
-            # Create and stage file
-            temp_git_repo.write_file("abstract.txt", "testing abstraction")
-            success = repo.add()
-            assert success is True
-
-            # Verify file is staged
-            staged = repo.get_staged_files()
-            assert "abstract.txt" in staged
-
-            # Commit
-            success = repo.commit("test: verify repository abstraction")
-            assert success is True
-
-            # Verify commit via repository
-            commits = repo.get_recent_commits(count=1)
-            assert len(commits) == 1
-            assert "verify repository abstraction" in commits[0].subject
-
-        finally:
-            temp_git_repo.exit()
-
 
 class TestEditCommitWorkflow:
     """Test commit editing workflows."""
@@ -214,28 +182,6 @@ class TestEditCommitWorkflow:
         finally:
             temp_git_repo_with_commits.exit()
 
-    def test_repository_edit_commit(self, temp_git_repo_with_commits):
-        """Test editing commit via GitRepository abstraction."""
-        temp_git_repo_with_commits.enter()
-
-        try:
-            repo = GitRepository()
-
-            # Get latest commit
-            commits = repo.get_recent_commits(count=1)
-            latest_hash = commits[0].full_hash
-
-            # Edit via repository
-            success = repo.edit_commit_message(latest_hash, "chore: edited via repository")
-            assert success is True
-
-            # Verify change
-            updated_commits = repo.get_recent_commits(count=1)
-            assert "edited via repository" in updated_commits[0].subject
-
-        finally:
-            temp_git_repo_with_commits.exit()
-
 
 class TestDeleteCommitWorkflow:
     """Test commit deletion workflows."""
@@ -278,30 +224,6 @@ class TestDeleteCommitWorkflow:
             assert success is True
 
             # Verify commit count decreased
-            new_count = temp_git_repo_with_commits.get_commit_count()
-            assert new_count == initial_count - 1
-
-        finally:
-            temp_git_repo_with_commits.exit()
-
-    def test_repository_delete_commit(self, temp_git_repo_with_commits):
-        """Test deleting commit via GitRepository abstraction."""
-        temp_git_repo_with_commits.enter()
-
-        try:
-            repo = GitRepository()
-
-            # Get latest commit
-            commits = repo.get_recent_commits(count=1)
-            latest_hash = commits[0].full_hash
-
-            initial_count = temp_git_repo_with_commits.get_commit_count()
-
-            # Delete via repository
-            success = repo.delete_commit(latest_hash)
-            assert success is True
-
-            # Verify deletion
             new_count = temp_git_repo_with_commits.get_commit_count()
             assert new_count == initial_count - 1
 
@@ -351,24 +273,6 @@ class TestTagWorkflow:
         finally:
             temp_git_repo_with_commits.exit()
 
-    def test_repository_create_tag(self, temp_git_repo_with_commits):
-        """Test creating tag via GitRepository abstraction."""
-        temp_git_repo_with_commits.enter()
-
-        try:
-            repo = GitRepository()
-
-            # Create tag via repository
-            success = repo.create_tag("v3.0.0", "Release 3.0.0")
-            assert success is True
-
-            # Verify tag
-            tags = temp_git_repo_with_commits.get_tags()
-            assert "v3.0.0" in tags
-
-        finally:
-            temp_git_repo_with_commits.exit()
-
 
 class TestGetCommitInfo:
     """Test retrieving commit information."""
@@ -407,35 +311,6 @@ class TestGetCommitInfo:
             assert commit is not None
             assert len(commit) == 6  # includes body
             assert commit[0] == latest_hash
-
-        finally:
-            temp_git_repo_with_commits.exit()
-
-    def test_repository_get_commits(self, temp_git_repo_with_commits):
-        """Test getting commits via GitRepository abstraction."""
-        temp_git_repo_with_commits.enter()
-
-        try:
-            repo = GitRepository()
-
-            # Get recent commits as CommitInfo objects
-            commits = repo.get_recent_commits(count=2)
-            assert len(commits) == 2
-
-            # Verify CommitInfo structure
-            for commit in commits:
-                assert hasattr(commit, "full_hash")
-                assert hasattr(commit, "short_hash")
-                assert hasattr(commit, "subject")
-                assert hasattr(commit, "body")
-                assert hasattr(commit, "author")
-                assert hasattr(commit, "date")
-
-            # Get specific commit
-            latest_hash = temp_git_repo_with_commits.get_latest_commit_hash()
-            commit = repo.get_commit_by_hash(latest_hash)
-            assert commit is not None
-            assert commit.full_hash == latest_hash
 
         finally:
             temp_git_repo_with_commits.exit()

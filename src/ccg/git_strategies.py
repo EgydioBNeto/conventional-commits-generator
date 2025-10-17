@@ -14,6 +14,11 @@ from typing import List, Optional
 
 from ccg.cache import invalidate_repository_cache
 from ccg.config import GIT_CONFIG
+from ccg.platform_utils import (
+    get_filter_branch_command,
+    set_file_permissions_executable,
+    set_file_permissions_secure,
+)
 from ccg.progress import ProgressSpinner
 from ccg.utils import print_error, print_info, print_process
 
@@ -112,6 +117,8 @@ class AmendStrategy(CommitEditStrategy):
                 with tempfile.NamedTemporaryFile(mode="w", delete=False) as f:
                     f.write(full_commit_message)
                     temp_file = f.name
+                # Set restrictive permissions (cross-platform)
+                set_file_permissions_secure(temp_file)
             except (IOError, OSError, PermissionError) as e:
                 logger.error(f"Failed to create temporary file: {str(e)}")
                 print_error(f"Failed to create temporary commit message file: {str(e)}")
@@ -199,6 +206,8 @@ class FilterBranchStrategy(CommitEditStrategy):
             try:
                 message_file = ccg_dir / f"commit_message_{commit_hash[:7]}.tmp"
                 message_file.write_text(full_commit_message, encoding="utf-8")
+                # Set restrictive permissions (cross-platform)
+                set_file_permissions_secure(message_file)
                 logger.debug(f"Created message file: {message_file}")
             except (IOError, OSError, PermissionError) as e:
                 logger.error(f"Failed to create message file: {str(e)}")
@@ -226,19 +235,23 @@ else:
             try:
                 script_file = ccg_dir / f"msg_filter_{commit_hash[:7]}.py"
                 script_file.write_text(script_content, encoding="utf-8")
-                script_file.chmod(GIT_CONFIG.SCRIPT_EXECUTABLE_PERMISSION)
+                # Set executable permissions (cross-platform)
+                set_file_permissions_executable(script_file)
                 logger.debug(f"Created Python script file: {script_file}")
             except (IOError, OSError, PermissionError) as e:
                 logger.error(f"Failed to create Python script file: {str(e)}")
                 print_error(f"Failed to create temporary Python script file: {str(e)}")
                 return False
 
+            # Get platform-appropriate command for invoking the filter script
+            filter_command = get_filter_branch_command(script_file)
+
             command = [
                 "git",
                 "filter-branch",
                 "--force",
                 "--msg-filter",
-                str(script_file),
+                filter_command,
             ]
 
             if is_initial_commit:

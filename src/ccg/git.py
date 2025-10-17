@@ -9,6 +9,13 @@ from typing import List, Optional, Tuple
 
 from ccg.cache import get_cache, invalidate_repository_cache
 from ccg.config import GIT_CONFIG
+from ccg.platform_utils import (
+    get_copy_command_for_rebase,
+    get_filter_branch_command,
+    get_null_editor_command,
+    set_file_permissions_executable,
+    set_file_permissions_secure,
+)
 from ccg.progress import ProgressSpinner
 from ccg.utils import (
     print_error,
@@ -941,189 +948,6 @@ def get_commit_by_hash(
     return (full_hash, short_hash, subject, body, author, date)
 
 
-def edit_latest_commit_with_amend(
-    commit_hash: str, new_message: str, new_body: Optional[str] = None
-) -> bool:
-    """Edit the most recent commit using git commit --amend.
-
-    Modifies the latest commit's message while preserving its changes.
-    More efficient than filter-branch for editing the most recent commit.
-
-    Args:
-        commit_hash: Hash of commit to edit (for verification/display)
-        new_message: New commit subject line
-        new_body: Optional new commit body
-
-    Returns:
-        True if commit amended successfully, False on error
-
-    Note:
-        Uses --no-verify to bypass pre-commit hooks as the changes are
-        already committed. Creates temporary file for commit message.
-    """
-    full_commit_message = new_message
-    if new_body:
-        full_commit_message += f"\n\n{new_body}"
-
-    temp_file = None
-    try:
-        try:
-            with tempfile.NamedTemporaryFile(mode="w", delete=False) as f:
-                f.write(full_commit_message)
-                temp_file = f.name
-        except (IOError, OSError, PermissionError) as e:
-            print_error(f"Failed to create temporary commit message file: {str(e)}")
-            return False
-
-        success, _ = run_git_command(
-            ["git", "commit", "--amend", "-F", temp_file, "--no-verify"],
-            f"Failed to amend commit message for '{commit_hash[:7]}'",
-            f"Commit message for '{commit_hash[:7]}' updated successfully",
-        )
-
-        if success:
-            invalidate_repository_cache()
-
-        return success
-    finally:
-        if temp_file and os.path.exists(temp_file):
-            try:
-                os.unlink(temp_file)
-            except Exception:
-                pass
-
-
-def edit_old_commit_with_filter_branch(
-    commit_hash: str,
-    new_message: str,
-    new_body: Optional[str] = None,
-    is_initial_commit: bool = False,
-) -> bool:
-    """Edit an old commit using git filter-branch.
-
-    Rewrites git history to modify a commit that is not the latest one.
-    This is more complex and time-consuming than amending.
-
-    Args:
-        commit_hash: Full hash of commit to edit
-        new_message: New commit subject line
-        new_body: Optional new commit body
-        is_initial_commit: If True, use --all flag for initial commit
-
-    Returns:
-        True if commit edited successfully, False on error
-
-    Note:
-        REWRITES HISTORY - Changes all descendant commit hashes.
-        Uses 300 second (5 minute) timeout for large repositories.
-        Uses temporary files in ~/.ccg/ directory for secure message handling.
-    """
-    full_commit_message = new_message
-    if new_body:
-        full_commit_message += f"\n\n{new_body}"
-
-    # Create CCG directory in user's home (same location as logs)
-    ccg_dir = Path.home() / ".ccg"
-    try:
-        ccg_dir.mkdir(parents=True, exist_ok=True)
-    except (OSError, PermissionError) as e:
-        logger.error(f"Failed to create CCG directory: {str(e)}")
-        print_error(f"Failed to create directory {ccg_dir}: {str(e)}")
-        return False
-
-    message_file = None
-    script_file = None
-    try:
-        # Create temporary file for commit message in ~/.ccg/
-        try:
-            message_file = ccg_dir / f"commit_message_{commit_hash[:7]}.tmp"
-            message_file.write_text(full_commit_message, encoding="utf-8")
-            logger.debug(f"Created message file: {message_file}")
-        except (IOError, OSError, PermissionError) as e:
-            logger.error(f"Failed to create message file: {str(e)}")
-            print_error(f"Failed to create temporary message file: {str(e)}")
-            return False
-
-        # Create Python script that reads from message file
-        # This avoids shell injection by not interpolating user content
-        # Python is cross-platform and already a dependency of CCG
-        import sys as _sys
-
-        script_content = f"""#!/usr/bin/env python3
-import subprocess
-import sys
-
-# Get current commit hash being processed by filter-branch
-result = subprocess.run(
-    ["git", "rev-parse", "--short", "HEAD"],
-    capture_output=True,
-    text=True
-)
-current_hash = result.stdout.strip()
-
-# If this is the target commit, use new message from file
-if current_hash == "{commit_hash[:7]}":
-    with open(r"{message_file}", "r", encoding="utf-8") as f:
-        sys.stdout.write(f.read())
-else:
-    # Otherwise, preserve original message from stdin
-    sys.stdout.write(sys.stdin.read())
-"""
-
-        try:
-            script_file = ccg_dir / f"msg_filter_{commit_hash[:7]}.py"
-            script_file.write_text(script_content, encoding="utf-8")
-            script_file.chmod(GIT_CONFIG.SCRIPT_EXECUTABLE_PERMISSION)  # Make script executable
-            logger.debug(f"Created Python script file: {script_file}")
-        except (IOError, OSError, PermissionError) as e:
-            logger.error(f"Failed to create Python script file: {str(e)}")
-            print_error(f"Failed to create temporary Python script file: {str(e)}")
-            return False
-
-        command = [
-            "git",
-            "filter-branch",
-            "--force",
-            "--msg-filter",
-            str(script_file),
-        ]
-
-        if is_initial_commit:
-            command.extend(["--", "--all"])
-        else:
-            command.append(f"{commit_hash}^..HEAD")
-
-        print_process(f"Updating commit message for '{commit_hash[:7]}'...")
-        print_info("This may take a moment for repositories with many commits...")
-
-        with ProgressSpinner("Rewriting git history"):
-            success, output = run_git_command(
-                command,
-                f"Failed to edit commit message for '{commit_hash[:7]}'",
-                f"Commit message for '{commit_hash[:7]}' updated successfully",
-                show_output=True,
-                timeout=GIT_CONFIG.FILTER_BRANCH_TIMEOUT,
-            )
-
-        if not success:
-            print_error("Error details:")
-            print(output)
-            return False
-
-        invalidate_repository_cache()
-        return True
-
-    finally:
-        # Clean up temporary files
-        for temp_file in [message_file, script_file]:
-            if temp_file and temp_file.exists():
-                try:
-                    temp_file.unlink()
-                    logger.debug(f"Cleaned up temporary file: {temp_file}")
-                except Exception as e:
-                    logger.warning(f"Failed to clean up {temp_file}: {str(e)}")
-
-
 def edit_commit_message(commit_hash: str, new_message: str, new_body: Optional[str] = None) -> bool:
     """Edit a commit message by hash, using appropriate strategy based on position.
 
@@ -1251,6 +1075,8 @@ def create_rebase_script_for_deletion(
         with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".txt") as f:
             f.write("\n".join(rebase_script) + "\n")
             script_file = f.name
+        # Set restrictive permissions (cross-platform)
+        set_file_permissions_secure(script_file)
     except (IOError, OSError, PermissionError) as e:
         print_error(f"Failed to create temporary rebase script: {str(e)}")
         return False, None, []
@@ -1293,8 +1119,10 @@ def delete_old_commit_with_rebase(commit_hash: str) -> bool:
 
         try:
             env = os.environ.copy()
-            env["GIT_SEQUENCE_EDITOR"] = f"cp {script_file}"
-            env["GIT_EDITOR"] = "true"
+            # Use cross-platform copy command for GIT_SEQUENCE_EDITOR
+            env["GIT_SEQUENCE_EDITOR"] = get_copy_command_for_rebase(Path(script_file))
+            # Use cross-platform null editor for GIT_EDITOR
+            env["GIT_EDITOR"] = get_null_editor_command()
 
             with ProgressSpinner("Deleting commit via rebase"):
                 result = subprocess.run(
