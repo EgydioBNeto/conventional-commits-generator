@@ -5,7 +5,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from ccg.progress import ProgressSpinner, with_spinner
+from ccg.progress import ProgressSpinner
 
 
 class TestProgressSpinner:
@@ -114,76 +114,18 @@ class TestProgressSpinner:
         assert result == "completed"
 
 
-class TestWithSpinnerDecorator:
-    """Test cases for with_spinner decorator."""
-
-    def test_decorator_basic_usage(self):
-        """Test basic usage of with_spinner decorator."""
-
-        @with_spinner("Decorated function")
-        def test_function():
-            time.sleep(0.1)
-            return 42
-
-        result = test_function()
-        assert result == 42
-
-    def test_decorator_with_args(self):
-        """Test decorator with function that takes arguments."""
-
-        @with_spinner("Processing")
-        def process_data(x, y):
-            return x + y
-
-        result = process_data(10, 20)
-        assert result == 30
-
-    def test_decorator_with_kwargs(self):
-        """Test decorator with keyword arguments."""
-
-        @with_spinner("Calculating")
-        def calculate(a, b, operation="add"):
-            if operation == "add":
-                return a + b
-            elif operation == "multiply":
-                return a * b
-            return 0
-
-        assert calculate(5, 3, operation="add") == 8
-        assert calculate(5, 3, operation="multiply") == 15
-
-    def test_decorator_preserves_exceptions(self):
-        """Test that decorator preserves exceptions."""
-
-        @with_spinner("Failing function")
-        def failing_function():
-            raise ValueError("Test error")
-
-        with pytest.raises(ValueError, match="Test error"):
-            failing_function()
-
-    def test_decorator_with_return_none(self):
-        """Test decorator with function that returns None."""
-
-        @with_spinner("Side effect function")
-        def side_effect_function():
-            time.sleep(0.05)
-
-        result = side_effect_function()
-        assert result is None
-
-
 class TestSpinnerIntegration:
     """Integration tests for spinner in realistic scenarios."""
 
     def test_spinner_during_subprocess(self):
         """Test spinner during a subprocess call."""
         import subprocess
+        import sys
 
         def run_command_with_spinner():
             with ProgressSpinner("Running command"):
                 result = subprocess.run(
-                    ["python", "-c", "import time; time.sleep(0.2)"],
+                    [sys.executable, "-c", "import time; time.sleep(0.2)"],
                     capture_output=True,
                     timeout=5,
                 )

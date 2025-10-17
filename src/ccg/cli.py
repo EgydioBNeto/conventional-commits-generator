@@ -14,7 +14,6 @@ if TYPE_CHECKING:
 
 from ccg import __version__
 from ccg.logging import setup_logging
-from ccg.repository import GitRepository
 
 logger = logging.getLogger("ccg.cli")
 from ccg.config import UI_CONFIG
@@ -72,32 +71,6 @@ def show_repository_info() -> None:
 
     repo_name = get_repository_name()
     branch_name = get_current_branch()
-
-    if repo_name and branch_name:
-        print(
-            f"{CYAN}Repository:{RESET} {BOLD}{repo_name}{RESET}  {CYAN}Branch:{RESET} {BOLD}{branch_name}{RESET}"
-        )
-
-
-def show_repository_info_oop(repo: GitRepository) -> None:  # pragma: no cover
-    """Display current repository and branch information using GitRepository instance.
-
-    This is the OOP version of show_repository_info() that demonstrates usage
-    of the GitRepository class. Can be used as a drop-in replacement for the
-    functional version when migrating to the OOP pattern.
-
-    Args:
-        repo: GitRepository instance to query for information
-
-    Note:
-        Silently returns if repository name or branch cannot be determined.
-        This function demonstrates the improved testability and maintainability
-        of the GitRepository class (Improvement #9 from CODE_ANALYSIS.md).
-    """
-    from ccg.utils import BOLD, CYAN, RESET
-
-    repo_name = repo.get_repository_name()
-    branch_name = repo.get_current_branch()
 
     if repo_name and branch_name:
         print(

@@ -30,7 +30,6 @@ class GitConfig:
     REMOTE_CHECK_TIMEOUT: int = 15
     TAG_PUSH_TIMEOUT: int = 30
     STATUS_CHECK_TIMEOUT: int = 10
-    SCRIPT_EXECUTABLE_PERMISSION: int = 0o755
 
 
 @dataclass(frozen=True)

@@ -501,12 +501,6 @@ class TestReadInputFallback:
 class TestConstants:
     """Tests for constant values."""
 
-    def test_term_width_positive(self) -> None:
-        """Terminal width should be positive."""
-        from ccg.utils import TERM_WIDTH
-
-        assert TERM_WIDTH > 0
-
     def test_ascii_logo_present(self) -> None:
         """ASCII logo should be defined."""
         from ccg.utils import ASCII_LOGO
@@ -793,24 +787,6 @@ class TestIsValidSemver:
 
         for tag in invalid_tags:
             assert is_valid_semver(tag) is False, f"Should reject {tag}"
-
-
-class TestTermWidthException:
-    """Tests for terminal width exception handling."""
-
-    def test_term_width_fallback_on_exception(self) -> None:
-        """Should use default width when terminal size fails."""
-        import importlib
-        import sys
-
-        # Force reimport to trigger exception handling
-        if "ccg.utils" in sys.modules:
-            del sys.modules["ccg.utils"]
-
-        with patch("shutil.get_terminal_size", side_effect=Exception("Terminal error")):
-            import ccg.utils
-
-            assert ccg.utils.TERM_WIDTH > 0  # Should have fallback value
 
 
 class TestConfirmationValidatorWithPromptToolkit:

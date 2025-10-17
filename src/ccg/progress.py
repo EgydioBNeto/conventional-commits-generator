@@ -4,12 +4,10 @@ import sys
 import threading
 import time
 from types import TracebackType
-from typing import Any, Callable, Optional, TypeVar
+from typing import Optional
 
 from ccg.config import LOGGING_CONFIG
 from ccg.utils import RESET, YELLOW
-
-T = TypeVar("T")
 
 
 class ProgressSpinner:
@@ -73,25 +71,3 @@ class ProgressSpinner:
             sys.stdout.flush()
             idx += 1
             time.sleep(self._frame_delay)
-
-
-def with_spinner(message: str) -> Callable[[Callable[..., T]], Callable[..., T]]:
-    """Decorator to add spinner to a function.
-
-    Args:
-        message: Message to display during function execution
-
-    Example:
-        @with_spinner("Processing files")
-        def long_operation():
-            time.sleep(5)
-    """
-
-    def decorator(func: Callable[..., T]) -> Callable[..., T]:
-        def wrapper(*args: Any, **kwargs: Any) -> T:
-            with ProgressSpinner(message):
-                return func(*args, **kwargs)
-
-        return wrapper
-
-    return decorator
