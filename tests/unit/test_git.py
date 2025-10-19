@@ -1030,28 +1030,33 @@ class TestCheckRemoteAccess:
         assert result is False
 
     @pytest.mark.parametrize(
-        "error_message",
+        "error_message,expected_message",
         [
-            "permission denied",
-            "access denied",
-            "authentication failed",
-            "fatal: could not read from remote repository",
-            "please make sure you have the correct access rights",
-            "repository not found",
-            "403 forbidden",
-            "401 unauthorized",
-            "ssh: connect to host",
-            "connection refused",
-            "terminal prompts disabled",
-            "could not read username",
+            ("permission denied", "ACCESS DENIED"),
+            ("access denied", "ACCESS DENIED"),
+            ("authentication failed", "ACCESS DENIED"),
+            ("fatal: could not read from remote repository", "REPOSITORY ERROR"),
+            ("please make sure you have the correct access rights", "REPOSITORY ERROR"),
+            ("repository not found", "REPOSITORY ERROR"),
+            ("403 forbidden", "ACCESS DENIED"),
+            ("401 unauthorized", "ACCESS DENIED"),
+            ("ssh: connect to host", "NETWORK ERROR"),
+            ("connection refused", "NETWORK ERROR"),
+            ("terminal prompts disabled", "ACCESS DENIED"),
+            ("could not read username", "ACCESS DENIED"),
         ],
     )
     @patch("subprocess.run")
     @patch("ccg.git.run_git_command")
     def test_check_remote_access_various_permission_errors(
-        self, mock_run: Mock, mock_subprocess: Mock, error_message: str, capsys
+        self,
+        mock_run: Mock,
+        mock_subprocess: Mock,
+        error_message: str,
+        expected_message: str,
+        capsys,
     ) -> None:
-        """Should return False for various permission-related errors."""
+        """Should return False and display appropriate error message based on error category."""
         from ccg.git import check_remote_access
 
         mock_run.return_value = (True, "origin\thttps://github.com/user/repo.git")
@@ -1061,7 +1066,7 @@ class TestCheckRemoteAccess:
 
         assert result is False
         captured = capsys.readouterr()
-        assert "ACCESS DENIED" in captured.out
+        assert expected_message in captured.out
 
     @patch("subprocess.run")
     @patch("ccg.git.run_git_command")
@@ -2053,3 +2058,79 @@ class TestDeleteOldCommitWithRebaseSuccess:
         result = delete_old_commit_with_rebase("def456")
 
         assert result is True  # Should still succeed despite cleanup failure
+
+    @patch("os.unlink")
+    @patch("os.path.exists")
+    @patch("ccg.git.get_copy_command_for_rebase")
+    @patch("subprocess.run")
+    @patch("ccg.git.create_rebase_script_for_deletion")
+    def test_rebase_success_with_windows_batch_file_cleanup(
+        self,
+        mock_create_script: Mock,
+        mock_subprocess: Mock,
+        mock_get_copy: Mock,
+        mock_exists: Mock,
+        mock_unlink: Mock,
+    ) -> None:
+        """Should cleanup both script and batch file on Windows."""
+        from pathlib import Path
+
+        from ccg.git import delete_old_commit_with_rebase
+
+        mock_create_script.return_value = (True, "/tmp/script", ["pick abc123 test"])
+        mock_subprocess.return_value = Mock(returncode=0, stderr="")
+
+        # Simulate Windows: get_copy_command_for_rebase returns a batch file path
+        mock_batch_file = Path("/tmp/script_copy.bat")
+        mock_get_copy.return_value = ("C:\\tmp\\script_copy.bat", mock_batch_file)
+
+        # Both script and batch file exist
+        mock_exists.return_value = True
+
+        result = delete_old_commit_with_rebase("def456")
+
+        assert result is True
+        # Verify both files were deleted
+        assert mock_unlink.call_count == 2
+        mock_unlink.assert_any_call("/tmp/script")
+        mock_unlink.assert_any_call("/tmp/script_copy.bat")
+
+    @patch("os.unlink")
+    @patch("os.path.exists")
+    @patch("ccg.git.get_copy_command_for_rebase")
+    @patch("subprocess.run")
+    @patch("ccg.git.create_rebase_script_for_deletion")
+    def test_rebase_success_with_windows_batch_file_cleanup_exception(
+        self,
+        mock_create_script: Mock,
+        mock_subprocess: Mock,
+        mock_get_copy: Mock,
+        mock_exists: Mock,
+        mock_unlink: Mock,
+    ) -> None:
+        """Should ignore exceptions during Windows batch file cleanup."""
+        from pathlib import Path
+
+        from ccg.git import delete_old_commit_with_rebase
+
+        mock_create_script.return_value = (True, "/tmp/script", ["pick abc123 test"])
+        mock_subprocess.return_value = Mock(returncode=0, stderr="")
+
+        # Simulate Windows: get_copy_command_for_rebase returns a batch file path
+        mock_batch_file = Path("/tmp/script_copy.bat")
+        mock_get_copy.return_value = ("C:\\tmp\\script_copy.bat", mock_batch_file)
+
+        # Both files exist
+        mock_exists.return_value = True
+
+        # First unlink (script file) succeeds, second unlink (batch file) fails
+        mock_unlink.side_effect = [None, Exception("Permission denied")]
+
+        result = delete_old_commit_with_rebase("def456")
+
+        # Should still succeed despite batch file cleanup failure
+        assert result is True
+        # Verify both unlinks were attempted
+        assert mock_unlink.call_count == 2
+        mock_unlink.assert_any_call("/tmp/script")
+        mock_unlink.assert_any_call("/tmp/script_copy.bat")

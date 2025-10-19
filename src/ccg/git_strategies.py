@@ -7,7 +7,6 @@ encapsulates a specific git technique (amend, filter-branch, rebase, reset).
 
 import logging
 import os
-import tempfile
 from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import List, Optional
@@ -15,9 +14,9 @@ from typing import List, Optional
 from ccg.cache import invalidate_repository_cache
 from ccg.config import GIT_CONFIG
 from ccg.platform_utils import (
+    create_executable_temp_file,
+    create_secure_temp_file,
     get_filter_branch_command,
-    set_file_permissions_executable,
-    set_file_permissions_secure,
 )
 from ccg.progress import ProgressSpinner
 from ccg.utils import print_error, print_info, print_process
@@ -107,27 +106,39 @@ class AmendStrategy(CommitEditStrategy):
         """
         from ccg.git import run_git_command
 
-        full_commit_message = new_message
+        full_commit_message: str = new_message
         if new_body:
             full_commit_message += f"\n\n{new_body}"
 
-        temp_file = None
+        # Create CCG directory in user's home
+        ccg_dir: Path = Path.home() / ".ccg"
+        try:
+            ccg_dir.mkdir(parents=True, exist_ok=True)
+        except (OSError, PermissionError) as e:
+            logger.error(f"Failed to create CCG directory: {str(e)}")
+            print_error(f"Failed to create directory {ccg_dir}: {str(e)}")
+            return False
+
+        message_file: Optional[Path] = None
         try:
             try:
-                with tempfile.NamedTemporaryFile(mode="w", delete=False) as f:
-                    f.write(full_commit_message)
-                    temp_file = f.name
-                # Set restrictive permissions (cross-platform)
-                set_file_permissions_secure(temp_file)
+                # Create file with secure permissions from the start
+                filename: str = (
+                    f"commit_message_amend_{commit_hash[:GIT_CONFIG.SHORT_HASH_LENGTH]}.tmp"
+                )
+                message_file = create_secure_temp_file(ccg_dir, filename, full_commit_message)
+                logger.debug(f"Created secure message file: {message_file}")
             except (IOError, OSError, PermissionError) as e:
                 logger.error(f"Failed to create temporary file: {str(e)}")
                 print_error(f"Failed to create temporary commit message file: {str(e)}")
                 return False
 
+            success: bool
+            _: Optional[str]
             success, _ = run_git_command(
-                ["git", "commit", "--amend", "-F", temp_file, "--no-verify"],
-                f"Failed to amend commit message for '{commit_hash[:7]}'",
-                f"Commit message for '{commit_hash[:7]}' updated successfully",
+                ["git", "commit", "--amend", "-F", str(message_file), "--no-verify"],
+                f"Failed to amend commit message for '{commit_hash[:GIT_CONFIG.SHORT_HASH_LENGTH]}'",
+                f"Commit message for '{commit_hash[:GIT_CONFIG.SHORT_HASH_LENGTH]}' updated successfully",
             )
 
             if success:
@@ -135,11 +146,12 @@ class AmendStrategy(CommitEditStrategy):
 
             return success
         finally:
-            if temp_file and os.path.exists(temp_file):
+            if message_file and message_file.exists():
                 try:
-                    os.unlink(temp_file)
-                except Exception:
-                    pass
+                    message_file.unlink()
+                    logger.debug(f"Cleaned up temporary file: {message_file}")
+                except Exception as e:
+                    logger.warning(f"Failed to clean up {message_file}: {str(e)}")
 
     def get_description(self) -> str:
         """Get description of amend strategy.
@@ -200,21 +212,20 @@ class FilterBranchStrategy(CommitEditStrategy):
             print_error(f"Failed to create directory {ccg_dir}: {str(e)}")
             return False
 
-        message_file = None
-        script_file = None
+        message_file: Optional[Path] = None
+        script_file: Optional[Path] = None
         try:
             try:
-                message_file = ccg_dir / f"commit_message_{commit_hash[:7]}.tmp"
-                message_file.write_text(full_commit_message, encoding="utf-8")
-                # Set restrictive permissions (cross-platform)
-                set_file_permissions_secure(message_file)
-                logger.debug(f"Created message file: {message_file}")
+                # Create message file with secure permissions from the start
+                filename: str = f"commit_message_{commit_hash[:GIT_CONFIG.SHORT_HASH_LENGTH]}.tmp"
+                message_file = create_secure_temp_file(ccg_dir, filename, full_commit_message)
+                logger.debug(f"Created secure message file: {message_file}")
             except (IOError, OSError, PermissionError) as e:
                 logger.error(f"Failed to create message file: {str(e)}")
                 print_error(f"Failed to create temporary message file: {str(e)}")
                 return False
 
-            script_content = f"""#!/usr/bin/env python3
+            script_content: str = f"""#!/usr/bin/env python3
 import subprocess
 import sys
 
@@ -225,7 +236,7 @@ result = subprocess.run(
 )
 current_hash = result.stdout.strip()
 
-if current_hash == "{commit_hash[:7]}":
+if current_hash == "{commit_hash[:GIT_CONFIG.SHORT_HASH_LENGTH]}":
     with open(r"{message_file}", "r", encoding="utf-8") as f:
         sys.stdout.write(f.read())
 else:
@@ -233,11 +244,10 @@ else:
 """
 
             try:
-                script_file = ccg_dir / f"msg_filter_{commit_hash[:7]}.py"
-                script_file.write_text(script_content, encoding="utf-8")
-                # Set executable permissions (cross-platform)
-                set_file_permissions_executable(script_file)
-                logger.debug(f"Created Python script file: {script_file}")
+                # Create executable script file with secure permissions from the start
+                script_filename: str = f"msg_filter_{commit_hash[:GIT_CONFIG.SHORT_HASH_LENGTH]}.py"
+                script_file = create_executable_temp_file(ccg_dir, script_filename, script_content)
+                logger.debug(f"Created secure executable script file: {script_file}")
             except (IOError, OSError, PermissionError) as e:
                 logger.error(f"Failed to create Python script file: {str(e)}")
                 print_error(f"Failed to create temporary Python script file: {str(e)}")
@@ -259,14 +269,16 @@ else:
             else:
                 command.append(f"{commit_hash}^..HEAD")
 
-            print_process(f"Updating commit message for '{commit_hash[:7]}'...")
+            print_process(
+                f"Updating commit message for '{commit_hash[:GIT_CONFIG.SHORT_HASH_LENGTH]}'..."
+            )
             print_info("This may take a moment for repositories with many commits...")
 
             with ProgressSpinner("Rewriting git history"):
                 success, output = run_git_command(
                     command,
-                    f"Failed to edit commit message for '{commit_hash[:7]}'",
-                    f"Commit message for '{commit_hash[:7]}' updated successfully",
+                    f"Failed to edit commit message for '{commit_hash[:GIT_CONFIG.SHORT_HASH_LENGTH]}'",
+                    f"Commit message for '{commit_hash[:GIT_CONFIG.SHORT_HASH_LENGTH]}' updated successfully",
                     show_output=True,
                     timeout=GIT_CONFIG.FILTER_BRANCH_TIMEOUT,
                 )
@@ -342,6 +354,8 @@ def edit_commit_with_strategy(
             logger.info(f"Using strategy: {strategy.get_description()}")
             return strategy.edit(commit_hash, new_message, new_body, **kwargs)
 
-    logger.error(f"No strategy found to handle commit {commit_hash[:7]}")
-    print_error(f"Unable to find appropriate strategy for editing commit {commit_hash[:7]}")
+    logger.error(f"No strategy found to handle commit {commit_hash[:GIT_CONFIG.SHORT_HASH_LENGTH]}")
+    print_error(
+        f"Unable to find appropriate strategy for editing commit {commit_hash[:GIT_CONFIG.SHORT_HASH_LENGTH]}"
+    )
     return False

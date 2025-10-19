@@ -16,6 +16,7 @@ class InputLimits:
     EDIT_MESSAGE: int = 128
     CONFIRMATION: int = 3
     COMMIT_COUNT: int = 6
+    COMMIT_HASH: int = 7
 
 
 @dataclass(frozen=True)
@@ -30,6 +31,9 @@ class GitConfig:
     REMOTE_CHECK_TIMEOUT: int = 15
     TAG_PUSH_TIMEOUT: int = 30
     STATUS_CHECK_TIMEOUT: int = 10
+    SHORT_HASH_LENGTH: int = 7
+    MAX_LOG_ERROR_CHARS: int = 500
+    LOG_PREVIEW_LENGTH: int = 80
 
 
 @dataclass(frozen=True)
@@ -43,6 +47,14 @@ class UIConfig:
     MULTILINE_MAX_LINE_LENGTH: int = 80
     CONFIRMATION_MAX_LENGTH: int = 3
     HELP_FLAGS: tuple[str, ...] = ("-h", "--help")
+    TERMINAL_CLEAR_WIDTH: int = 100
+    LINE_CLEAR_LENGTH: int = 50
+    EMPTY_LINES_TO_EXIT: int = 2
+    WARNING_THRESHOLD: float = 0.7
+    DANGER_THRESHOLD: float = 0.9
+    CRITICAL_THRESHOLD: float = 0.2
+    ARGPARSE_HELP_POSITION: int = 50
+    ARGPARSE_MAX_WIDTH: int = 100
 
 
 @dataclass(frozen=True)

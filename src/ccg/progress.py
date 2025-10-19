@@ -6,7 +6,7 @@ import time
 from types import TracebackType
 from typing import Optional
 
-from ccg.config import LOGGING_CONFIG
+from ccg.config import LOGGING_CONFIG, UI_CONFIG
 from ccg.utils import RESET, YELLOW
 
 
@@ -32,11 +32,17 @@ class ProgressSpinner:
 
     def __exit__(
         self,
-        exc_type: Optional[type[BaseException]],
-        exc_val: Optional[BaseException],
-        exc_tb: Optional[TracebackType],
+        _exc_type: Optional[type[BaseException]],
+        _exc_val: Optional[BaseException],
+        _exc_tb: Optional[TracebackType],
     ) -> None:
-        """Context manager exit - stop spinner."""
+        """Context manager exit - stop spinner.
+
+        Args:
+            _exc_type: Exception type (unused, prefixed with _ to indicate intentional)
+            _exc_val: Exception value (unused, prefixed with _ to indicate intentional)
+            _exc_tb: Exception traceback (unused, prefixed with _ to indicate intentional)
+        """
         self.stop()
 
     def start(self) -> None:
@@ -46,19 +52,23 @@ class ProgressSpinner:
         self.thread.start()
 
     def stop(self) -> None:
-        """Stop spinner animation and clear line."""
+        """Stop spinner animation and clear line.
+
+        Note:
+            Thread is stopped and joined BEFORE clearing the line to prevent
+            race conditions where the animation thread could write to stdout
+            after the clear operation.
+        """
+        # 1. Signal the thread to stop
         self.stop_event.set()
 
-        # Clear immediately to prevent overlap with subsequent output
-        sys.stdout.write("\r" + " " * 100 + "\r")
-        sys.stdout.flush()
-
-        # Wait for thread to finish
+        # 2. Wait for thread to finish BEFORE clearing
+        #    This prevents race condition where thread could write after clear
         if self.thread:
             self.thread.join(timeout=LOGGING_CONFIG.THREAD_JOIN_TIMEOUT)
 
-        # Clear again to ensure spinner is completely gone
-        sys.stdout.write("\r" + " " * 100 + "\r")
+        # 3. Now it's safe to clear (thread is dead)
+        sys.stdout.write("\r" + " " * UI_CONFIG.TERMINAL_CLEAR_WIDTH + "\r")
         sys.stdout.flush()
 
     def _spin(self) -> None:
