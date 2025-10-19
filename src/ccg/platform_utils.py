@@ -41,19 +41,12 @@ def set_file_permissions_secure(file_path: Union[str, Path]) -> None:
     """
     try:
         if sys.platform == "win32":
-            # Windows: Use basic stat flags (limited but works)
-            # S_IWRITE allows owner to write, S_IREAD allows owner to read
-            # Windows doesn't support group/other permissions like Unix
             os.chmod(file_path, stat.S_IWRITE | stat.S_IREAD)
             logger.debug(f"Set Windows permissions (read/write) on {file_path}")
         else:
-            # Unix/Linux/Mac: Use full permission bits
-            # 0o600 = rw------- (owner read/write, no group/other access)
             os.chmod(file_path, 0o600)
             logger.debug(f"Set Unix permissions (0o600) on {file_path}")
     except (OSError, PermissionError) as e:
-        # Non-critical: log but don't fail the operation
-        # File permissions are a security enhancement, not a requirement
         logger.warning(f"Could not set secure permissions on {file_path}: {e}")
 
 
@@ -82,17 +75,11 @@ def set_file_permissions_executable(file_path: Union[str, Path]) -> None:
     """
     try:
         if sys.platform != "win32":
-            # Unix/Linux/Mac: Make executable
-            # 0o755 = rwxr-xr-x (owner rwx, group rx, others rx)
-            # nosec B103: Executable permissions required for script files
             os.chmod(file_path, 0o755)  # nosec B103
             logger.debug(f"Set Unix executable permissions (0o755) on {file_path}")
         else:
-            # Windows: No action needed - .py files execute via python interpreter
-            # File associations handle execution (e.g., .py -> python.exe)
             logger.debug(f"Skipped executable permissions on Windows for {file_path}")
     except (OSError, PermissionError) as e:
-        # Non-critical: log but don't fail the operation
         logger.warning(f"Could not set executable permissions on {file_path}: {e}")
 
 
@@ -127,18 +114,12 @@ def get_copy_command_for_rebase(script_file: Path) -> tuple[str, Optional[Path]]
         # Windows: ("C:\\path\\to\\file_copy.bat", Path("C:\\path\\to\\file_copy.bat"))
     """
     if sys.platform != "win32":
-        # Unix/Linux/Mac: Use standard cp command with shell escaping
-        # shlex.quote() prevents command injection from malicious paths
         escaped_path = shlex.quote(str(script_file))
         return f"cp {escaped_path}", None
     else:
-        # Windows: Create a batch file to perform the copy
-        # Sanitize path by removing double quotes to prevent string escape
         safe_path = str(script_file).replace('"', "")
-        # %1 is the first argument passed by git (destination file)
         batch_content = f'@echo off\ncopy /Y "{safe_path}" %1\n'
 
-        # Create batch file in same directory as script
         batch_file = script_file.parent / f"{script_file.stem}_copy.bat"
         try:
             batch_file.write_text(batch_content, encoding="utf-8")
@@ -146,7 +127,6 @@ def get_copy_command_for_rebase(script_file: Path) -> tuple[str, Optional[Path]]
             return str(batch_file), batch_file
         except (IOError, OSError) as e:
             logger.error(f"Failed to create Windows batch file: {e}")
-            # Fallback: try to use copy command directly (may not work in all shells)
             return f'copy /Y "{safe_path}"', None
 
 
@@ -169,11 +149,8 @@ def get_null_editor_command() -> str:
         # Windows: "cmd /c exit 0"
     """
     if sys.platform != "win32":
-        # Unix/Linux/Mac: 'true' always exits with status 0
         return "true"
     else:
-        # Windows: Use cmd to exit with code 0
-        # /c means execute command and then terminate
         return "cmd /c exit 0"
 
 
@@ -229,21 +206,16 @@ def create_secure_temp_file(
             logger.error(f"Failed to create secure file: {e}")
             raise
     else:
-        # Unix/Linux/macOS: Set restrictive umask BEFORE creating file
-        old_umask: int = os.umask(0o077)  # Only owner can read/write
+        old_umask: int = os.umask(0o077)
 
         try:
-            # File is created with secure permissions from the start
             file_path.write_text(content, encoding="utf-8")
-
-            # Double-check permissions (belt and suspenders approach)
             os.chmod(file_path, 0o600)
             logger.debug(f"Created secure file with Unix permissions (0o600): {file_path}")
         except (IOError, OSError, PermissionError) as e:
             logger.error(f"Failed to create secure file: {e}")
             raise
         finally:
-            # Always restore original umask
             os.umask(old_umask)
 
     return file_path

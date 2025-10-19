@@ -205,15 +205,12 @@ def run_git_command(
     """
     logger.debug(f"Executing git command: {' '.join(command)}")
 
-    # Execute the command using the pure execution layer
     success, stdout, stderr = _execute_git_command(command, timeout)
 
     if success:
-        # Command succeeded - log and display success messages
         logger.debug(f"Git command succeeded: {' '.join(command)}")
 
         if success_message:
-            # Special formatting for push messages
             if success_message == "Changes pushed successfully!":
                 print_section("Remote Push")
             print_success(success_message)
@@ -221,26 +218,20 @@ def run_git_command(
         return (True, stdout) if show_output else (True, None)
 
     else:
-        # Command failed - log and display error messages
         if stderr and stderr.startswith("Command timed out after"):
-            # Timeout error
             logger.error(f"Git command timed out after {timeout}s: {' '.join(command)}")
             print_error(f"Command timed out after {timeout} seconds: {' '.join(command)}")
             return False, stderr
 
         elif stderr and stderr == "Git is not installed":
-            # Git not found error
             logger.critical("Git executable not found in PATH")
             print_error("Git is not installed. Please install Git and try again.")
             return False, None
 
         else:
-            # Regular git command error
             logger.error(f"Git command failed: {' '.join(command)}")
             if stderr:
-                logger.error(
-                    f"Git stderr: {stderr[:GIT_CONFIG.MAX_LOG_ERROR_CHARS]}"
-                )  # Log first N chars
+                logger.error(f"Git stderr: {stderr[:GIT_CONFIG.MAX_LOG_ERROR_CHARS]}")
 
             if error_message:
                 print_error(error_message)
@@ -457,11 +448,10 @@ def git_push(set_upstream: bool = False, force: bool = False) -> bool:
             success, error_output = run_git_command(
                 ["git", "push"],
                 "Error during 'git push'",
-                None,  # Don't print success message inside spinner
+                None,
                 show_output=True,
             )
 
-        # Print success message after spinner has stopped
         if success:
             print_section("Remote Push")
             print_success("Changes pushed successfully!")

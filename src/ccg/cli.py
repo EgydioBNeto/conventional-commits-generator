@@ -315,16 +315,13 @@ def _parse_commit_selection(
     Note:
         This function has a single responsibility: parse and validate selection
     """
-    # Check for cancellation
     if selection.lower() in ("q", "quit", "exit"):
-        return True, None, None  # Success but cancelled
+        return True, None, None
 
-    # Try numeric selection (1-based index)
     if selection.isdigit() and 1 <= int(selection) <= len(commits):
         idx: int = int(selection) - 1
         return True, commits[idx][0], None
 
-    # Try hash matching (partial hash prefix)
     matching_commits: List[Tuple[str, str, str, str, str]] = [
         c for c in commits if c[0].startswith(selection)
     ]
@@ -333,7 +330,6 @@ def _parse_commit_selection(
     elif len(matching_commits) > 1:
         return False, None, "Multiple commits match this hash. Please be more specific."
 
-    # Invalid selection
     return False, None, "Invalid selection. Please try again."
 
 
@@ -369,11 +365,9 @@ def _get_commit_selection(
 
         if success:
             if commit_hash is None:
-                # User cancelled
                 print_info(f"{operation_type.capitalize()} operation cancelled")
             return commit_hash
 
-        # Invalid selection - show error and retry
         if error_message:
             print_error(error_message)
 
@@ -397,22 +391,18 @@ def handle_commit_operation(operation_type: str) -> int:
     """
     print_section(f"{operation_type.capitalize()} Commit")
 
-    # Get commits from git
     count: Optional[int] = get_commit_count_input()
     commits: List[Tuple[str, str, str, str, str]] = get_recent_commits(count)
     if not commits:
         print_error("Failed to retrieve recent commits or no commits found.")
         return 1
 
-    # Display commits list
     _display_commits_list(commits, count)
 
-    # Get user's commit selection
     selected_hash: Optional[str] = _get_commit_selection(commits, operation_type)
     if not selected_hash:
-        return 0  # User cancelled
+        return 0
 
-    # Delegate to specific operation handler
     if operation_type == "edit":
         return edit_specific_commit(selected_hash)
     else:
@@ -632,7 +622,6 @@ def edit_specific_commit(commit_hash: str) -> int:
     Note:
         Latest commits use amend, older commits use filter-branch
     """
-    # Get and display commit details
     print_section("Commit Details")
     commit_details: Optional[Tuple[str, str, str, str, str, str]] = get_commit_by_hash(commit_hash)
     if not commit_details:
@@ -641,7 +630,6 @@ def edit_specific_commit(commit_hash: str) -> int:
 
     display_commit_details(commit_details)
 
-    # Get new commit message from user
     print_section("Edit Message")
     hash_full: str
     _: str
@@ -655,17 +643,14 @@ def edit_specific_commit(commit_hash: str) -> int:
     if new_message is None:
         return 0
 
-    # Confirm the edit
     if not confirm_commit_edit(subject, body, new_message, new_body):
         return 0
 
-    # Apply the edit
     print_section("Updating Commit")
     if not edit_commit_message(hash_full, new_message, new_body):
         print_error("Failed to edit commit.")
         return 1
 
-    # Handle push after edit (requires force push for remote changes)
     if confirm_push():
         branch_name: Optional[str] = get_current_branch()
         if not branch_name:
@@ -693,7 +678,6 @@ def delete_specific_commit(commit_hash: str) -> int:
         This is destructive and irreversible. Latest commits use reset,
         older commits use interactive rebase
     """
-    # Get and display commit details
     print_section("Commit Details")
     commit_details: Optional[Tuple[str, str, str, str, str, str]] = get_commit_by_hash(commit_hash)
     if not commit_details:
@@ -705,7 +689,6 @@ def delete_specific_commit(commit_hash: str) -> int:
     _: str
     hash_full, _, _, _, _, _ = commit_details
 
-    # Confirm deletion with warnings
     print_section("Delete Confirmation")
     print_warning("This will permanently delete the commit from history!")
     print_warning("This action cannot be undone and may affect other commits.")
@@ -719,13 +702,11 @@ def delete_specific_commit(commit_hash: str) -> int:
     if not confirm_delete:
         return 0
 
-    # Perform deletion
     print_section("Deleting Commit")
     if not delete_commit(hash_full):
         print_error("Failed to delete commit.")
         return 1
 
-    # Handle push after delete (requires force push for remote changes)
     if confirm_push():
         branch_name: Optional[str] = get_current_branch()
         if not branch_name:
@@ -953,7 +934,6 @@ def _handle_post_commit_push() -> int:
         return 1
 
     if not branch_exists_on_remote(branch_name):
-        # New branch - offer to create upstream
         if confirm_create_branch():
             if not git_push(set_upstream=True):
                 print_error("Failed to push and create branch on remote")
@@ -962,7 +942,6 @@ def _handle_post_commit_push() -> int:
             print_info("Changes committed locally only")
             return 0
     else:
-        # Existing branch - regular push
         if not git_push():
             return 1
 
@@ -990,11 +969,9 @@ def handle_git_workflow(
         This is the core workflow executed when running ccg without flags.
         Now follows SRP by delegating push logic to _handle_post_commit_push().
     """
-    # Validate repository state
     if not validate_repository_state(commit_only, paths):
         return 1
 
-    # Stage changes and run pre-commit hooks (skip if commit-only mode)
     if not commit_only:
         print_section("Git Staging")
         if not git_add(paths):
@@ -1006,26 +983,22 @@ def handle_git_workflow(
             print_error("Pre-commit checks failed. Aborting workflow.")
             return 1
 
-    # Generate commit message
     print_section("Commit Message Generation")
     print_process("Building conventional commit message...")
     commit_message: Optional[str] = generate_commit_message(show_file_changes=show_file_changes)
     if not commit_message:
         return 1
 
-    # Handle commit-only mode (message generation without actual commit)
     if commit_only:
         print_section("Commit Complete")
         print_info("No changes were committed")
         return 0
 
-    # Create commit
     print_section("Commit")
     if not git_commit(commit_message):
         print_error("Failed to commit changes. Exiting workflow.")
         return 1
 
-    # Handle post-commit push workflow
     return _handle_post_commit_push()
 
 
@@ -1136,13 +1109,10 @@ def main(args: Optional[List[str]] = None) -> int:
         Catches EOFError and KeyboardInterrupt for graceful cancellation
     """
     try:
-        # Initialize logging before any operations (including arg parsing)
-        # so that exceptions during parsing can be logged
-        setup_logging(verbose=False)  # Default to non-verbose initially
+        setup_logging(verbose=False)
 
         parsed_args = parse_args(args)
 
-        # Re-initialize logging with correct verbosity if --verbose was passed
         if parsed_args.verbose:
             setup_logging(verbose=True)
 

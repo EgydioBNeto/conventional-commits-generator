@@ -371,7 +371,6 @@ def confirm_commit(
         else:
             print_info("No staged file changes to display.")
 
-    # Now show the review section
     print_section("Review")
 
     display_header: str = convert_emoji_codes_to_real(commit_message_header)
@@ -457,11 +456,9 @@ def validate_commit_message(message: str) -> Tuple[bool, Optional[str]]:
 
     work_message: str = message.strip()
 
-    # Remove emoji code prefix if present using pre-compiled regex
     if work_message.startswith(":"):
         work_message = _EMOJI_CODE_PATTERN.sub("", work_message).strip()
 
-    # Use pre-compiled regex pattern for validation
     match: Optional[re.Match[str]] = _COMMIT_MESSAGE_PATTERN.match(work_message)
 
     if not match:
