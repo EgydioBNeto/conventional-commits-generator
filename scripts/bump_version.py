@@ -183,6 +183,28 @@ def update_security_md(new_version: str) -> None:
     print(f"✅ Updated {security_file} with version {new_version}")
 
 
+def update_docs_usage_md(new_version: str) -> None:
+    """Update version in docs/user-guide/usage.md log example."""
+    usage_file = Path("docs/user-guide/usage.md")
+
+    if not usage_file.exists():
+        print(f"⚠️  {usage_file} not found, skipping")
+        return
+
+    content = usage_file.read_text()
+
+    # Update version in log format example
+    # Pattern: "CCG started (version X.X.X)"
+    updated_content = re.sub(
+        r"CCG started \(version \d+\.\d+\.\d+\)",
+        f"CCG started (version {new_version})",
+        content,
+    )
+
+    usage_file.write_text(updated_content)
+    print(f"✅ Updated {usage_file} with version {new_version}")
+
+
 def update_changelog_with_real_content(new_version: str) -> None:
     """Update changelog with real content based on commits."""
     changelog_file = Path("CHANGELOG.md")
@@ -280,6 +302,7 @@ def main():
         update_init_file(new_version)
         update_pyproject_toml(new_version)
         update_security_md(new_version)
+        update_docs_usage_md(new_version)
         update_changelog_with_real_content(new_version)
 
         print(f"\n🎉 Successfully bumped version to {new_version}")
