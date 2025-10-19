@@ -51,6 +51,12 @@ docs = [
     "mkdocs-minify-plugin >= 0.7.0",
     "pymdown-extensions >= 10.0"
 ]
+quality = [
+    "radon >= 6.0.1",
+    "vulture >= 2.11",
+    "bandit[toml] >= 1.7.5",
+    "pylint >= 3.0.0"
+]
 
 [project.urls]
 Homepage = "https://github.com/EgydioBNeto/conventional-commits-generator"
@@ -66,3 +72,31 @@ packages = ["src/ccg"]
 
 [tool.hatch.version]
 path = "src/ccg/__init__.py"
+
+[tool.bandit]
+exclude_dirs = ["tests", ".tox", ".venv", "build"]
+skips = [
+    "B101",  # Skip assert_used (needed for tests)
+    "B404",  # Skip subprocess import warning (required for git operations)
+    "B607",  # Skip partial path executable warning (git/pre-commit in PATH is standard)
+]
+
+[tool.pylint.main]
+fail-under = 100
+ignore = ["tests"]
+jobs = 0  # Auto-detect CPU cores
+
+[tool.pylint.messages_control]
+disable = [
+    "C0111",  # missing-docstring (we use Google-style via separate checks)
+    "R0903",  # too-few-public-methods
+    "W0511",  # fixme
+]
+
+[tool.pylint.format]
+max-line-length = 100
+
+[tool.pylint.design]
+max-args = 7
+max-attributes = 10
+max-locals = 15

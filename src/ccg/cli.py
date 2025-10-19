@@ -69,8 +69,8 @@ def show_repository_info() -> None:
     """
     from ccg.utils import BOLD, CYAN, RESET
 
-    repo_name = get_repository_name()
-    branch_name = get_current_branch()
+    repo_name: Optional[str] = get_repository_name()
+    branch_name: Optional[str] = get_current_branch()
 
     if repo_name and branch_name:
         print(
@@ -110,7 +110,11 @@ class CustomHelpFormatter(argparse.HelpFormatter):
     """
 
     def __init__(self, prog: str) -> None:
-        super().__init__(prog, max_help_position=50, width=100)
+        super().__init__(
+            prog,
+            max_help_position=UI_CONFIG.ARGPARSE_HELP_POSITION,
+            width=UI_CONFIG.ARGPARSE_MAX_WIDTH,
+        )
 
     def _format_usage(
         self,
@@ -121,7 +125,7 @@ class CustomHelpFormatter(argparse.HelpFormatter):
     ) -> str:
         """Format usage text with logo prepended."""
         print_logo()
-        usage_str = usage if isinstance(usage, str) else None
+        usage_str: Optional[str] = usage if isinstance(usage, str) else None
         return super()._format_usage(usage_str, actions, groups, prefix)
 
 
@@ -181,6 +185,8 @@ def parse_args(args: Optional[List[str]] = None) -> argparse.Namespace:
         help="Enable verbose logging output for debugging",
     )
 
+    parsed_args: argparse.Namespace
+    unknown: List[str]
     parsed_args, unknown = parser.parse_known_args(args)
 
     if unknown:
@@ -247,9 +253,9 @@ def get_commit_count_input() -> Optional[int]:
         Loops until valid input is provided (positive number, 0, or Enter)
     """
     while True:
-        count_input = read_input(
+        count_input: str = read_input(
             f"{YELLOW}How many recent commits to display? (Enter or 0 for all){RESET}",
-            max_length=6,
+            max_length=INPUT_LIMITS["commit_count"],
         )
         if not count_input or count_input == "0":
             return None
@@ -258,13 +264,126 @@ def get_commit_count_input() -> Optional[int]:
         print_error("Please enter a valid positive number, 0, or press Enter for all commits.")
 
 
+def _display_commits_list(
+    commits: List[Tuple[str, str, str, str, str]], count: Optional[int]
+) -> None:
+    """Display formatted list of commits.
+
+    Pure UI function - only responsible for displaying commits in a formatted way.
+    No input handling, parsing, or other logic.
+
+    Args:
+        commits: List of commit tuples (full_hash, short_hash, subject, author, date)
+        count: Number of commits requested by user (None for all commits)
+
+    Note:
+        This function has a single responsibility: display commits
+    """
+    print_section("Recent Commits")
+    if count is None:
+        print_info(f"Showing all {len(commits)} commits:")
+    else:
+        print_info(f"Showing last {len(commits)} commits:")
+    for i, commit in enumerate(commits, start=1):
+        _: str
+        short_hash: str
+        subject: str
+        author: str
+        date: str
+        _, short_hash, subject, author, date = commit
+        print(f"{i}. [{short_hash}] {subject} - {author} ({date})")
+
+
+def _parse_commit_selection(
+    selection: str, commits: List[Tuple[str, str, str, str, str]]
+) -> Tuple[bool, Optional[str], Optional[str]]:
+    """Parse user selection and return commit hash if valid.
+
+    Pure parsing function - no UI, no side effects, just logic to interpret
+    the user's selection string and match it to a commit hash.
+
+    Args:
+        selection: User's input (commit number or hash prefix)
+        commits: List of commit tuples to match against
+
+    Returns:
+        Tuple of (success, commit_hash, error_message):
+        - (True, None, None) if user cancelled
+        - (True, hash, None) if valid selection
+        - (False, None, error) if invalid selection
+
+    Note:
+        This function has a single responsibility: parse and validate selection
+    """
+    # Check for cancellation
+    if selection.lower() in ("q", "quit", "exit"):
+        return True, None, None  # Success but cancelled
+
+    # Try numeric selection (1-based index)
+    if selection.isdigit() and 1 <= int(selection) <= len(commits):
+        idx: int = int(selection) - 1
+        return True, commits[idx][0], None
+
+    # Try hash matching (partial hash prefix)
+    matching_commits: List[Tuple[str, str, str, str, str]] = [
+        c for c in commits if c[0].startswith(selection)
+    ]
+    if len(matching_commits) == 1:
+        return True, matching_commits[0][0], None
+    elif len(matching_commits) > 1:
+        return False, None, "Multiple commits match this hash. Please be more specific."
+
+    # Invalid selection
+    return False, None, "Invalid selection. Please try again."
+
+
+def _get_commit_selection(
+    commits: List[Tuple[str, str, str, str, str]], operation_type: str
+) -> Optional[str]:
+    """Prompt user to select a commit and return its hash.
+
+    Handles input loop and validation, delegates parsing to _parse_commit_selection.
+    Shows appropriate UI messages based on parsing results.
+
+    Args:
+        commits: List of commit tuples to select from
+        operation_type: Operation being performed ("edit" or "delete") for messages
+
+    Returns:
+        Commit hash if selected, None if user cancelled
+
+    Note:
+        This function has a single responsibility: handle user input for selection
+    """
+    print_section("Commit Selection")
+    while True:
+        selection: str = read_input(
+            f"{YELLOW}Enter commit number or hash to {operation_type}{RESET}",
+            max_length=INPUT_LIMITS["commit_hash"],
+        )
+
+        success: bool
+        commit_hash: Optional[str]
+        error_message: Optional[str]
+        success, commit_hash, error_message = _parse_commit_selection(selection, commits)
+
+        if success:
+            if commit_hash is None:
+                # User cancelled
+                print_info(f"{operation_type.capitalize()} operation cancelled")
+            return commit_hash
+
+        # Invalid selection - show error and retry
+        if error_message:
+            print_error(error_message)
+
+
 @require_git_repo
 def handle_commit_operation(operation_type: str) -> int:
     """Generic handler for commit edit and delete operations.
 
-    Displays recent commits, prompts user to select one by number or hash,
-    then delegates to the appropriate specific handler (edit or delete).
-    Supports partial hash matching and validates selections.
+    Minimal orchestration function that delegates to specialized helpers for
+    each responsibility (display, input handling, selection parsing).
 
     Args:
         operation_type: Type of operation ("edit" or "delete")
@@ -273,51 +392,27 @@ def handle_commit_operation(operation_type: str) -> int:
         0 on success, 1 on error or if no commits found
 
     Note:
-        Requires git repository (enforced by @require_git_repo decorator)
+        Requires git repository (enforced by @require_git_repo decorator).
+        This function now follows SRP by delegating to focused helper functions.
     """
     print_section(f"{operation_type.capitalize()} Commit")
 
-    count = get_commit_count_input()
-    commits = get_recent_commits(count)
+    # Get commits from git
+    count: Optional[int] = get_commit_count_input()
+    commits: List[Tuple[str, str, str, str, str]] = get_recent_commits(count)
     if not commits:
         print_error("Failed to retrieve recent commits or no commits found.")
         return 1
 
-    print_section("Recent Commits")
-    if count is None:
-        print_info(f"Showing all {len(commits)} commits:")
-    else:
-        print_info(f"Showing last {len(commits)} commits:")
-    for i, commit in enumerate(commits, start=1):
-        _, short_hash, subject, author, date = commit
-        print(f"{i}. [{short_hash}] {subject} - {author} ({date})")
+    # Display commits list
+    _display_commits_list(commits, count)
 
-    print_section("Commit Selection")
-    while True:
-        selection = read_input(
-            f"{YELLOW}Enter commit number or hash to {operation_type}{RESET}",
-            max_length=7,
-        )
+    # Get user's commit selection
+    selected_hash: Optional[str] = _get_commit_selection(commits, operation_type)
+    if not selected_hash:
+        return 0  # User cancelled
 
-        if selection.lower() in ("q", "quit", "exit"):
-            print_info(f"{operation_type.capitalize()} operation cancelled")
-            return 0
-
-        if selection.isdigit() and 1 <= int(selection) <= len(commits):
-            idx = int(selection) - 1
-            selected_hash = commits[idx][0]
-            break
-
-        matching_commits = [c for c in commits if c[0].startswith(selection)]
-        if len(matching_commits) == 1:
-            selected_hash = matching_commits[0][0]
-            break
-        elif len(matching_commits) > 1:
-            print_error("Multiple commits match this hash. Please be more specific.")
-            continue
-
-        print_error("Invalid selection. Please try again.")
-
+    # Delegate to specific operation handler
     if operation_type == "edit":
         return edit_specific_commit(selected_hash)
     else:
@@ -365,6 +460,12 @@ def display_commit_details(commit_details: Tuple[str, str, str, str, str, str]) 
         commit_details: Tuple containing (full_hash, short_hash, subject,
                         body, author, date) from get_commit_by_hash()
     """
+    hash_full: str
+    _: str
+    subject: str
+    body: str
+    author: str
+    date: str
     hash_full, _, subject, body, author, date = commit_details
     print(f"Hash: {hash_full}")
     print(f"Author: {author}")
@@ -398,7 +499,7 @@ def handle_commit_edit_input(
         "Message must follow conventional commit format: <type>[optional scope][optional !]: <description>"
     )
 
-    new_message = read_input(
+    new_message: str = read_input(
         f"{YELLOW}New commit message{RESET}",
         history_type="edit_message",
         default_text=subject,
@@ -408,6 +509,8 @@ def handle_commit_edit_input(
         print_info("Edit cancelled. Commit message remains unchanged.")
         return None, None
 
+    is_valid: bool
+    error_message: Optional[str]
     is_valid, error_message = validate_commit_message(new_message)
     if not is_valid:
         print_error(f"Invalid commit message format: {error_message}")
@@ -415,7 +518,7 @@ def handle_commit_edit_input(
         print_info("  feat: add new feature")
         print_info("  fix(auth): resolve login issue")
 
-        retry = confirm_user_action(
+        retry: bool = confirm_user_action(
             f"{YELLOW}Would you like to try again? (y/n){RESET}",
             success_message=None,
             cancel_message="Edit cancelled. Commit message remains unchanged.",
@@ -425,7 +528,7 @@ def handle_commit_edit_input(
             return handle_commit_edit_input(subject, original_body)
         return None, None
 
-    new_body_input = read_input(
+    new_body_input: str = read_input(
         f"{YELLOW}New commit body (optional){RESET}",
         history_type="body",
         default_text=original_body or "",
@@ -462,7 +565,7 @@ def confirm_commit_edit(
     from ccg.core import convert_emoji_codes_to_real
     from ccg.utils import BOLD, CYAN, RESET
 
-    display_header = convert_emoji_codes_to_real(original_subject)
+    display_header: str = convert_emoji_codes_to_real(original_subject)
     print(f"{CYAN}Commit:{RESET} {BOLD}{display_header}{RESET}")
     if original_body:
         print(f"{CYAN}Body:{RESET}")
@@ -499,7 +602,7 @@ def handle_push_after_edit(branch_name: str) -> int:
         print_warning("Force push is required to update the commit on the remote.")
         print_warning("This can potentially overwrite other changes. Use with caution!")
 
-        force_push = confirm_user_action(
+        force_push: bool = confirm_user_action(
             f"{YELLOW}Force push changes? (y/n){RESET}",
             success_message=None,
             cancel_message="Changes remain local only",
@@ -529,31 +632,42 @@ def edit_specific_commit(commit_hash: str) -> int:
     Note:
         Latest commits use amend, older commits use filter-branch
     """
+    # Get and display commit details
     print_section("Commit Details")
-    commit_details = get_commit_by_hash(commit_hash)
+    commit_details: Optional[Tuple[str, str, str, str, str, str]] = get_commit_by_hash(commit_hash)
     if not commit_details:
         print_error(f"Commit with hash '{commit_hash}' not found.")
         return 1
 
     display_commit_details(commit_details)
-    print_section("Edit Message")
 
+    # Get new commit message from user
+    print_section("Edit Message")
+    hash_full: str
+    _: str
+    subject: str
+    body: str
     hash_full, _, subject, body, _, _ = commit_details
+    new_message: Optional[str]
+    new_body: Optional[str]
     new_message, new_body = handle_commit_edit_input(subject, body)
 
     if new_message is None:
         return 0
 
+    # Confirm the edit
     if not confirm_commit_edit(subject, body, new_message, new_body):
         return 0
 
+    # Apply the edit
     print_section("Updating Commit")
     if not edit_commit_message(hash_full, new_message, new_body):
         print_error("Failed to edit commit.")
         return 1
 
+    # Handle push after edit (requires force push for remote changes)
     if confirm_push():
-        branch_name = get_current_branch()
+        branch_name: Optional[str] = get_current_branch()
         if not branch_name:
             print_error("Failed to determine current branch name")
             return 1
@@ -579,20 +693,24 @@ def delete_specific_commit(commit_hash: str) -> int:
         This is destructive and irreversible. Latest commits use reset,
         older commits use interactive rebase
     """
+    # Get and display commit details
     print_section("Commit Details")
-    commit_details = get_commit_by_hash(commit_hash)
+    commit_details: Optional[Tuple[str, str, str, str, str, str]] = get_commit_by_hash(commit_hash)
     if not commit_details:
         print_error(f"Commit with hash '{commit_hash}' not found.")
         return 1
 
     display_commit_details(commit_details)
-    print_section("Delete Confirmation")
+    hash_full: str
+    _: str
     hash_full, _, _, _, _, _ = commit_details
 
+    # Confirm deletion with warnings
+    print_section("Delete Confirmation")
     print_warning("This will permanently delete the commit from history!")
     print_warning("This action cannot be undone and may affect other commits.")
 
-    confirm_delete = confirm_user_action(
+    confirm_delete: bool = confirm_user_action(
         f"{YELLOW}Are you sure you want to delete this commit? (y/n){RESET}",
         success_message=None,
         cancel_message="Delete cancelled. Commit remains unchanged.",
@@ -601,13 +719,15 @@ def delete_specific_commit(commit_hash: str) -> int:
     if not confirm_delete:
         return 0
 
+    # Perform deletion
     print_section("Deleting Commit")
     if not delete_commit(hash_full):
         print_error("Failed to delete commit.")
         return 1
 
+    # Handle push after delete (requires force push for remote changes)
     if confirm_push():
-        branch_name = get_current_branch()
+        branch_name: Optional[str] = get_current_branch()
         if not branch_name:
             print_error("Failed to determine current branch name")
             return 1
@@ -636,7 +756,7 @@ def handle_tag() -> int:
         return 1
 
     while True:
-        tag_name = read_input(
+        tag_name: str = read_input(
             f"{YELLOW}Enter the tag name (e.g., v1.0.0){RESET}",
             max_length=INPUT_LIMITS["tag"],
         )
@@ -652,13 +772,13 @@ def handle_tag() -> int:
             print_info("Tag must follow Semantic Versioning (e.g., v1.0.0, 1.0.0-alpha.1).")
             print_info("For more details, see: https://semver.org/")
 
-    annotated = confirm_user_action(
+    annotated: bool = confirm_user_action(
         f"{YELLOW}Create an annotated tag with a message? (y/n){RESET}",
         success_message=None,
         cancel_message=None,
     )
 
-    tag_message = None
+    tag_message: Optional[str] = None
     if annotated:
         tag_message = read_input(
             f"{YELLOW}Enter the tag message{RESET}",
@@ -673,7 +793,7 @@ def handle_tag() -> int:
         print_error("Failed to create tag. Aborting.")
         return 1
 
-    push = confirm_user_action(
+    push: bool = confirm_user_action(
         f"{YELLOW}Push tag '{tag_name}' to remote? (y/n){RESET}",
         success_message=None,
         cancel_message=None,
@@ -708,7 +828,7 @@ def handle_reset() -> int:
         return 1
 
     if not check_has_changes():
-        pull_anyway = confirm_user_action(
+        pull_anyway: bool = confirm_user_action(
             f"{YELLOW}No changes to discard. Do you still want to pull latest changes? (y/n){RESET}",
             success_message=None,
             cancel_message="Reset operation cancelled",
@@ -754,7 +874,7 @@ def handle_push_only() -> int:
     if not check_remote_access():
         return 1
 
-    branch_name = get_current_branch()
+    branch_name: Optional[str] = get_current_branch()
     if not branch_name:
         print_error("Failed to determine current branch name")
         return 1
@@ -811,6 +931,44 @@ def validate_repository_state(commit_only: bool = False, paths: Optional[List[st
     return True
 
 
+def _handle_post_commit_push() -> int:
+    """Handle pushing changes after a successful commit.
+
+    Checks if user wants to push, retrieves branch name, handles branch creation
+    for new remote branches, and performs the push operation.
+
+    Returns:
+        0 on success or if user declines push, 1 on error
+
+    Note:
+        This function consolidates push logic used by handle_git_workflow(),
+        edit_specific_commit(), and delete_specific_commit() to eliminate duplication.
+    """
+    if not confirm_push():
+        return 0
+
+    branch_name: Optional[str] = get_current_branch()
+    if not branch_name:
+        print_error("Failed to determine current branch name")
+        return 1
+
+    if not branch_exists_on_remote(branch_name):
+        # New branch - offer to create upstream
+        if confirm_create_branch():
+            if not git_push(set_upstream=True):
+                print_error("Failed to push and create branch on remote")
+                return 1
+        else:
+            print_info("Changes committed locally only")
+            return 0
+    else:
+        # Existing branch - regular push
+        if not git_push():
+            return 1
+
+    return 0
+
+
 def handle_git_workflow(
     commit_only: bool = False, paths: Optional[List[str]] = None, show_file_changes: bool = False
 ) -> int:
@@ -823,16 +981,20 @@ def handle_git_workflow(
     Args:
         commit_only: If True, generate message without committing (--commit flag)
         paths: Optional list of specific files/directories to stage
+        show_file_changes: If True, display file changes during commit message generation
 
     Returns:
         0 on success or user cancellation, 1 on error
 
     Note:
-        This is the core workflow executed when running ccg without flags
+        This is the core workflow executed when running ccg without flags.
+        Now follows SRP by delegating push logic to _handle_post_commit_push().
     """
+    # Validate repository state
     if not validate_repository_state(commit_only, paths):
         return 1
 
+    # Stage changes and run pre-commit hooks (skip if commit-only mode)
     if not commit_only:
         print_section("Git Staging")
         if not git_add(paths):
@@ -844,40 +1006,27 @@ def handle_git_workflow(
             print_error("Pre-commit checks failed. Aborting workflow.")
             return 1
 
+    # Generate commit message
     print_section("Commit Message Generation")
     print_process("Building conventional commit message...")
-    commit_message = generate_commit_message(show_file_changes=show_file_changes)
+    commit_message: Optional[str] = generate_commit_message(show_file_changes=show_file_changes)
     if not commit_message:
         return 1
 
+    # Handle commit-only mode (message generation without actual commit)
     if commit_only:
         print_section("Commit Complete")
         print_info("No changes were committed")
         return 0
 
+    # Create commit
     print_section("Commit")
     if not git_commit(commit_message):
         print_error("Failed to commit changes. Exiting workflow.")
         return 1
 
-    if confirm_push():
-        branch_name = get_current_branch()
-        if not branch_name:
-            print_error("Failed to determine current branch name")
-            return 1
-
-        if not branch_exists_on_remote(branch_name):
-            if confirm_create_branch():
-                if not git_push(set_upstream=True):
-                    print_error("Failed to push and create branch on remote")
-                    return 1
-            else:
-                print_info("Changes committed locally only")
-                return 0
-        else:
-            if not git_push():
-                return 1
-    return 0
+    # Handle post-commit push workflow
+    return _handle_post_commit_push()
 
 
 def validate_paths_exist(paths: List[str]) -> None:
@@ -913,7 +1062,7 @@ def validate_paths_in_repository(paths: List[str]) -> None:
     Raises:
         SystemExit: If any path is outside the repository
     """
-    repo_root = get_repository_root()
+    repo_root: Optional[str] = get_repository_root()
     if not repo_root:
         print_error("Failed to determine git repository root")
         sys.exit(1)
@@ -948,7 +1097,7 @@ def change_to_working_directory(paths: Optional[List[str]]) -> Optional[List[str
     validate_paths_exist(paths)
 
     if len(paths) == 1 and os.path.isdir(paths[0]):
-        target_dir = os.path.abspath(paths[0])
+        target_dir: str = os.path.abspath(paths[0])
         try:
             os.chdir(target_dir)
             return None
@@ -1003,8 +1152,8 @@ def main(args: Optional[List[str]] = None) -> int:
         if not any(help_flag in sys.argv for help_flag in UI_CONFIG.HELP_FLAGS):
             print_logo()
 
-        stage_paths = parsed_args.path
-        working_dir_changed = False
+        stage_paths: Optional[List[str]] = parsed_args.path
+        working_dir_changed: bool = False
 
         if parsed_args.path and any(
             [
@@ -1037,7 +1186,7 @@ def main(args: Optional[List[str]] = None) -> int:
             if not working_dir_changed and parsed_args.path:
                 stage_paths = change_to_working_directory(parsed_args.path)
 
-            show_file_changes = True
+            show_file_changes: bool = True
             return handle_git_workflow(
                 commit_only=parsed_args.commit,
                 paths=stage_paths,

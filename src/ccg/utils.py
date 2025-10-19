@@ -228,7 +228,19 @@ INPUT_LIMITS: Dict[str, int] = {
     "tag_message": INPUT_LIMITS_CONFIG.TAG_MESSAGE,
     "edit_message": INPUT_LIMITS_CONFIG.EDIT_MESSAGE,
     "confirmation": INPUT_LIMITS_CONFIG.CONFIRMATION,
+    "commit_count": INPUT_LIMITS_CONFIG.COMMIT_COUNT,
+    "commit_hash": INPUT_LIMITS_CONFIG.COMMIT_HASH,
 }
+
+# Pre-compiled regex pattern for performance optimization
+# Compiling at module level avoids re-compilation on every function call
+# Validates SemVer 2.0.0 format: https://semver.org/
+_SEMVER_PATTERN = re.compile(
+    r"^v?(?P<major>0|[1-9]\d*)\.(?P<minor>0|[1-9]\d*)\.(?P<patch>0|[1-9]\d*)"
+    r"(?:-(?P<prerelease>(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)"
+    r"(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?"
+    r"(?:\+(?P<buildmetadata>[0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$"
+)
 
 COMMIT_TYPES: List[Dict[str, str]] = [
     {
@@ -509,14 +521,16 @@ def is_valid_semver(tag: str) -> bool:
 
     Returns:
         True if the tag is a valid SemVer tag, False otherwise.
+
+    Examples:
+        >>> is_valid_semver("v1.2.3")
+        True
+        >>> is_valid_semver("1.0.0-alpha.1")
+        True
+        >>> is_valid_semver("invalid")
+        False
     """
-    semver_regex = re.compile(
-        r"^v?(?P<major>0|[1-9]\d*)\.(?P<minor>0|[1-9]\d*)\.(?P<patch>0|[1-9]\d*)"
-        r"(?:-(?P<prerelease>(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)"
-        r"(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?"
-        r"(?:\+(?P<buildmetadata>[0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$"
-    )
-    return re.match(semver_regex, tag) is not None
+    return _SEMVER_PATTERN.match(tag) is not None
 
 
 def create_counter_toolbar(
@@ -547,9 +561,11 @@ def create_counter_toolbar(
             if app and app.current_buffer:
                 current_length = len(app.current_buffer.text)
 
-                if current_length <= max_length * 0.7:
+                from ccg.config import UI_CONFIG as UI_CFG_COLOR
+
+                if current_length <= max_length * UI_CFG_COLOR.WARNING_THRESHOLD:
                     color = "class:toolbar.text"
-                elif current_length <= max_length * 0.9:
+                elif current_length <= max_length * UI_CFG_COLOR.DANGER_THRESHOLD:
                     color = "class:toolbar.warning"
                 else:
                     color = "class:toolbar.danger"
@@ -569,7 +585,9 @@ def create_counter_toolbar(
                 try:
                     term_width_local = shutil.get_terminal_size().columns
                 except (OSError, ValueError, AttributeError):
-                    term_width_local = 80
+                    from ccg.config import UI_CONFIG as UI_CFG_TERM
+
+                    term_width_local = UI_CFG_TERM.DEFAULT_TERM_WIDTH
 
                 padding = max(0, term_width_local - len(counter_text) - 4)
 
@@ -755,17 +773,6 @@ def read_input(
                 )
             ).strip()
 
-            if result and max_length:
-                current_length = len(result)
-                if current_length >= max_length:
-                    print(f"    {GREEN}{CHECK} Used all {max_length} characters{RESET}")
-                elif current_length >= max_length * 0.8:
-                    print(
-                        f"    {YELLOW}{WARNING} {current_length}/{max_length} characters used{RESET}"
-                    )
-                else:
-                    print(f"    {WHITE}{INFO} {current_length}/{max_length} characters used{RESET}")
-
             return result
         except (EOFError, KeyboardInterrupt):  # pragma: no cover
             print()
@@ -820,17 +827,6 @@ def read_input_fallback(
                 print_error(f"CHARACTER LIMIT EXCEEDED! ({len(user_input)}/{max_length})")
                 print_warning("Please shorten your input and try again.")
                 continue
-
-            if user_input and max_length:
-                current_length = len(user_input)
-                if current_length >= max_length:
-                    print(f"    {GREEN}{CHECK} Used all {max_length} characters{RESET}")
-                elif current_length >= max_length * 0.8:
-                    print(
-                        f"    {YELLOW}{WARNING} {current_length}/{max_length} characters used{RESET}"
-                    )
-                else:
-                    print(f"    {WHITE}{INFO} {current_length}/{max_length} characters used{RESET}")
 
             return user_input
 
@@ -973,24 +969,6 @@ def confirm_user_action(
         return False
 
 
-def _display_char_usage(char_count: int, max_length: Optional[int]) -> None:
-    """Display character usage feedback with color coding.
-
-    Args:
-        char_count: Number of characters used
-        max_length: Maximum allowed characters (None to skip display)
-    """
-    if not max_length:
-        return
-
-    if char_count >= max_length:
-        print(f"    {GREEN}{CHECK} Used all {max_length} characters{RESET}")
-    elif char_count >= max_length * 0.8:
-        print(f"    {YELLOW}{WARNING} {char_count}/{max_length} characters used{RESET}")
-    else:
-        print(f"    {WHITE}{INFO} {char_count}/{max_length} characters used{RESET}")
-
-
 def _read_multiline_fallback(default_text: Optional[str], max_length: Optional[int]) -> str:
     """Fallback multiline input when prompt_toolkit is unavailable.
 
@@ -1023,7 +1001,7 @@ def _read_multiline_fallback(default_text: Optional[str], max_length: Optional[i
                     if remaining <= 0:
                         print_error(f"Character limit of {max_length} reached.")
                         break
-                    elif remaining <= max_length * 0.2:
+                    elif remaining <= max_length * UI_CFG.CRITICAL_THRESHOLD:
                         print(
                             f"    {YELLOW}{WARNING} {total_chars}/{max_length} characters{RESET}",
                             end="\r",
@@ -1037,7 +1015,7 @@ def _read_multiline_fallback(default_text: Optional[str], max_length: Optional[i
                 line = input()
 
                 if max_length and total_chars > 0:
-                    print(" " * 50, end="\r")
+                    print(" " * UI_CFG.LINE_CLEAR_LENGTH, end="\r")
 
                 if len(line) > max_line_length:
                     print_error(f"Line too long! Maximum {max_line_length} characters per line.")
@@ -1058,7 +1036,7 @@ def _read_multiline_fallback(default_text: Optional[str], max_length: Optional[i
 
                 if not line:
                     empty_line_count += 1
-                    if empty_line_count >= 2:
+                    if empty_line_count >= UI_CFG.EMPTY_LINES_TO_EXIT:
                         break
                     lines.append(line)
                     total_chars += 1
@@ -1081,9 +1059,6 @@ def _read_multiline_fallback(default_text: Optional[str], max_length: Optional[i
 
     if not result and default_text:
         return default_text
-
-    if result:
-        _display_char_usage(len(result), max_length)
 
     return result
 
@@ -1144,9 +1119,6 @@ def read_multiline_input(
                     bottom_toolbar=bottom_toolbar,
                 )
             ).strip()
-
-            if result_str:
-                _display_char_usage(len(result_str), max_length)
 
             return result_str
 

@@ -4,9 +4,13 @@
 # This script verifies all dependencies and helps developers install what's missing.
 #
 # Usage:
-#   ./scripts/tox-mise.sh           # Run all tests
-#   ./scripts/tox-mise.sh -e py39   # Run Python 3.9 tests only
-#   ./scripts/tox-mise.sh -p auto   # Run tests in parallel
+#   ./scripts/tox-mise.sh                  # Run all tests (py39-py313, mypy, quality)
+#   ./scripts/tox-mise.sh -e py39          # Run Python 3.9 tests only
+#   ./scripts/tox-mise.sh -e mypy          # Run type checking only
+#   ./scripts/tox-mise.sh -e quality       # Run all code quality checks
+#   ./scripts/tox-mise.sh -e radon-cc      # Run complexity analysis only
+#   ./scripts/tox-mise.sh -e bandit        # Run security scan only
+#   ./scripts/tox-mise.sh --list           # List all available environments
 
 set -e
 
@@ -293,6 +297,30 @@ if [ -d "$MISE_PYTHON_DIR" ]; then
         fi
     done
     export PATH="$PYTHON_PATHS$PATH"
+fi
+
+# Show available quality checks if running with --list
+if [[ "$*" =~ (--list|-l) ]]; then
+    print_section "Available Test Environments"
+    echo ""
+    print_info "Python Test Environments:"
+    echo "  py39, py310, py311, py312, py313  - Run tests on specific Python version"
+    echo ""
+    print_info "Code Quality Environments:"
+    echo "  mypy         - Type checking with mypy"
+    echo "  radon-cc     - Cyclomatic complexity analysis"
+    echo "  radon-mi     - Maintainability index analysis"
+    echo "  vulture      - Dead code detection"
+    echo "  bandit       - Security vulnerability scanning"
+    echo "  pylint       - Comprehensive linting"
+    echo "  quality      - Run ALL quality checks (radon, vulture, bandit)"
+    echo ""
+    print_info "Examples:"
+    echo "  ./scripts/tox-mise.sh              # Run all (tests + quality)"
+    echo "  ./scripts/tox-mise.sh -e quality   # Quality checks only"
+    echo "  ./scripts/tox-mise.sh -e py312     # Python 3.12 tests only"
+    echo "  ./scripts/tox-mise.sh -e mypy      # Type checking only"
+    echo ""
 fi
 
 # Run tox with all arguments passed through

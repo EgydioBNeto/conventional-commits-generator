@@ -4,6 +4,7 @@ import logging
 import os
 import subprocess
 import tempfile
+from enum import Enum
 from pathlib import Path
 from typing import List, Optional, Tuple
 
@@ -29,6 +30,139 @@ from ccg.utils import (
 logger = logging.getLogger("ccg.git")
 
 
+class GitErrorCategory(Enum):
+    """Categories of git errors for better error handling.
+
+    Each category contains a list of error patterns to match against
+    git error messages. This allows for more specific and helpful
+    error messages to users.
+
+    Attributes:
+        PERMISSION: Permission and authorization errors (403, 401)
+        NETWORK: Network connectivity issues (connection refused, host unreachable)
+        AUTHENTICATION: Authentication and credential errors
+        REPOSITORY: Repository not found or access rights issues
+    """
+
+    PERMISSION = [
+        "permission denied",
+        "access denied",
+        "403 forbidden",
+        "401 unauthorized",
+    ]
+
+    NETWORK = [
+        "ssh: connect to host",
+        "connection refused",
+        "network unreachable",
+        "could not resolve host",
+    ]
+
+    AUTHENTICATION = [
+        "authentication failed",
+        "terminal prompts disabled",
+        "could not read username",
+        "invalid credentials",
+    ]
+
+    REPOSITORY = [
+        "not found",
+        "fatal: could not read from remote repository",
+        "please make sure you have the correct access rights",
+    ]
+
+
+def categorize_git_error(error_text: str) -> Optional[GitErrorCategory]:
+    """Categorize a git error by pattern matching.
+
+    Analyzes git error messages and categorizes them into specific
+    error types to provide more targeted troubleshooting guidance.
+
+    Args:
+        error_text: The error message from git
+
+    Returns:
+        GitErrorCategory if recognized, None otherwise
+
+    Examples:
+        >>> categorize_git_error("Permission denied (publickey)")
+        <GitErrorCategory.PERMISSION: ...>
+
+        >>> categorize_git_error("ssh: connect to host github.com port 22: Connection refused")
+        <GitErrorCategory.NETWORK: ...>
+
+        >>> categorize_git_error("authentication failed")
+        <GitErrorCategory.AUTHENTICATION: ...>
+
+        >>> categorize_git_error("repository not found")
+        <GitErrorCategory.REPOSITORY: ...>
+
+        >>> categorize_git_error("some other error")
+        None
+
+    Note:
+        Error matching is case-insensitive. If multiple patterns match,
+        the first matching category is returned.
+    """
+    error_lower = error_text.lower()
+
+    for category in GitErrorCategory:
+        if any(pattern in error_lower for pattern in category.value):
+            return category
+
+    return None
+
+
+def _execute_git_command(
+    command: List[str], timeout: int
+) -> Tuple[bool, Optional[str], Optional[str]]:
+    """Execute git command and return (success, stdout, stderr).
+
+    Pure function - no logging, no printing, just execution.
+    This is the low-level execution layer that focuses solely on running
+    the git command and capturing its output.
+
+    Args:
+        command: List of command parts (e.g., ["git", "status", "--porcelain"])
+        timeout: Maximum seconds to wait for command
+
+    Returns:
+        Tuple of (success: bool, stdout: str or None, stderr: str or None):
+        - (True, stdout, None) on success
+        - (False, None, error_msg) on timeout
+        - (False, stdout, stderr) on process error
+        - (False, None, "Git is not installed") if git not found
+
+    Examples:
+        >>> _execute_git_command(["git", "status"], 60)
+        (True, "# On branch main\\n...", None)
+
+        >>> _execute_git_command(["git", "invalid"], 60)
+        (False, "", "git: 'invalid' is not a git command...")
+
+    Note:
+        This function has no side effects - it doesn't log, print, or modify state.
+        It's designed to be easily testable and composable.
+    """
+    try:
+        # nosec B603: Command is array, not string - safe from shell injection
+        result = subprocess.run(  # nosec B603
+            command, capture_output=True, check=True, text=True, timeout=timeout
+        )
+        return True, result.stdout.strip(), None
+
+    except subprocess.TimeoutExpired:
+        return False, None, f"Command timed out after {timeout} seconds"
+
+    except subprocess.CalledProcessError as error:
+        stdout = error.stdout if error.stdout else None
+        stderr = error.stderr if error.stderr else None
+        return False, stdout, stderr
+
+    except FileNotFoundError:
+        return False, None, "Git is not installed"
+
+
 def run_git_command(
     command: List[str],
     error_message: str,
@@ -41,6 +175,9 @@ def run_git_command(
     Central function for all git operations in CCG. Runs the specified git
     command as a subprocess, handles timeouts, captures output, displays
     success/error messages, and returns results in a consistent format.
+
+    This is the user-facing API that adds logging and user feedback on top of
+    the low-level _execute_git_command() function.
 
     Args:
         command: List of command parts (e.g., ["git", "status", "--porcelain"])
@@ -68,43 +205,53 @@ def run_git_command(
     """
     logger.debug(f"Executing git command: {' '.join(command)}")
 
-    try:
-        result = subprocess.run(
-            command, capture_output=True, check=True, text=True, timeout=timeout
-        )
+    # Execute the command using the pure execution layer
+    success, stdout, stderr = _execute_git_command(command, timeout)
 
+    if success:
+        # Command succeeded - log and display success messages
         logger.debug(f"Git command succeeded: {' '.join(command)}")
+
         if success_message:
+            # Special formatting for push messages
             if success_message == "Changes pushed successfully!":
                 print_section("Remote Push")
-                print_success(success_message)
-            else:
-                print_success(success_message)
-        if show_output:
-            return True, result.stdout.strip()
-        return True, None
+            print_success(success_message)
 
-    except subprocess.TimeoutExpired:
-        logger.error(f"Git command timed out after {timeout}s: {' '.join(command)}")
-        print_error(f"Command timed out after {timeout} seconds: {' '.join(command)}")
-        return False, f"Command timed out after {timeout} seconds"
-    except subprocess.CalledProcessError as error:
-        logger.error(f"Git command failed (exit {error.returncode}): {' '.join(command)}")
-        if error.stderr:
-            logger.error(f"Git stderr: {error.stderr[:500]}")  # Log first 500 chars
-        if error_message:
-            print_error(error_message)
-        if show_output:
-            error_text = error.stderr if error.stderr else error.stdout
-            return False, error_text
-        else:
-            if error.stderr and error_message:
-                print(f"\033[91m{error.stderr}\033[0m")
+        return (True, stdout) if show_output else (True, None)
+
+    else:
+        # Command failed - log and display error messages
+        if stderr and stderr.startswith("Command timed out after"):
+            # Timeout error
+            logger.error(f"Git command timed out after {timeout}s: {' '.join(command)}")
+            print_error(f"Command timed out after {timeout} seconds: {' '.join(command)}")
+            return False, stderr
+
+        elif stderr and stderr == "Git is not installed":
+            # Git not found error
+            logger.critical("Git executable not found in PATH")
+            print_error("Git is not installed. Please install Git and try again.")
             return False, None
-    except FileNotFoundError:
-        logger.critical("Git executable not found in PATH")
-        print_error("Git is not installed. Please install Git and try again.")
-        return False, None
+
+        else:
+            # Regular git command error
+            logger.error(f"Git command failed: {' '.join(command)}")
+            if stderr:
+                logger.error(
+                    f"Git stderr: {stderr[:GIT_CONFIG.MAX_LOG_ERROR_CHARS]}"
+                )  # Log first N chars
+
+            if error_message:
+                print_error(error_message)
+
+            if show_output:
+                error_text = stderr if stderr else stdout
+                return False, error_text
+            else:
+                if stderr and error_message:
+                    print(f"\033[91m{stderr}\033[0m")
+                return False, None
 
 
 def git_add(paths: Optional[List[str]] = None) -> bool:
@@ -154,7 +301,9 @@ def git_commit(commit_message: str) -> bool:
     Note:
         Message should already be in conventional commit format when passed here
     """
-    logger.info(f"Creating commit with message: {commit_message[:80]}...")
+    logger.info(
+        f"Creating commit with message: {commit_message[:GIT_CONFIG.LOG_PREVIEW_LENGTH]}..."
+    )
     print_process("Committing changes...")
 
     with ProgressSpinner("Creating commit"):
@@ -587,51 +736,47 @@ def check_has_changes(paths: Optional[List[str]] = None) -> bool:
     return False
 
 
-def _is_permission_error(error_text: str) -> bool:
-    """Check if error text indicates a permission/authentication issue.
-
-    Args:
-        error_text: Lowercased error message from git command
-
-    Returns:
-        True if error indicates permission/auth issue, False otherwise
-    """
-    permission_indicators = [
-        "permission denied",
-        "access denied",
-        "authentication failed",
-        "fatal: could not read from remote repository",
-        "please make sure you have the correct access rights",
-        "repository not found",
-        "403 forbidden",
-        "401 unauthorized",
-        "ssh: connect to host",
-        "connection refused",
-        "terminal prompts disabled",
-        "could not read username",
-    ]
-    return any(indicator in error_text for indicator in permission_indicators)
-
-
 def _handle_remote_access_error(remote_name: str, error_output: Optional[str]) -> None:
     """Display appropriate error messages based on remote access failure.
+
+    Uses error categorization to provide specific troubleshooting guidance based
+    on the type of error encountered (permission, network, authentication, or repository).
 
     Args:
         remote_name: Name of the remote repository
         error_output: Error output from git ls-remote command
+
+    Note:
+        Provides category-specific error messages with actionable troubleshooting steps
     """
     if not error_output:
         print_error(f"Cannot access remote repository '{remote_name}'")
         return
 
-    error_text = error_output.lower()
-    if _is_permission_error(error_text):
+    error_category = categorize_git_error(error_output)
+
+    if error_category in (GitErrorCategory.PERMISSION, GitErrorCategory.AUTHENTICATION):
         print_error("ACCESS DENIED: You don't have permission to access this repository.")
         print_error("Please check:")
-        print_error("   You have push access to this repository")
-        print_error("   The repository URL is correct")
-        print_error("   You're logged in with the correct account")
+        print_error("  • You have push access to this repository")
+        print_error("  • The repository URL is correct")
+        print_error("  • You're logged in with the correct account")
         print_error("Cannot proceed without repository access. Exiting.")
+
+    elif error_category == GitErrorCategory.NETWORK:
+        print_error("NETWORK ERROR: Cannot connect to remote repository")
+        print_error("Please check:")
+        print_error("  • Your internet connection")
+        print_error("  • Firewall settings")
+        print_error("  • VPN configuration (if applicable)")
+
+    elif error_category == GitErrorCategory.REPOSITORY:
+        print_error(f"REPOSITORY ERROR: '{remote_name}' not found or inaccessible")
+        print_error("Please verify:")
+        print_error("  • Repository URL is correct")
+        print_error("  • Repository exists on remote")
+        print_error("  • You have access to the repository")
+
     else:
         print_error(f"Cannot access remote repository '{remote_name}'")
         print_error("This could be due to network issues or repository configuration.")
@@ -669,7 +814,8 @@ def check_remote_access() -> bool:
         env["GIT_TERMINAL_PROMPT"] = "0"
         env["GIT_ASKPASS"] = "true"
 
-        result = subprocess.run(
+        # nosec B603: Command is array with hardcoded git command - safe
+        result = subprocess.run(  # nosec B603
             ["git", "ls-remote", "--exit-code", remote_name],
             capture_output=True,
             text=True,
@@ -912,7 +1058,7 @@ def get_commit_by_hash(
     )
 
     if not success or not short_hash:
-        short_hash = commit_hash[:7]
+        short_hash = commit_hash[: GIT_CONFIG.SHORT_HASH_LENGTH]
 
     success, commit_message = run_git_command(
         ["git", "log", "-1", "--pretty=%B", commit_hash],
@@ -1055,19 +1201,23 @@ def create_rebase_script_for_deletion(
     for commit in commits:
         if commit == commit_hash:
             found_target = True
-            print_info(f"Removing commit {commit[:7]} from history")
+            print_info(f"Removing commit {commit[:GIT_CONFIG.SHORT_HASH_LENGTH]} from history")
             continue
         else:
             success, subject = run_git_command(
                 ["git", "log", "-1", "--format=%s", commit],
-                f"Failed to get subject for commit {commit[:7]}",
+                f"Failed to get subject for commit {commit[:GIT_CONFIG.SHORT_HASH_LENGTH]}",
                 show_output=True,
             )
             if success and subject:
-                rebase_script.append(f"pick {commit[:7]} {subject.strip()}")
+                rebase_script.append(
+                    f"pick {commit[:GIT_CONFIG.SHORT_HASH_LENGTH]} {subject.strip()}"
+                )
 
     if not found_target:
-        print_error(f"Commit '{commit_hash[:7]}' not found in repository history")
+        print_error(
+            f"Commit '{commit_hash[:GIT_CONFIG.SHORT_HASH_LENGTH]}' not found in repository history"
+        )
         return False, None, []
 
     script_file = None
@@ -1101,8 +1251,10 @@ def delete_old_commit_with_rebase(commit_hash: str) -> bool:
         Uses 120 second timeout for rebase operation.
         Automatically aborts rebase on failure to prevent repository corruption.
         If deleting all commits, creates empty repository with update-ref.
+        Cleans up all temporary files (.txt script and .bat file on Windows).
     """
     script_file = None
+    batch_file = None
     try:
         success, script_file, rebase_script = create_rebase_script_for_deletion(commit_hash)
         if not success or not script_file:
@@ -1120,12 +1272,15 @@ def delete_old_commit_with_rebase(commit_hash: str) -> bool:
         try:
             env = os.environ.copy()
             # Use cross-platform copy command for GIT_SEQUENCE_EDITOR
-            env["GIT_SEQUENCE_EDITOR"] = get_copy_command_for_rebase(Path(script_file))
+            # On Windows, this creates a temporary .bat file that must be cleaned up
+            copy_command, batch_file = get_copy_command_for_rebase(Path(script_file))
+            env["GIT_SEQUENCE_EDITOR"] = copy_command
             # Use cross-platform null editor for GIT_EDITOR
             env["GIT_EDITOR"] = get_null_editor_command()
 
             with ProgressSpinner("Deleting commit via rebase"):
-                result = subprocess.run(
+                # nosec B603: Command is array with hardcoded git command - safe
+                result = subprocess.run(  # nosec B603
                     ["git", "rebase", "-i", "--root"],
                     env=env,
                     capture_output=True,
@@ -1134,10 +1289,14 @@ def delete_old_commit_with_rebase(commit_hash: str) -> bool:
                 )
 
             if result.returncode == 0:
-                print_success(f"Commit '{commit_hash[:7]}' deleted successfully")
+                print_success(
+                    f"Commit '{commit_hash[:GIT_CONFIG.SHORT_HASH_LENGTH]}' deleted successfully"
+                )
                 return True
             else:
-                print_error(f"Failed to delete commit '{commit_hash[:7]}'")
+                print_error(
+                    f"Failed to delete commit '{commit_hash[:GIT_CONFIG.SHORT_HASH_LENGTH]}'"
+                )
                 if result.stderr:
                     print(f"\033[91m{result.stderr}\033[0m")
                 run_git_command(["git", "rebase", "--abort"], "", "")
@@ -1152,13 +1311,25 @@ def delete_old_commit_with_rebase(commit_hash: str) -> bool:
             run_git_command(["git", "rebase", "--abort"], "", "")
             return False
     finally:
-        if script_file and os.path.exists(script_file):
+        # Clean up script file (.txt)
+        if script_file:
             try:
-                os.unlink(script_file)
-            except Exception:
-                pass
+                if os.path.exists(script_file):
+                    os.unlink(script_file)
+                    logger.debug(f"Deleted temporary rebase script: {script_file}")
+            except Exception as e:
+                logger.warning(f"Failed to delete script file {script_file}: {e}")
 
-    return False  # pragma: no cover
+        # Clean up batch file (.bat) - Windows only
+        if batch_file:
+            try:
+                # batch_file is a Path object, convert to string for os.path.exists
+                batch_file_str = str(batch_file)
+                if os.path.exists(batch_file_str):
+                    os.unlink(batch_file_str)
+                    logger.debug(f"Deleted temporary batch file: {batch_file_str}")
+            except Exception as e:
+                logger.warning(f"Failed to delete batch file {batch_file}: {e}")
 
 
 def delete_commit(commit_hash: str) -> bool:
@@ -1221,7 +1392,8 @@ def run_pre_commit_hooks(staged_files: List[str]) -> bool:
     """
     try:
         with ProgressSpinner("Running pre-commit hooks"):
-            result = subprocess.run(
+            # nosec B603: Command is array with validated file list - safe
+            result = subprocess.run(  # nosec B603
                 ["pre-commit", "run", "--files"] + staged_files,
                 capture_output=True,
                 text=True,
@@ -1277,7 +1449,8 @@ def check_and_install_pre_commit() -> bool:
             return True
 
         try:
-            subprocess.run(
+            # nosec B603: Command is hardcoded array - safe
+            subprocess.run(  # nosec B603
                 ["pre-commit", "--version"],
                 capture_output=True,
                 check=True,

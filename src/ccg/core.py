@@ -314,18 +314,9 @@ def convert_emoji_codes_to_real(text: str) -> str:
         >>> convert_emoji_codes_to_real("feat: no emoji")
         'feat: no emoji'
     """
+    # Use emoji mapping from COMMIT_TYPES to avoid duplication
     emoji_map: Dict[str, str] = {
-        ":sparkles:": "✨",
-        ":bug:": "🐛",
-        ":wrench:": "🔧",
-        ":hammer:": "🔨",
-        ":lipstick:": "💄",
-        ":books:": "📚",
-        ":test_tube:": "🧪",
-        ":package:": "📦",
-        ":rewind:": "⏪",
-        ":construction_worker:": "👷",
-        ":zap:": "⚡",
+        commit_data["emoji_code"]: commit_data["emoji"] for commit_data in COMMIT_TYPES
     }
 
     result: str = text
@@ -366,7 +357,7 @@ def confirm_commit(
     # Show file changes in separate section BEFORE review
     if show_file_changes:
         print_section("File Changes")
-        file_changes = get_staged_file_changes()
+        file_changes: List[Tuple[str, str]] = get_staged_file_changes()
         if file_changes:
             for status, file_path in file_changes:
                 if status == "A":
@@ -471,7 +462,7 @@ def validate_commit_message(message: str) -> Tuple[bool, Optional[str]]:
         work_message = _EMOJI_CODE_PATTERN.sub("", work_message).strip()
 
     # Use pre-compiled regex pattern for validation
-    match = _COMMIT_MESSAGE_PATTERN.match(work_message)
+    match: Optional[re.Match[str]] = _COMMIT_MESSAGE_PATTERN.match(work_message)
 
     if not match:
         return (
@@ -479,8 +470,8 @@ def validate_commit_message(message: str) -> Tuple[bool, Optional[str]]:
             "Invalid format. Expected: <type>[optional scope][optional !]: <description>",
         )
 
-    commit_type = match.group(1)
-    description = match.group(4)
+    commit_type: str = match.group(1)
+    description: str = match.group(4)
 
     if not description.strip():  # pragma: no cover
         return False, "Description cannot be empty after the colon."

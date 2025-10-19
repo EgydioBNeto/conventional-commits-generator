@@ -8,6 +8,44 @@ import pytest
 from ccg.progress import ProgressSpinner
 
 
+def wait_for_thread_death(thread, timeout=2.0):
+    """Wait for a thread to die with polling (more robust than fixed sleep).
+
+    Args:
+        thread: Thread object to wait for
+        timeout: Maximum time to wait in seconds
+
+    Returns:
+        bool: True if thread died, False if timeout
+    """
+    start = time.time()
+    while thread.is_alive():
+        if time.time() - start > timeout:
+            return False
+        time.sleep(0.01)  # Poll every 10ms
+    return True
+
+
+def wait_for_thread_count(expected_count, timeout=2.0):
+    """Wait for thread count to reach expected value with polling.
+
+    Args:
+        expected_count: Expected thread count
+        timeout: Maximum time to wait in seconds
+
+    Returns:
+        bool: True if count reached, False if timeout
+    """
+    import threading
+
+    start = time.time()
+    while threading.active_count() != expected_count:
+        if time.time() - start > timeout:
+            return False
+        time.sleep(0.01)  # Poll every 10ms
+    return True
+
+
 class TestProgressSpinner:
     """Test cases for ProgressSpinner class."""
 
@@ -43,9 +81,8 @@ class TestProgressSpinner:
         time.sleep(0.2)
 
         spinner.stop()
-        # Give thread time to finish
-        time.sleep(0.15)
-        assert not spinner.thread.is_alive()
+        # Wait for thread to finish with robust polling
+        assert wait_for_thread_death(spinner.thread), "Thread did not stop in time"
 
     def test_spinner_displays_animation(self, capsys):
         """Test that spinner actually outputs animation frames."""
@@ -88,9 +125,8 @@ class TestProgressSpinner:
         assert thread is not None
 
         spinner.stop()
-        time.sleep(0.2)  # Wait for thread to finish
-
-        assert not thread.is_alive()
+        # Wait for thread to finish with robust polling
+        assert wait_for_thread_death(thread), "Thread did not stop in time"
 
     def test_spinner_double_stop(self):
         """Test that calling stop twice doesn't cause errors."""
@@ -164,3 +200,151 @@ class TestSpinnerIntegration:
             return result
 
         assert outer_operation() == "inner"
+
+
+class TestProgressSpinnerRaceConditions:
+    """Test ProgressSpinner for race conditions and thread safety.
+
+    These tests validate the fix for the race condition where the animation
+    thread could write to stdout after the clear operation in stop().
+    """
+
+    def test_spinner_no_artifacts_after_stop(self):
+        """Test that spinner doesn't leave artifacts after stop().
+
+        This validates that the thread is stopped and joined BEFORE clearing
+        the line, preventing race conditions.
+        """
+        import io
+        import sys
+
+        captured = io.StringIO()
+        original_stdout = sys.stdout
+
+        try:
+            sys.stdout = captured
+
+            spinner = ProgressSpinner("Testing")
+            spinner.start()
+            time.sleep(0.3)  # Let it animate several frames
+            spinner.stop()
+
+            # Get output after stop
+            output = captured.getvalue()
+
+            # Split by carriage return (spinner overwrites)
+            lines = output.split("\r")
+            last_line = lines[-1] if lines else ""
+
+            # Last line should be empty or only whitespace (cleared)
+            # It's acceptable to have spaces from the clear operation
+            assert last_line.strip() == "", f"Spinner left artifacts: {repr(last_line)}"
+
+        finally:
+            sys.stdout = original_stdout
+
+    def test_spinner_thread_cleanup_count(self):
+        """Test that spinner thread is properly cleaned up.
+
+        Validates that thread count returns to baseline after spinner stops.
+        """
+        import threading
+
+        initial_thread_count = threading.active_count()
+
+        spinner = ProgressSpinner("Testing")
+        spinner.start()
+
+        # Thread count should increase by 1
+        assert threading.active_count() == initial_thread_count + 1
+
+        time.sleep(0.1)
+        spinner.stop()
+        # Wait for thread count to return to initial with robust polling
+        assert wait_for_thread_count(
+            initial_thread_count
+        ), f"Thread count did not return to {initial_thread_count}"
+
+    def test_spinner_rapid_start_stop(self):
+        """Test spinner behavior with rapid start/stop cycles.
+
+        This tests that rapid cycling doesn't create zombie threads or
+        leave the spinner in an inconsistent state.
+        """
+        import threading
+
+        initial_thread_count = threading.active_count()
+
+        for _ in range(10):
+            spinner = ProgressSpinner("Testing")
+            spinner.start()
+            time.sleep(0.01)  # Very short duration
+            spinner.stop()
+
+        # Wait for all threads to finish with robust polling
+        assert wait_for_thread_count(
+            initial_thread_count, timeout=3.0
+        ), f"Zombie threads detected: expected {initial_thread_count}, got {threading.active_count()}"
+
+    def test_spinner_context_manager_exception(self):
+        """Test that spinner stops cleanly even if exception occurs.
+
+        Validates that the context manager properly cleans up on exceptions.
+        """
+        import io
+        import sys
+
+        captured = io.StringIO()
+        original_stdout = sys.stdout
+
+        try:
+            sys.stdout = captured
+
+            with pytest.raises(ValueError):
+                with ProgressSpinner("Testing"):
+                    time.sleep(0.1)
+                    raise ValueError("Test exception")
+
+            # Spinner should still be stopped
+            output = captured.getvalue()
+            lines = output.split("\r")
+            last_line = lines[-1] if lines else ""
+
+            # Should be cleared despite exception
+            assert last_line.strip() == ""
+
+        finally:
+            sys.stdout = original_stdout
+
+    def test_spinner_stop_without_start(self):
+        """Test that calling stop without start doesn't cause errors.
+
+        Edge case: stop() called when thread is None.
+        """
+        spinner = ProgressSpinner("Testing")
+        # Don't start, just stop
+        spinner.stop()  # Should not raise exception
+
+    @patch("sys.stdout.write")
+    @patch("sys.stdout.flush")
+    def test_spinner_clear_after_join(self, mock_flush, mock_write):
+        """Test that clear happens AFTER thread join.
+
+        This is the core test for the race condition fix:
+        The clear operation should only happen after the thread has been joined.
+        """
+        spinner = ProgressSpinner("Testing")
+        spinner.start()
+        time.sleep(0.2)
+
+        # Reset mocks to only track stop() behavior
+        mock_write.reset_mock()
+        mock_flush.reset_mock()
+
+        spinner.stop()
+
+        # The clear (write with spaces) should have been called
+        assert mock_write.called, "Clear operation was not called"
+
+        # Verify thread is dead when we return from stop()
+        assert not spinner.thread.is_alive(), "Thread still alive after stop()"

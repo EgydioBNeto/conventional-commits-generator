@@ -151,9 +151,18 @@ pytest
 
 # Test specific version
 ./scripts/tox-mise.sh -e py312
+```
 
-# Test in parallel (faster)
-./scripts/tox-mise.sh -p auto
+### 5. Run Code Quality Checks
+
+Before submitting a PR, run quality checks:
+
+```bash
+# Run all quality checks at once
+./scripts/tox-mise.sh -e quality
+
+# List all available environments
+./scripts/tox-mise.sh --list
 ```
 
 ## Testing
@@ -171,9 +180,6 @@ Use our `tox-mise.sh` script for easy multi-version testing:
 # Test specific version
 ./scripts/tox-mise.sh -e py39
 ./scripts/tox-mise.sh -e py312
-
-# Test in parallel (faster)
-./scripts/tox-mise.sh -p auto
 
 # Run type checking
 ./scripts/tox-mise.sh -e mypy

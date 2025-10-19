@@ -80,9 +80,6 @@ pytest
 
 # Test specific version
 ./scripts/tox-mise.sh -e py312
-
-# Test in parallel (faster)
-./scripts/tox-mise.sh -p auto
 ```
 
 ### 3. Create Commit

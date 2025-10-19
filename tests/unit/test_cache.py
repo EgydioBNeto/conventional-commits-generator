@@ -19,7 +19,7 @@ class TestRepositoryCache:
         assert cache._repo_name is None
         assert cache._repo_root is None
         assert cache._remote_name is None
-        assert cache._cwd_at_init == os.getcwd()
+        assert cache._cached_cwd == os.getcwd()
 
     def test_invalidate_all(self) -> None:
         """Should clear all cached values."""
@@ -76,7 +76,7 @@ class TestRepositoryCache:
             # Values should be cleared
             assert cache._branch is None
             assert cache._repo_name is None
-            assert cache._cwd_at_init == str(tmp_path)
+            assert cache._cached_cwd == str(tmp_path)
 
         finally:
             # Restore original directory

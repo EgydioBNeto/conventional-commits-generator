@@ -22,14 +22,14 @@ class RepositoryCache:
         self._repo_name: Optional[str] = None
         self._repo_root: Optional[str] = None
         self._remote_name: Optional[str] = None
-        self._cwd_at_init: str = os.getcwd()
+        self._cached_cwd: str = os.getcwd()
 
     def invalidate_if_cwd_changed(self) -> None:
         """Invalidate cache if working directory changed."""
         current_cwd = os.getcwd()
-        if current_cwd != self._cwd_at_init:
+        if current_cwd != self._cached_cwd:
             self.invalidate_all()
-            self._cwd_at_init = current_cwd
+            self._cached_cwd = current_cwd
 
     def invalidate_all(self) -> None:
         """Clear all cached values."""
@@ -37,6 +37,7 @@ class RepositoryCache:
         self._repo_name = None
         self._repo_root = None
         self._remote_name = None
+        # Note: _cached_cwd is not cleared here - it's updated separately in invalidate_if_cwd_changed()
 
     def get_or_fetch(self, key: str, fetcher: Callable[[], Optional[str]]) -> Optional[str]:
         """Generic cached getter with lazy loading.
