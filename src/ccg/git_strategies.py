@@ -6,7 +6,6 @@ encapsulates a specific git technique (amend, filter-branch, rebase, reset).
 """
 
 import logging
-import os
 from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import List, Optional
@@ -19,7 +18,7 @@ from ccg.platform_utils import (
     get_filter_branch_command,
 )
 from ccg.progress import ProgressSpinner
-from ccg.utils import print_error, print_info, print_process
+from ccg.utils import print_error, print_info, print_process, print_success
 
 logger = logging.getLogger("ccg.git_strategies")
 
@@ -277,13 +276,20 @@ else:
             with ProgressSpinner("Rewriting git history"):
                 success, output = run_git_command(
                     command,
-                    f"Failed to edit commit message for '{commit_hash[:GIT_CONFIG.SHORT_HASH_LENGTH]}'",
-                    f"Commit message for '{commit_hash[:GIT_CONFIG.SHORT_HASH_LENGTH]}' updated successfully",
+                    "",
+                    "",
                     show_output=True,
                     timeout=GIT_CONFIG.FILTER_BRANCH_TIMEOUT,
                 )
 
-            if not success:
+            if success:
+                print_success(
+                    f"Commit message for '{commit_hash[:GIT_CONFIG.SHORT_HASH_LENGTH]}' updated successfully"
+                )
+            else:
+                print_error(
+                    f"Failed to edit commit message for '{commit_hash[:GIT_CONFIG.SHORT_HASH_LENGTH]}'"
+                )
                 print_error("Error details:")
                 if output:
                     print(output)

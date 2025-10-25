@@ -1,6 +1,7 @@
 """Configuration constants for CCG."""
 
 from dataclasses import dataclass
+from typing import Dict, List
 
 
 @dataclass(frozen=True)
@@ -65,6 +66,99 @@ class LoggingConfig:
     BACKUP_COUNT: int = 5
     THREAD_JOIN_TIMEOUT: float = 1.0
 
+
+# ANSI Color codes for terminal output
+RED = "\033[91m"
+GREEN = "\033[92m"
+YELLOW = "\033[93m"
+BLUE = "\033[94m"
+MAGENTA = "\033[95m"
+CYAN = "\033[96m"
+WHITE = "\033[97m"
+BOLD = "\033[1m"
+UNDERLINE = "\033[4m"
+RESET = "\033[0m"
+
+# Commit types configuration with emoji and color coding
+COMMIT_TYPES: List[Dict[str, str]] = [
+    {
+        "type": "feat",
+        "emoji_code": ":sparkles:",
+        "description": "A new feature for the user or a particular enhancement",
+        "color": GREEN,
+        "emoji": "✨",
+    },
+    {
+        "type": "fix",
+        "emoji_code": ":bug:",
+        "description": "A bug fix for the user or a particular issue",
+        "color": RED,
+        "emoji": "🐛",
+    },
+    {
+        "type": "chore",
+        "emoji_code": ":wrench:",
+        "description": "Routine tasks, maintenance, or minor updates",
+        "color": BLUE,
+        "emoji": "🔧",
+    },
+    {
+        "type": "refactor",
+        "emoji_code": ":hammer:",
+        "description": "Code refactoring without changing its behavior",
+        "color": MAGENTA,
+        "emoji": "🔨",
+    },
+    {
+        "type": "style",
+        "emoji_code": ":lipstick:",
+        "description": "Code style changes, formatting, or cosmetic improvements",
+        "color": CYAN,
+        "emoji": "💄",
+    },
+    {
+        "type": "docs",
+        "emoji_code": ":books:",
+        "description": "Documentation-related changes",
+        "color": WHITE,
+        "emoji": "📚",
+    },
+    {
+        "type": "test",
+        "emoji_code": ":test_tube:",
+        "description": "Adding or modifying tests",
+        "color": YELLOW,
+        "emoji": "🧪",
+    },
+    {
+        "type": "build",
+        "emoji_code": ":package:",
+        "description": "Changes that affect the build system or external dependencies",
+        "color": YELLOW,
+        "emoji": "📦",
+    },
+    {
+        "type": "revert",
+        "emoji_code": ":rewind:",
+        "description": "Reverts a previous commit",
+        "color": RED,
+        "emoji": "⏪",
+    },
+    {
+        "type": "ci",
+        "emoji_code": ":construction_worker:",
+        "description": "Changes to CI configuration files and scripts",
+        "color": BLUE,
+        "emoji": "👷",
+    },
+    {
+        "type": "perf",
+        "emoji_code": ":zap:",
+        "description": "A code change that improves performance",
+        "color": GREEN,
+        "emoji": "⚡",
+    },
+]
 
 INPUT_LIMITS = InputLimits()
 GIT_CONFIG = GitConfig()

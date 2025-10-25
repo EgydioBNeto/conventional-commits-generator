@@ -219,6 +219,9 @@ class TestFilterBranchStrategy:
         assert "filter-branch" in description.lower()
         assert "old" in description.lower() or "history" in description.lower()
 
+    @patch("ccg.git_strategies.print_success")
+    @patch("ccg.git_strategies.print_info")
+    @patch("ccg.git_strategies.print_process")
     @patch("ccg.git.run_git_command")
     @patch("ccg.git_strategies.invalidate_repository_cache")
     @patch("ccg.git_strategies.create_secure_temp_file")
@@ -233,6 +236,9 @@ class TestFilterBranchStrategy:
         mock_create_secure,
         mock_invalidate,
         mock_run_git,
+        mock_print_process,
+        mock_print_info,
+        mock_print_success,
     ):
         """Test edit successfully edits old commit."""
         mock_home = MagicMock()
@@ -260,7 +266,13 @@ class TestFilterBranchStrategy:
 
         assert result is True
         mock_invalidate.assert_called_once()
+        mock_print_success.assert_called_once()
+        mock_print_process.assert_called_once()
+        mock_print_info.assert_called_once()
 
+    @patch("ccg.git_strategies.print_success")
+    @patch("ccg.git_strategies.print_info")
+    @patch("ccg.git_strategies.print_process")
     @patch("ccg.git.run_git_command")
     @patch("ccg.git_strategies.invalidate_repository_cache")
     @patch("ccg.git_strategies.create_secure_temp_file")
@@ -275,6 +287,9 @@ class TestFilterBranchStrategy:
         mock_create_secure,
         mock_invalidate,
         mock_run_git,
+        mock_print_process,
+        mock_print_info,
+        mock_print_success,
     ):
         """Test edit handles initial commit flag correctly."""
         mock_home = MagicMock()
@@ -301,6 +316,9 @@ class TestFilterBranchStrategy:
         result = strategy.edit("abc1234", "feat: new feature", is_initial_commit=True)
 
         assert result is True
+        mock_print_success.assert_called_once()
+        mock_print_process.assert_called_once()
+        mock_print_info.assert_called_once()
 
     @patch("ccg.git_strategies.Path")
     def test_edit_ccg_dir_creation_failure(self, mock_path):
@@ -356,30 +374,40 @@ class TestFilterBranchStrategy:
 
         assert result is False
 
+    @patch("builtins.print")
+    @patch("ccg.git_strategies.print_error")
+    @patch("ccg.git_strategies.print_info")
+    @patch("ccg.git_strategies.print_process")
+    @patch("ccg.git_strategies.create_secure_temp_file")
+    @patch("ccg.git_strategies.create_executable_temp_file")
     @patch("ccg.git.run_git_command")
     @patch("ccg.git_strategies.Path")
     @patch("ccg.git_strategies.ProgressSpinner")
-    def test_edit_git_command_failure(self, mock_spinner, mock_path, mock_run_git):
+    def test_edit_git_command_failure(
+        self,
+        mock_spinner,
+        mock_path,
+        mock_run_git,
+        mock_create_exec,
+        mock_create_secure,
+        mock_print_process,
+        mock_print_info,
+        mock_print_error,
+        mock_print,
+    ):
         """Test edit handles git command failure."""
         mock_home = MagicMock()
         mock_ccg_dir = MagicMock()
         mock_path.home.return_value = mock_home
         mock_home.__truediv__.return_value = mock_ccg_dir
-        mock_ccg_dir.__truediv__ = MagicMock()
 
         mock_message_file = MagicMock(spec=Path)
         mock_script_file = MagicMock(spec=Path)
         mock_message_file.exists.return_value = True
         mock_script_file.exists.return_value = True
 
-        def ccg_dir_side_effect(name):
-            if "commit_message" in name:
-                return mock_message_file
-            elif "msg_filter" in name:
-                return mock_script_file
-            return MagicMock()
-
-        mock_ccg_dir.__truediv__.side_effect = ccg_dir_side_effect
+        mock_create_secure.return_value = mock_message_file
+        mock_create_exec.return_value = mock_script_file
 
         mock_run_git.return_value = (False, "Error occurred")
 
@@ -392,7 +420,14 @@ class TestFilterBranchStrategy:
         result = strategy.edit("abc1234", "feat: new feature")
 
         assert result is False
+        assert mock_print_error.call_count == 2
+        mock_print.assert_called_once_with("Error occurred")
+        mock_print_process.assert_called_once()
+        mock_print_info.assert_called_once()
 
+    @patch("ccg.git_strategies.print_success")
+    @patch("ccg.git_strategies.print_info")
+    @patch("ccg.git_strategies.print_process")
     @patch("ccg.git.run_git_command")
     @patch("ccg.git_strategies.invalidate_repository_cache")
     @patch("ccg.git_strategies.create_secure_temp_file")
@@ -407,6 +442,9 @@ class TestFilterBranchStrategy:
         mock_create_secure,
         mock_invalidate,
         mock_run_git,
+        mock_print_process,
+        mock_print_info,
+        mock_print_success,
     ):
         """Test edit cleans up temporary files on success."""
         mock_home = MagicMock()
@@ -436,6 +474,9 @@ class TestFilterBranchStrategy:
         mock_message_file.unlink.assert_called_once()
         mock_script_file.unlink.assert_called_once()
 
+    @patch("ccg.git_strategies.print_success")
+    @patch("ccg.git_strategies.print_info")
+    @patch("ccg.git_strategies.print_process")
     @patch("ccg.git.run_git_command")
     @patch("ccg.git_strategies.invalidate_repository_cache")
     @patch("ccg.git_strategies.create_secure_temp_file")
@@ -450,6 +491,9 @@ class TestFilterBranchStrategy:
         mock_create_secure,
         mock_invalidate,
         mock_run_git,
+        mock_print_process,
+        mock_print_info,
+        mock_print_success,
     ):
         """Test edit handles cleanup failure gracefully."""
         mock_home = MagicMock()

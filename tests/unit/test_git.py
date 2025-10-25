@@ -172,8 +172,8 @@ class TestGitCommit:
         assert result is True
         mock_run.assert_called_once_with(
             ["git", "commit", "-m", "feat: test commit"],
-            "Error during 'git commit'",
-            None,  # Success message is None, printed separately after spinner
+            "",
+            None,
         )
 
     @patch("ccg.git.ProgressSpinner")
@@ -402,6 +402,40 @@ class TestGitPush:
         else:
             # 2 calls: get_remote, push
             assert mock_run.call_count == 2
+
+    @patch("ccg.git.get_current_branch")
+    @patch("ccg.git.run_git_command")
+    def test_push_with_set_upstream_failure(self, mock_run: Mock, mock_branch: Mock) -> None:
+        """Should handle failure when pushing with --set-upstream."""
+        from ccg.git import git_push
+
+        mock_branch.return_value = "feature"
+        mock_run.side_effect = [
+            (True, "origin"),  # git remote
+            (False, "Error: permission denied"),  # git push --set-upstream fails
+        ]
+
+        result = git_push(set_upstream=True)
+
+        assert result is False
+        assert mock_run.call_count == 2
+
+    @patch("ccg.git.get_current_branch")
+    @patch("ccg.git.run_git_command")
+    def test_push_with_force_failure(self, mock_run: Mock, mock_branch: Mock) -> None:
+        """Should handle failure when force pushing."""
+        from ccg.git import git_push
+
+        mock_branch.return_value = "main"
+        mock_run.side_effect = [
+            (True, "origin"),  # git remote
+            (False, "Error: rejected"),  # git push --force fails
+        ]
+
+        result = git_push(force=True)
+
+        assert result is False
+        assert mock_run.call_count == 2
 
 
 class TestGetCurrentBranch:
@@ -1178,11 +1212,11 @@ class TestDeleteOldCommitWithRebase:
     def test_rebase_failure_aborts(
         self, mock_create_script: Mock, mock_subprocess: Mock, capsys
     ) -> None:
-        """Should abort rebase on failure and print stderr."""
+        """Should abort rebase on non-conflict failure and print stderr."""
         from ccg.git import delete_old_commit_with_rebase
 
         mock_create_script.return_value = (True, "/tmp/script", ["pick abc123 test"])
-        mock_subprocess.return_value = Mock(returncode=1, stderr="Rebase failed")
+        mock_subprocess.return_value = Mock(returncode=1, stderr="Permission denied")
 
         with patch("ccg.git.run_git_command") as mock_run_git:
             result = delete_old_commit_with_rebase("def456")
@@ -1195,7 +1229,232 @@ class TestDeleteOldCommitWithRebase:
             )
             assert abort_called
             captured = capsys.readouterr()
-            assert "Rebase failed" in captured.out
+            assert "Permission denied" in captured.out
+
+    @patch("ccg.git.read_input")
+    @patch("subprocess.run")
+    @patch("ccg.git.create_rebase_script_for_deletion")
+    def test_rebase_conflict_user_resolves_successfully(
+        self, mock_create_script: Mock, mock_subprocess: Mock, mock_read_input: Mock
+    ) -> None:
+        """Should complete rebase when user successfully resolves conflicts."""
+        from ccg.git import delete_old_commit_with_rebase
+
+        mock_create_script.return_value = (True, "/tmp/script", ["pick abc123 test"])
+
+        # Subprocess calls:
+        # 1. Initial rebase fails with conflict
+        # 2. git status --short (to check for conflicts - shows conflicting files)
+        # 3. git rebase --continue succeeds
+        mock_subprocess.side_effect = [
+            Mock(returncode=1, stderr="error: could not apply abc123... test commit"),
+            Mock(
+                returncode=0, stdout="UU file1.txt\nDD file2.py"
+            ),  # git status --short shows conflicts
+            Mock(returncode=0, stdout="", stderr=""),  # rebase --continue succeeds
+        ]
+
+        # User presses Enter to continue (empty string)
+        mock_read_input.return_value = ""
+
+        with patch("ccg.git.run_git_command") as mock_run_git:
+            result = delete_old_commit_with_rebase("def456")
+
+            assert result is True  # Successfully completed
+            assert mock_read_input.call_count == 1
+            # Check that rebase --abort was NOT called
+            abort_called = any(
+                "rebase" in call.args[0] and "--abort" in call.args[0]
+                for call in mock_run_git.call_args_list
+            )
+            assert not abort_called
+
+    @patch("ccg.git.read_input")
+    @patch("subprocess.run")
+    @patch("ccg.git.create_rebase_script_for_deletion")
+    def test_rebase_conflict_user_says_not_resolved(
+        self, mock_create_script: Mock, mock_subprocess: Mock, mock_read_input: Mock
+    ) -> None:
+        """Should abort when user types 'abort'."""
+        from ccg.git import delete_old_commit_with_rebase
+
+        mock_create_script.return_value = (True, "/tmp/script", ["pick abc123 test"])
+
+        # Subprocess calls:
+        # 1. Initial rebase fails with conflict
+        # 2. git status --short (to check for conflicts)
+        mock_subprocess.side_effect = [
+            Mock(returncode=1, stderr="error: could not apply abc123... test commit"),
+            Mock(returncode=0, stdout=""),  # git status --short
+        ]
+
+        # User types 'abort'
+        mock_read_input.return_value = "abort"
+
+        with patch("ccg.git.run_git_command") as mock_run_git:
+            result = delete_old_commit_with_rebase("def456")
+
+            assert result is False
+            assert mock_read_input.call_count == 1
+            # Check that rebase --abort WAS called
+            abort_called = any(
+                "rebase" in call.args[0] and "--abort" in call.args[0]
+                for call in mock_run_git.call_args_list
+            )
+            assert abort_called
+
+    @patch("ccg.git.read_input")
+    @patch("subprocess.run")
+    @patch("ccg.git.create_rebase_script_for_deletion")
+    def test_rebase_conflict_still_has_conflicts_then_resolves(
+        self, mock_create_script: Mock, mock_subprocess: Mock, mock_read_input: Mock
+    ) -> None:
+        """Should abort when continue fails with remaining conflicts."""
+        from ccg.git import delete_old_commit_with_rebase
+
+        mock_create_script.return_value = (True, "/tmp/script", ["pick abc123 test"])
+
+        # Subprocess calls:
+        # 1. Initial rebase: conflict
+        # 2. git status --short (to check for conflicts)
+        # 3. git rebase --continue: still has conflicts
+        # 4. git status --short (recheck for remaining conflicts)
+        mock_subprocess.side_effect = [
+            Mock(returncode=1, stderr="error: could not apply abc123..."),
+            Mock(returncode=0, stdout=""),  # git status --short
+            Mock(
+                returncode=1, stderr="error: conflict in file.txt", stdout="conflict"
+            ),  # still conflicts
+            Mock(returncode=0, stdout="UU file.txt"),  # recheck status shows conflicts
+        ]
+
+        # User presses Enter to continue
+        mock_read_input.return_value = ""
+
+        with patch("ccg.git.run_git_command") as mock_run_git:
+            result = delete_old_commit_with_rebase("def456")
+
+            assert result is False
+            assert mock_read_input.call_count == 1
+            # Check that rebase --abort WAS called (automatically)
+            abort_called = any(
+                "rebase" in call.args[0] and "--abort" in call.args[0]
+                for call in mock_run_git.call_args_list
+            )
+            assert abort_called
+
+    @patch("ccg.git.read_input")
+    @patch("subprocess.run")
+    @patch("ccg.git.create_rebase_script_for_deletion")
+    def test_rebase_conflict_user_aborts(
+        self, mock_create_script: Mock, mock_subprocess: Mock, mock_read_input: Mock
+    ) -> None:
+        """Should abort rebase when user chooses to abort on conflict."""
+        from ccg.git import delete_old_commit_with_rebase
+
+        mock_create_script.return_value = (True, "/tmp/script", ["pick abc123 test"])
+
+        # Subprocess calls:
+        # 1. Initial rebase fails with conflict
+        # 2. git status --short (to check for conflicts)
+        mock_subprocess.side_effect = [
+            Mock(returncode=1, stderr="error: merge conflict in file.txt"),
+            Mock(returncode=0, stdout=""),  # git status --short
+        ]
+
+        # User types 'abort'
+        mock_read_input.return_value = "abort"
+
+        with patch("ccg.git.run_git_command") as mock_run_git:
+            result = delete_old_commit_with_rebase("def456")
+
+            assert result is False
+            # Check that read_input was called
+            mock_read_input.assert_called_once()
+            # Check that rebase --abort WAS called
+            abort_called = any(
+                "rebase" in call.args[0] and "--abort" in call.args[0]
+                for call in mock_run_git.call_args_list
+            )
+            assert abort_called
+
+    @patch("ccg.git.read_input")
+    @patch("subprocess.run")
+    @patch("ccg.git.create_rebase_script_for_deletion")
+    def test_rebase_continue_fails_with_non_conflict_error(
+        self, mock_create_script: Mock, mock_subprocess: Mock, mock_read_input: Mock
+    ) -> None:
+        """Should show error details when continue fails with non-conflict error."""
+        from ccg.git import delete_old_commit_with_rebase
+
+        mock_create_script.return_value = (True, "/tmp/script", ["pick abc123 test"])
+
+        # Subprocess calls:
+        # 1. Initial rebase: conflict
+        # 2. git status --short (to check for conflicts)
+        # 3. git rebase --continue: fails with non-conflict error (no "conflict" keyword)
+        # 4. git status --short (recheck for remaining conflicts)
+        mock_subprocess.side_effect = [
+            Mock(returncode=1, stderr="error: could not apply abc123..."),
+            Mock(returncode=0, stdout=""),  # git status --short
+            Mock(
+                returncode=1, stderr="fatal: unable to write new index file", stdout=""
+            ),  # non-conflict error
+            Mock(returncode=0, stdout=""),  # recheck status - no conflicts
+        ]
+
+        # User presses Enter to continue
+        mock_read_input.return_value = ""
+
+        with patch("ccg.git.run_git_command") as mock_run_git:
+            result = delete_old_commit_with_rebase("def456")
+
+            assert result is False
+            assert mock_read_input.call_count == 1
+            # Check that rebase --abort WAS called (automatically)
+            abort_called = any(
+                "rebase" in call.args[0] and "--abort" in call.args[0]
+                for call in mock_run_git.call_args_list
+            )
+            assert abort_called
+
+    @patch("ccg.git.read_input")
+    @patch("subprocess.run")
+    @patch("ccg.git.create_rebase_script_for_deletion")
+    def test_rebase_continue_fails_user_aborts_after_retry(
+        self, mock_create_script: Mock, mock_subprocess: Mock, mock_read_input: Mock
+    ) -> None:
+        """Should abort when continue fails after user tried to continue."""
+        from ccg.git import delete_old_commit_with_rebase
+
+        mock_create_script.return_value = (True, "/tmp/script", ["pick abc123 test"])
+
+        # Subprocess calls:
+        # 1. Initial rebase: conflict
+        # 2. git status --short (to check for conflicts)
+        # 3. git rebase --continue: still has conflicts
+        # 4. git status --short (recheck for remaining conflicts)
+        mock_subprocess.side_effect = [
+            Mock(returncode=1, stderr="error: could not apply abc123..."),
+            Mock(returncode=0, stdout=""),  # git status --short
+            Mock(returncode=1, stderr="error: conflict in file.txt"),  # still has conflicts
+            Mock(returncode=0, stdout="UU file.txt"),  # recheck status shows conflicts
+        ]
+
+        # User presses Enter to try to continue
+        mock_read_input.return_value = ""
+
+        with patch("ccg.git.run_git_command") as mock_run_git:
+            result = delete_old_commit_with_rebase("def456")
+
+            assert result is False
+            assert mock_read_input.call_count == 1
+            # Check that rebase --abort WAS called (automatically after failure)
+            abort_called = any(
+                "rebase" in call.args[0] and "--abort" in call.args[0]
+                for call in mock_run_git.call_args_list
+            )
+            assert abort_called
 
     @patch("subprocess.run")
     @patch("ccg.git.create_rebase_script_for_deletion")
