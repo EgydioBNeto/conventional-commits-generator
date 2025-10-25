@@ -321,12 +321,14 @@ class TestHandleCommitOperation:
     @patch("ccg.cli.edit_specific_commit")
     @patch("ccg.cli.read_input")
     @patch("ccg.cli.get_recent_commits")
+    @patch("ccg.cli.check_has_changes")
     @patch("ccg.cli.check_is_git_repo")
     @patch("ccg.cli.show_repository_info")
     def test_edit_by_number(
         self,
         mock_show: Mock,
         mock_check: Mock,
+        mock_has_changes: Mock,
         mock_commits: Mock,
         mock_input: Mock,
         mock_edit: Mock,
@@ -335,6 +337,7 @@ class TestHandleCommitOperation:
         from ccg.cli import handle_commit_operation
 
         mock_check.return_value = True
+        mock_has_changes.return_value = False  # No uncommitted changes
         mock_commits.return_value = [
             ("abc123", "abc", "feat: test", "Author", "1 day ago"),
             ("def456", "def", "fix: bug", "Author", "2 days ago"),
@@ -350,12 +353,14 @@ class TestHandleCommitOperation:
     @patch("ccg.cli.delete_specific_commit")
     @patch("ccg.cli.read_input")
     @patch("ccg.cli.get_recent_commits")
+    @patch("ccg.cli.check_has_changes")
     @patch("ccg.cli.check_is_git_repo")
     @patch("ccg.cli.show_repository_info")
     def test_delete_by_hash(
         self,
         mock_show: Mock,
         mock_check: Mock,
+        mock_has_changes: Mock,
         mock_commits: Mock,
         mock_input: Mock,
         mock_delete: Mock,
@@ -364,6 +369,7 @@ class TestHandleCommitOperation:
         from ccg.cli import handle_commit_operation
 
         mock_check.return_value = True
+        mock_has_changes.return_value = False  # No uncommitted changes
         mock_commits.return_value = [
             ("abc123", "abc", "feat: test", "Author", "1 day ago"),
             ("def456", "def", "fix: bug", "Author", "2 days ago"),
@@ -378,15 +384,22 @@ class TestHandleCommitOperation:
 
     @patch("ccg.cli.read_input")
     @patch("ccg.cli.get_recent_commits")
+    @patch("ccg.cli.check_has_changes")
     @patch("ccg.cli.check_is_git_repo")
     @patch("ccg.cli.show_repository_info")
     def test_quit_operation(
-        self, mock_show: Mock, mock_check: Mock, mock_commits: Mock, mock_input: Mock
+        self,
+        mock_show: Mock,
+        mock_check: Mock,
+        mock_has_changes: Mock,
+        mock_commits: Mock,
+        mock_input: Mock,
     ) -> None:
         """Should quit on 'q' input."""
         from ccg.cli import handle_commit_operation
 
         mock_check.return_value = True
+        mock_has_changes.return_value = False  # No uncommitted changes
         mock_commits.return_value = [("abc123", "abc", "feat: test", "Author", "1 day ago")]
         mock_input.side_effect = ["", "q"]
 
@@ -396,15 +409,22 @@ class TestHandleCommitOperation:
 
     @patch("ccg.cli.read_input")
     @patch("ccg.cli.get_recent_commits")
+    @patch("ccg.cli.check_has_changes")
     @patch("ccg.cli.check_is_git_repo")
     @patch("ccg.cli.show_repository_info")
     def test_invalid_then_valid_selection(
-        self, mock_show: Mock, mock_check: Mock, mock_commits: Mock, mock_input: Mock
+        self,
+        mock_show: Mock,
+        mock_check: Mock,
+        mock_has_changes: Mock,
+        mock_commits: Mock,
+        mock_input: Mock,
     ) -> None:
         """Should retry on invalid selection."""
         from ccg.cli import handle_commit_operation
 
         mock_check.return_value = True
+        mock_has_changes.return_value = False  # No uncommitted changes
         mock_commits.return_value = [("abc123", "abc", "feat: test", "Author", "1 day ago")]
         mock_input.side_effect = ["", "999", "1"]  # Invalid number, then valid
 
@@ -416,12 +436,14 @@ class TestHandleCommitOperation:
     @patch("ccg.cli.edit_specific_commit")
     @patch("ccg.cli.read_input")
     @patch("ccg.cli.get_recent_commits")
+    @patch("ccg.cli.check_has_changes")
     @patch("ccg.cli.check_is_git_repo")
     @patch("ccg.cli.show_repository_info")
     def test_multiple_matching_hashes(
         self,
         mock_show: Mock,
         mock_check: Mock,
+        mock_has_changes: Mock,
         mock_commits: Mock,
         mock_input: Mock,
         mock_edit: Mock,
@@ -431,6 +453,7 @@ class TestHandleCommitOperation:
         from ccg.cli import handle_commit_operation
 
         mock_check.return_value = True
+        mock_has_changes.return_value = False  # No uncommitted changes
         mock_commits.return_value = [
             ("abc1234", "abc1", "feat: one", "Author", "1 day ago"),
             ("abc5678", "abc5", "feat: two", "Author", "2 days ago"),
@@ -445,6 +468,44 @@ class TestHandleCommitOperation:
         captured = capsys.readouterr()
         assert "Multiple commits match this hash" in captured.out
         mock_edit.assert_called_once_with("abc1234")
+
+    @patch("ccg.cli.check_has_changes")
+    @patch("ccg.cli.check_is_git_repo")
+    @patch("ccg.cli.show_repository_info")
+    def test_edit_blocked_by_uncommitted_changes(
+        self, mock_show: Mock, mock_check: Mock, mock_has_changes: Mock, capsys
+    ) -> None:
+        """Should block edit operation when there are uncommitted changes."""
+        from ccg.cli import handle_commit_operation
+
+        mock_check.return_value = True
+        mock_has_changes.return_value = True  # Uncommitted changes exist
+
+        result = handle_commit_operation("edit")
+
+        assert result == 1
+        captured = capsys.readouterr()
+        assert "Cannot proceed: You have uncommitted changes" in captured.out
+        assert "Please commit or stash your changes" in captured.out
+
+    @patch("ccg.cli.check_has_changes")
+    @patch("ccg.cli.check_is_git_repo")
+    @patch("ccg.cli.show_repository_info")
+    def test_delete_blocked_by_uncommitted_changes(
+        self, mock_show: Mock, mock_check: Mock, mock_has_changes: Mock, capsys
+    ) -> None:
+        """Should block delete operation when there are uncommitted changes."""
+        from ccg.cli import handle_commit_operation
+
+        mock_check.return_value = True
+        mock_has_changes.return_value = True  # Uncommitted changes exist
+
+        result = handle_commit_operation("delete")
+
+        assert result == 1
+        captured = capsys.readouterr()
+        assert "Cannot proceed: You have uncommitted changes" in captured.out
+        assert "Please commit or stash your changes" in captured.out
 
 
 class TestEditSpecificCommit:
@@ -1920,10 +1981,16 @@ class TestHandleCommitOperationNoCommits:
 
     @patch("ccg.cli.get_commit_count_input", return_value=5)
     @patch("ccg.cli.get_recent_commits", return_value=[])
+    @patch("ccg.cli.check_has_changes", return_value=False)
     @patch("ccg.cli.check_is_git_repo", return_value=True)
     @patch("ccg.cli.show_repository_info")
     def test_edit_no_commits_found(
-        self, mock_show_info: Mock, mock_is_repo: Mock, mock_get_commits: Mock, mock_count: Mock
+        self,
+        mock_show_info: Mock,
+        mock_is_repo: Mock,
+        mock_has_changes: Mock,
+        mock_get_commits: Mock,
+        mock_count: Mock,
     ) -> None:
         """Should return 1 when no commits are found for editing."""
         from ccg.cli import handle_edit
@@ -2486,3 +2553,134 @@ class TestMainFunction:
         result = main()
 
         assert result == 1
+
+
+class TestHandleDeleteRebaseDetection:
+    """Test handle_delete rebase-in-progress detection."""
+
+    @patch("ccg.cli.handle_commit_operation", return_value=0)
+    @patch("ccg.cli.confirm_user_action")
+    @patch("ccg.cli.run_git_command")
+    @patch("ccg.cli.Path")
+    def test_rebase_already_in_progress_user_cleans_up(
+        self, mock_path: Mock, mock_run_git: Mock, mock_confirm: Mock, mock_operation: Mock
+    ) -> None:
+        """Should detect existing rebase, clean up if user confirms, and continue with delete."""
+        from ccg.cli import handle_delete
+
+        # Mock Path to simulate rebase-merge directory exists
+        mock_git_dir = Mock()
+        mock_rebase_merge = Mock()
+        mock_rebase_merge.exists.return_value = True
+        mock_rebase_apply = Mock()
+        mock_rebase_apply.exists.return_value = False
+
+        mock_git_dir.__truediv__ = Mock(
+            side_effect=lambda x: mock_rebase_merge if x == "rebase-merge" else mock_rebase_apply
+        )
+        mock_path.return_value = mock_git_dir
+
+        mock_confirm.return_value = True  # User wants to clean up
+        mock_run_git.return_value = (True, "")  # Cleanup succeeds
+
+        result = handle_delete()
+
+        # Should return 0 (success) and proceed to commit list after cleanup
+        assert result == 0
+        # Check that confirm was called
+        mock_confirm.assert_called_once()
+        # Check that rebase --abort was called
+        mock_run_git.assert_called_once_with(["git", "rebase", "--abort"], "", "")
+        # Check that handle_commit_operation was called to continue with delete
+        mock_operation.assert_called_once_with("delete")
+
+    @patch("ccg.cli.confirm_user_action")
+    @patch("ccg.cli.run_git_command")
+    @patch("ccg.cli.Path")
+    def test_rebase_already_in_progress_user_declines(
+        self, mock_path: Mock, mock_run_git: Mock, mock_confirm: Mock
+    ) -> None:
+        """Should detect existing rebase before showing commits and exit if user declines cleanup."""
+        from ccg.cli import handle_delete
+
+        # Mock Path to simulate rebase-merge directory exists
+        mock_git_dir = Mock()
+        mock_rebase_merge = Mock()
+        mock_rebase_merge.exists.return_value = True
+        mock_rebase_apply = Mock()
+        mock_rebase_apply.exists.return_value = False
+
+        mock_git_dir.__truediv__ = Mock(
+            side_effect=lambda x: mock_rebase_merge if x == "rebase-merge" else mock_rebase_apply
+        )
+        mock_path.return_value = mock_git_dir
+
+        mock_confirm.return_value = False  # User declines cleanup
+
+        result = handle_delete()
+
+        # Should return 1 (error) and not proceed to commit list
+        assert result == 1
+        # Check that confirm was called
+        mock_confirm.assert_called_once()
+        # Check that rebase --abort was NOT called
+        mock_run_git.assert_not_called()
+
+    @patch("ccg.cli.confirm_user_action")
+    @patch("ccg.cli.run_git_command")
+    @patch("ccg.cli.Path")
+    def test_rebase_cleanup_fails(
+        self, mock_path: Mock, mock_run_git: Mock, mock_confirm: Mock
+    ) -> None:
+        """Should return error if rebase cleanup fails."""
+        from ccg.cli import handle_delete
+
+        # Mock Path to simulate rebase-merge directory exists
+        mock_git_dir = Mock()
+        mock_rebase_merge = Mock()
+        mock_rebase_merge.exists.return_value = True
+        mock_rebase_apply = Mock()
+        mock_rebase_apply.exists.return_value = False
+
+        mock_git_dir.__truediv__ = Mock(
+            side_effect=lambda x: mock_rebase_merge if x == "rebase-merge" else mock_rebase_apply
+        )
+        mock_path.return_value = mock_git_dir
+
+        mock_confirm.return_value = True  # User wants to clean up
+        mock_run_git.return_value = (False, "Error")  # Cleanup fails
+
+        result = handle_delete()
+
+        # Should return 1 (error) when cleanup fails
+        assert result == 1
+        # Check that confirm was called
+        mock_confirm.assert_called_once()
+        # Check that rebase --abort was called
+        mock_run_git.assert_called_once_with(["git", "rebase", "--abort"], "", "")
+
+    @patch("ccg.cli.handle_commit_operation", return_value=0)
+    @patch("ccg.cli.Path")
+    def test_no_rebase_in_progress_proceeds_normally(
+        self, mock_path: Mock, mock_operation: Mock
+    ) -> None:
+        """Should proceed to commit list when no rebase is in progress."""
+        from ccg.cli import handle_delete
+
+        # Mock Path to simulate NO rebase directories exist
+        mock_git_dir = Mock()
+        mock_rebase_merge = Mock()
+        mock_rebase_merge.exists.return_value = False
+        mock_rebase_apply = Mock()
+        mock_rebase_apply.exists.return_value = False
+
+        mock_git_dir.__truediv__ = Mock(
+            side_effect=lambda x: mock_rebase_merge if x == "rebase-merge" else mock_rebase_apply
+        )
+        mock_path.return_value = mock_git_dir
+
+        result = handle_delete()
+
+        # Should proceed normally and call handle_commit_operation
+        assert result == 0
+        mock_operation.assert_called_once_with("delete")

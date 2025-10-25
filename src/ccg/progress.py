@@ -1,5 +1,7 @@
 """Progress indicators for long-running operations."""
 
+import logging
+import logging.handlers
 import sys
 import threading
 import time
@@ -11,7 +13,12 @@ from ccg.utils import RESET, YELLOW
 
 
 class ProgressSpinner:
-    """Show animated spinner during long operations."""
+    """Show animated spinner during long operations.
+
+    Note:
+        Spinner is automatically disabled in verbose mode to avoid
+        conflicts with debug logging output.
+    """
 
     def __init__(self, message: str = "Processing") -> None:
         """Initialize progress spinner.
@@ -24,6 +31,7 @@ class ProgressSpinner:
         self.thread: Optional[threading.Thread] = None
         self._frames = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"]
         self._frame_delay = 0.1  # 100ms per frame
+        self._verbose_mode = self._is_verbose_mode()
 
     def __enter__(self) -> "ProgressSpinner":
         """Context manager entry - start spinner."""
@@ -45,8 +53,29 @@ class ProgressSpinner:
         """
         self.stop()
 
+    def _is_verbose_mode(self) -> bool:
+        """Check if verbose mode is enabled by inspecting logger handlers.
+
+        Returns:
+            True if verbose mode is active (console handler present), False otherwise
+        """
+        logger = logging.getLogger("ccg")
+        # Check if there's a StreamHandler (console) attached
+        return any(
+            isinstance(handler, logging.StreamHandler)
+            and not isinstance(handler, logging.handlers.RotatingFileHandler)
+            for handler in logger.handlers
+        )
+
     def start(self) -> None:
-        """Start spinner animation in background thread."""
+        """Start spinner animation in background thread.
+
+        Note:
+            Does nothing if verbose mode is active to avoid conflicts with debug logs.
+        """
+        if self._verbose_mode:
+            return  # Skip spinner in verbose mode
+
         self.stop_event.clear()
         self.thread = threading.Thread(target=self._spin, daemon=True)
         self.thread.start()
@@ -59,6 +88,9 @@ class ProgressSpinner:
             race conditions where the animation thread could write to stdout
             after the clear operation.
         """
+        if self._verbose_mode:
+            return  # Nothing to stop in verbose mode
+
         # 1. Signal the thread to stop
         self.stop_event.set()
 

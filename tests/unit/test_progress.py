@@ -348,3 +348,98 @@ class TestProgressSpinnerRaceConditions:
 
         # Verify thread is dead when we return from stop()
         assert not spinner.thread.is_alive(), "Thread still alive after stop()"
+
+
+class TestProgressSpinnerVerboseMode:
+    """Tests for spinner behavior in verbose mode."""
+
+    def test_spinner_disabled_in_verbose_mode(self):
+        """Test that spinner is disabled when verbose logging is active."""
+        from pathlib import Path
+
+        # Setup logging in verbose mode to create console handler
+        from ccg.logging import setup_logging
+
+        with patch("ccg.logging.Path.home") as mock_home:
+            mock_home.return_value = Path("/tmp")
+            setup_logging(verbose=True)
+
+        # Create spinner - should detect verbose mode
+        spinner = ProgressSpinner("Testing")
+
+        # Spinner should be in verbose mode
+        assert spinner._verbose_mode is True
+
+        # Start should be no-op
+        spinner.start()
+        assert spinner.thread is None, "Thread should not be created in verbose mode"
+
+        # Stop should be no-op
+        spinner.stop()  # Should not raise exception
+
+        # Clean up logger
+        import logging
+
+        logger = logging.getLogger("ccg")
+        logger.handlers.clear()
+
+    def test_spinner_enabled_in_non_verbose_mode(self):
+        """Test that spinner is enabled when verbose logging is not active."""
+        from pathlib import Path
+
+        # Setup logging in non-verbose mode (no console handler)
+        from ccg.logging import setup_logging
+
+        with patch("ccg.logging.Path.home") as mock_home:
+            mock_home.return_value = Path("/tmp")
+            setup_logging(verbose=False)
+
+        # Create spinner - should not detect verbose mode
+        spinner = ProgressSpinner("Testing")
+
+        # Spinner should not be in verbose mode
+        assert spinner._verbose_mode is False
+
+        # Start should create thread
+        spinner.start()
+        time.sleep(0.1)
+        assert spinner.thread is not None, "Thread should be created in non-verbose mode"
+        assert spinner.thread.is_alive(), "Thread should be running"
+
+        # Clean up
+        spinner.stop()
+
+        # Clean up logger
+        import logging
+
+        logger = logging.getLogger("ccg")
+        logger.handlers.clear()
+
+    @patch("sys.stdout.write")
+    @patch("sys.stdout.flush")
+    def test_spinner_no_output_in_verbose_mode(self, mock_flush, mock_write):
+        """Test that spinner produces no output in verbose mode."""
+        from pathlib import Path
+
+        # Setup verbose mode
+        from ccg.logging import setup_logging
+
+        with patch("ccg.logging.Path.home") as mock_home:
+            mock_home.return_value = Path("/tmp")
+            setup_logging(verbose=True)
+
+        spinner = ProgressSpinner("Testing")
+
+        # Use context manager
+        with spinner:
+            time.sleep(0.2)
+
+        # Should not have written anything to stdout
+        mock_write.assert_not_called()
+        mock_flush.assert_not_called()
+
+        # Clean up logger
+        import logging
+
+        logger = logging.getLogger("ccg")
+        logger.handlers.clear()
