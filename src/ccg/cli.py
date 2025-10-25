@@ -7,6 +7,7 @@ import sys
 import traceback
 from argparse import Action
 from functools import wraps
+from pathlib import Path
 from typing import TYPE_CHECKING, Any, Callable, List, Optional, Tuple, TypeVar, cast
 
 if TYPE_CHECKING:
@@ -39,6 +40,7 @@ from ccg.git import (
     is_path_in_repository,
     pull_from_remote,
     push_tag,
+    run_git_command,
 )
 from ccg.utils import (
     INPUT_LIMITS,
@@ -391,6 +393,18 @@ def handle_commit_operation(operation_type: str) -> int:
     """
     print_section(f"{operation_type.capitalize()} Commit")
 
+    # Check for uncommitted changes before allowing edit/delete operations
+    if check_has_changes():
+        print()
+        print_error("Cannot proceed: You have uncommitted changes.")
+        print()
+        print_info("Please commit or stash your changes before editing or deleting commits:")
+        print_info("  • To commit: Run 'ccg' to create a new commit")
+        print_info("  • To stash: Run 'git stash' to temporarily save changes")
+        print_info("  • To discard: Run 'git reset --hard' (WARNING: destroys changes)")
+        print()
+        return 1
+
     count: Optional[int] = get_commit_count_input()
     commits: List[Tuple[str, str, str, str, str]] = get_recent_commits(count)
     if not commits:
@@ -436,6 +450,37 @@ def handle_delete() -> int:
     Note:
         Supports deleting latest commit (reset) and older commits (rebase)
     """
+    # Check if there's already a rebase in progress BEFORE showing commit list
+    git_dir = Path(".git")
+    rebase_merge_dir = git_dir / "rebase-merge"
+    rebase_apply_dir = git_dir / "rebase-apply"
+
+    if rebase_merge_dir.exists() or rebase_apply_dir.exists():
+        print_error("There is already a rebase in progress from a previous operation.")
+        print_info("You have two options:")
+        print_info("  1. Clean up the old rebase state and continue with delete")
+        print_info("  2. Manually complete the rebase: git rebase (--continue | --abort | --skip)")
+        print()
+
+        should_cleanup = confirm_user_action(
+            "Do you want to clean up the old rebase and continue? (y/n)",
+            success_message=None,
+            cancel_message=None,
+            default_yes=True,
+        )
+
+        if should_cleanup:
+            print_process("Cleaning up old rebase state...")
+            success, _ = run_git_command(["git", "rebase", "--abort"], "", "")
+            if not success:
+                print_error("Failed to clean up rebase state.")
+                return 1
+            print_success("Old rebase state cleaned. Continuing with delete operation...")
+            # Continue with delete operation after cleanup
+        else:
+            print_info("Please manually resolve the rebase state.")
+            return 1
+
     return handle_commit_operation("delete")
 
 

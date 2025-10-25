@@ -1,6 +1,7 @@
 """Logging configuration for CCG."""
 
 import logging
+import sys
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
 
@@ -12,10 +13,10 @@ def setup_logging(verbose: bool = False) -> None:
 
     Creates a rotating log file in ~/.ccg/ccg.log with the following behavior:
     - File logs: Always DEBUG level, rotates at 10MB, keeps 5 backups
-    - Console logs: INFO level by default, DEBUG if verbose=True
+    - Console logs: Disabled by default, DEBUG level if verbose=True
 
     Args:
-        verbose: If True, enable DEBUG console output. Otherwise only WARNING+
+        verbose: If True, enable DEBUG console output to stderr. Otherwise no console output
 
     Example:
         >>> setup_logging(verbose=True)
@@ -57,8 +58,9 @@ def setup_logging(verbose: bool = False) -> None:
     logger.addHandler(file_handler)
 
     # Console handler (only if verbose)
+    # Use stderr to avoid conflicts with spinner animations on stdout
     if verbose:
-        console_handler = logging.StreamHandler()
+        console_handler = logging.StreamHandler(sys.stderr)
         console_handler.setFormatter(formatter)
         console_handler.setLevel(logging.DEBUG)
         logger.addHandler(console_handler)

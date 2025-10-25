@@ -19,12 +19,14 @@ from ccg.platform_utils import (
 )
 from ccg.progress import ProgressSpinner
 from ccg.utils import (
+    confirm_user_action,
     print_error,
     print_info,
     print_process,
     print_section,
     print_success,
     print_warning,
+    read_input,
 )
 
 logger = logging.getLogger("ccg.git")
@@ -300,8 +302,8 @@ def git_commit(commit_message: str) -> bool:
     with ProgressSpinner("Creating commit"):
         success, _ = run_git_command(
             ["git", "commit", "-m", commit_message],
-            "Error during 'git commit'",
-            None,  # Don't print success message inside spinner
+            "",
+            None,
         )
 
     if success:
@@ -310,6 +312,7 @@ def git_commit(commit_message: str) -> bool:
         invalidate_repository_cache()
     else:
         logger.error("Commit creation failed")
+        print_error("Error during 'git commit'")
 
     return success
 
@@ -418,14 +421,16 @@ def git_push(set_upstream: bool = False, force: bool = False) -> bool:
         with ProgressSpinner(f"Pushing to {remote_name}/{branch_name}"):
             success, _ = run_git_command(
                 command,
-                f"Error setting upstream and pushing to '{remote_name}/{branch_name}'",
-                None,  # Don't print success message inside spinner
+                "",
+                "",
             )
 
         if success:
             print_success(
                 f"Branch '{branch_name}' created on remote and changes pushed successfully!"
             )
+        else:
+            print_error(f"Error setting upstream and pushing to '{remote_name}/{branch_name}'")
 
         return success
     elif force:
@@ -434,12 +439,12 @@ def git_push(set_upstream: bool = False, force: bool = False) -> bool:
 
         print_process(message)
         with ProgressSpinner(f"Force pushing to {remote_name}/{branch_name}"):
-            success, _ = run_git_command(
-                ["git", "push", "--force"], "Error during force push", None
-            )
+            success, _ = run_git_command(["git", "push", "--force"], "", "")
 
         if success:
             print_success(success_msg)
+        else:
+            print_error("Error during force push")
 
         return success
     else:
@@ -447,17 +452,17 @@ def git_push(set_upstream: bool = False, force: bool = False) -> bool:
         with ProgressSpinner(f"Pushing to {remote_name}/{branch_name}"):
             success, error_output = run_git_command(
                 ["git", "push"],
-                "Error during 'git push'",
-                None,
+                "",
+                "",
                 show_output=True,
             )
 
         if success:
             print_section("Remote Push")
             print_success("Changes pushed successfully!")
-
-        if not success and error_output:
-            if handle_upstream_error(branch_name, remote_name, error_output):
+        else:
+            print_error("Error during 'git push'")
+            if error_output and handle_upstream_error(branch_name, remote_name, error_output):
                 return git_push(set_upstream=True)
             return False
 
@@ -519,11 +524,12 @@ def push_tag(tag_name: str) -> bool:
     if not remote_name:
         return False
 
-    success, _ = run_git_command(
-        ["git", "push", remote_name, tag_name],
-        f"Error pushing tag '{tag_name}' to remote",
-        f"Tag '{tag_name}' pushed to remote successfully",
-    )
+    with ProgressSpinner(f"Pushing tag '{tag_name}' to {remote_name}"):
+        success, _ = run_git_command(
+            ["git", "push", remote_name, tag_name],
+            f"Error pushing tag '{tag_name}' to remote",
+            f"Tag '{tag_name}' pushed to remote successfully",
+        )
 
     return success
 
@@ -543,27 +549,28 @@ def discard_local_changes() -> bool:
     """
     print_process("Discarding all local changes...")
 
-    success, _ = run_git_command(
-        ["git", "reset", "HEAD"],
-        "Error while unstaging changes",
-    )
+    with ProgressSpinner("Resetting working directory"):
+        success, _ = run_git_command(
+            ["git", "reset", "HEAD"],
+            "Error while unstaging changes",
+        )
 
-    if not success:
-        return False
+        if not success:
+            return False
 
-    success, _ = run_git_command(
-        ["git", "checkout", "."],
-        "Error while discarding local changes",
-    )
+        success, _ = run_git_command(
+            ["git", "checkout", "."],
+            "Error while discarding local changes",
+        )
 
-    if not success:
-        return False
+        if not success:
+            return False
 
-    success, _ = run_git_command(
-        ["git", "clean", "-fd"],
-        "Error while removing untracked files",
-        "Removed all untracked files and directories",
-    )
+        success, _ = run_git_command(
+            ["git", "clean", "-fd"],
+            "Error while removing untracked files",
+            "Removed all untracked files and directories",
+        )
 
     return success
 
@@ -595,9 +602,15 @@ def pull_from_remote() -> bool:
     with ProgressSpinner(f"Pulling from {remote_name}/{branch_name}"):
         success, _ = run_git_command(
             ["git", "pull", remote_name, branch_name],
-            f"Error pulling from {remote_name}/{branch_name}",
+            "",
+            "",
             timeout=GIT_CONFIG.PULL_TIMEOUT,
         )
+
+    if success:
+        print_success(f"Successfully pulled from {remote_name}/{branch_name}")
+    else:
+        print_error(f"Error pulling from {remote_name}/{branch_name}")
 
     return success
 
@@ -805,13 +818,14 @@ def check_remote_access() -> bool:
         env["GIT_ASKPASS"] = "true"
 
         # nosec B603: Command is array with hardcoded git command - safe
-        result = subprocess.run(  # nosec B603
-            ["git", "ls-remote", "--exit-code", remote_name],
-            capture_output=True,
-            text=True,
-            timeout=GIT_CONFIG.REMOTE_CHECK_TIMEOUT,
-            env=env,
-        )
+        with ProgressSpinner(f"Checking access to {remote_name}"):
+            result = subprocess.run(  # nosec B603
+                ["git", "ls-remote", "--exit-code", remote_name],
+                capture_output=True,
+                text=True,
+                timeout=GIT_CONFIG.REMOTE_CHECK_TIMEOUT,
+                env=env,
+            )
 
         if result.returncode == 0:
             print_success(f"Remote repository '{remote_name}' is accessible")
@@ -945,12 +959,13 @@ def branch_exists_on_remote(branch_name: str) -> bool:
     if not remote_name:
         return False
 
-    success, output = run_git_command(
-        ["git", "ls-remote", "--heads", remote_name, branch_name],
-        f"Failed to check if branch '{branch_name}' exists on remote",
-        show_output=True,
-        timeout=GIT_CONFIG.TAG_PUSH_TIMEOUT,
-    )
+    with ProgressSpinner(f"Checking if branch '{branch_name}' exists on {remote_name}"):
+        success, output = run_git_command(
+            ["git", "ls-remote", "--heads", remote_name, branch_name],
+            f"Failed to check if branch '{branch_name}' exists on remote",
+            show_output=True,
+            timeout=GIT_CONFIG.TAG_PUSH_TIMEOUT,
+        )
 
     return success and bool(output)
 
@@ -1284,13 +1299,130 @@ def delete_old_commit_with_rebase(commit_hash: str) -> bool:
                 )
                 return True
             else:
-                print_error(
-                    f"Failed to delete commit '{commit_hash[:GIT_CONFIG.SHORT_HASH_LENGTH]}'"
+                # Check if it's a conflict that needs manual resolution
+                stderr_lower = result.stderr.lower() if result.stderr else ""
+                is_conflict = any(
+                    keyword in stderr_lower
+                    for keyword in ["conflict", "could not apply", "merge conflict"]
                 )
-                if result.stderr:
-                    print(f"\033[91m{result.stderr}\033[0m")
-                run_git_command(["git", "rebase", "--abort"], "", "")
-                return False
+
+                if is_conflict:
+                    # Show clear conflict message
+                    print()
+                    print_error("=" * 70)
+                    print_error(
+                        f"CONFLICT: Cannot delete commit '{commit_hash[:GIT_CONFIG.SHORT_HASH_LENGTH]}' cleanly"
+                    )
+                    print_error("=" * 70)
+                    print()
+
+                    # Show conflicting files using git status
+                    status_cmd = subprocess.run(  # nosec B603
+                        ["git", "status", "--short"],
+                        capture_output=True,
+                        text=True,
+                    )
+
+                    if status_cmd.returncode == 0 and status_cmd.stdout:
+                        conflict_lines = [
+                            line
+                            for line in status_cmd.stdout.split("\n")
+                            if any(marker in line for marker in ["UU ", "AA ", "DD ", "DU ", "UD "])
+                        ]
+
+                        if conflict_lines:
+                            print_error("Conflicting files:")
+                            for line in conflict_lines:
+                                print_error(f"  {line}")
+                            print()
+
+                    # Clear instructions
+                    print_info("TO RESOLVE:")
+                    print_info("  1. Open the conflicting files in your editor")
+                    print_info("  2. Look for <<<<<<< markers and resolve conflicts")
+                    print_info("  3. Save the files")
+                    print_info("  4. Stage resolved files: git add <file>")
+                    print_info("  5. Press Enter here to continue")
+                    print()
+                    print_warning("OR type 'abort' to cancel the deletion")
+                    print()
+
+                    # Wait for user
+                    user_choice = (
+                        read_input("Press Enter when conflicts are resolved (or 'abort'): ")
+                        .strip()
+                        .lower()
+                    )
+
+                    if user_choice == "abort":
+                        run_git_command(["git", "rebase", "--abort"], "", "")
+                        print_info("Deletion cancelled. Repository restored.")
+                        return False
+
+                    # Try to continue
+                    print_process("Continuing rebase...")
+                    cont_cmd = subprocess.run(  # nosec B603
+                        ["git", "rebase", "--continue"],
+                        capture_output=True,
+                        text=True,
+                        timeout=GIT_CONFIG.REBASE_TIMEOUT,
+                    )
+
+                    if cont_cmd.returncode == 0:
+                        print_success(
+                            f"Commit '{commit_hash[:GIT_CONFIG.SHORT_HASH_LENGTH]}' deleted successfully!"
+                        )
+                        return True
+
+                    # Still has problems
+                    print()
+                    print_error("Failed to continue. Details:")
+                    print()
+                    if cont_cmd.stdout:
+                        for line in cont_cmd.stdout.strip().split("\n"):
+                            if line.strip():
+                                print_error(line)
+                    if cont_cmd.stderr:
+                        for line in cont_cmd.stderr.strip().split("\n"):
+                            if line.strip():
+                                print_error(line)
+                    print()
+
+                    # Check for remaining conflicts
+                    recheck_status = subprocess.run(  # nosec B603
+                        ["git", "status", "--short"],
+                        capture_output=True,
+                        text=True,
+                    )
+
+                    if recheck_status.returncode == 0:
+                        remaining = [
+                            line
+                            for line in recheck_status.stdout.split("\n")
+                            if any(marker in line for marker in ["UU ", "AA ", "DD "])
+                        ]
+
+                        if remaining:
+                            print_error("Still has conflicts in:")
+                            for line in remaining:
+                                print_error(f"  {line}")
+                            print()
+                            print_error("All conflicts must be resolved before continuing.")
+
+                    print_error("Aborting rebase and restoring repository...")
+                    run_git_command(["git", "rebase", "--abort"], "", "")
+                    print_info("Repository restored to original state.")
+                    return False
+                else:
+                    print_error(
+                        f"Failed to delete commit '{commit_hash[:GIT_CONFIG.SHORT_HASH_LENGTH]}'"
+                    )
+                    if result.stderr:
+                        print_error("Error details:")
+                        for line in result.stderr.strip().split("\n"):
+                            print(line)
+                    run_git_command(["git", "rebase", "--abort"], "", "")
+                    return False
 
         except subprocess.TimeoutExpired:
             print_error("Rebase operation timed out")

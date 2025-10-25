@@ -199,16 +199,24 @@ def _update_module_exports() -> None:
         RealTimeCounterValidator = _get_cached("RealTimeCounterValidator")
 
 
-RED = "\033[91m"
-GREEN = "\033[92m"
-YELLOW = "\033[93m"
-BLUE = "\033[94m"
-MAGENTA = "\033[95m"
-CYAN = "\033[96m"
-WHITE = "\033[97m"
-BOLD = "\033[1m"
-UNDERLINE = "\033[4m"
-RESET = "\033[0m"
+from ccg.config import BLUE, BOLD, COMMIT_TYPES, CYAN, GREEN
+from ccg.config import INPUT_LIMITS as INPUT_LIMITS_CONFIG
+from ccg.config import MAGENTA, RED, RESET, UNDERLINE, WHITE, YELLOW
+
+# Re-export color codes for backward compatibility
+__all__ = [
+    "BOLD",
+    "BLUE",
+    "COMMIT_TYPES",
+    "CYAN",
+    "GREEN",
+    "MAGENTA",
+    "RED",
+    "RESET",
+    "UNDERLINE",
+    "WHITE",
+    "YELLOW",
+]
 
 CHECK = "✓"
 CROSS = "✗"
@@ -216,8 +224,6 @@ ARROW = "→"
 WARNING = "⚠"
 INFO = "ℹ"
 BULLET = "•"
-
-from ccg.config import INPUT_LIMITS as INPUT_LIMITS_CONFIG
 
 INPUT_LIMITS: Dict[str, int] = {
     "type": INPUT_LIMITS_CONFIG.TYPE,
@@ -241,86 +247,6 @@ _SEMVER_PATTERN = re.compile(
     r"(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?"
     r"(?:\+(?P<buildmetadata>[0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$"
 )
-
-COMMIT_TYPES: List[Dict[str, str]] = [
-    {
-        "type": "feat",
-        "emoji_code": ":sparkles:",
-        "description": "A new feature for the user or a particular enhancement",
-        "color": GREEN,
-        "emoji": "✨",
-    },
-    {
-        "type": "fix",
-        "emoji_code": ":bug:",
-        "description": "A bug fix for the user or a particular issue",
-        "color": RED,
-        "emoji": "🐛",
-    },
-    {
-        "type": "chore",
-        "emoji_code": ":wrench:",
-        "description": "Routine tasks, maintenance, or minor updates",
-        "color": BLUE,
-        "emoji": "🔧",
-    },
-    {
-        "type": "refactor",
-        "emoji_code": ":hammer:",
-        "description": "Code refactoring without changing its behavior",
-        "color": MAGENTA,
-        "emoji": "🔨",
-    },
-    {
-        "type": "style",
-        "emoji_code": ":lipstick:",
-        "description": "Code style changes, formatting, or cosmetic improvements",
-        "color": CYAN,
-        "emoji": "💄",
-    },
-    {
-        "type": "docs",
-        "emoji_code": ":books:",
-        "description": "Documentation-related changes",
-        "color": WHITE,
-        "emoji": "📚",
-    },
-    {
-        "type": "test",
-        "emoji_code": ":test_tube:",
-        "description": "Adding or modifying tests",
-        "color": YELLOW,
-        "emoji": "🧪",
-    },
-    {
-        "type": "build",
-        "emoji_code": ":package:",
-        "description": "Changes that affect the build system or external dependencies",
-        "color": YELLOW,
-        "emoji": "📦",
-    },
-    {
-        "type": "revert",
-        "emoji_code": ":rewind:",
-        "description": "Reverts a previous commit",
-        "color": RED,
-        "emoji": "⏪",
-    },
-    {
-        "type": "ci",
-        "emoji_code": ":construction_worker:",
-        "description": "Changes to CI configuration files and scripts",
-        "color": BLUE,
-        "emoji": "👷",
-    },
-    {
-        "type": "perf",
-        "emoji_code": ":zap:",
-        "description": "A code change that improves performance",
-        "color": GREEN,
-        "emoji": "⚡",
-    },
-]
 
 
 def get_emoji_for_type(commit_type: str, use_code: bool = False) -> str:
