@@ -1066,17 +1066,23 @@ class TestHandleGitWorkflow:
 class TestValidateRepositoryState:
     """Tests for validate_repository_state function."""
 
+    @patch("ccg.cli.check_has_changes")
     @patch("ccg.cli.check_remote_access")
     @patch("ccg.cli.show_repository_info")
     @patch("ccg.cli.check_is_git_repo")
     def test_validation_success(
-        self, mock_check_repo: Mock, mock_show_info: Mock, mock_remote: Mock
+        self,
+        mock_check_repo: Mock,
+        mock_show_info: Mock,
+        mock_remote: Mock,
+        mock_has_changes: Mock,
     ) -> None:
         """Should return True when all validations pass."""
         from ccg.cli import validate_repository_state
 
         mock_check_repo.return_value = True
         mock_remote.return_value = True
+        mock_has_changes.return_value = True
 
         result = validate_repository_state(commit_only=True)
 
