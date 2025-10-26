@@ -198,6 +198,94 @@ ccg --reset
 
 ---
 
+### `--analyze`: Analyze Commit Compliance
+
+Analyze all commits in the repository to check Conventional Commits compliance:
+
+```bash
+ccg --analyze
+```
+
+**Features**:
+
+- Analyzes all commits or recent N commits
+- Validates each commit against Conventional Commits format
+- Color-coded output (green ✓ for valid, red ✗ for invalid)
+- Shows numbered list for easy identification
+- Provides summary statistics (total, valid %, invalid %)
+- Suggests using `--edit` to fix invalid commits
+
+**Workflow**:
+
+1. Choose how many commits to analyze (or all)
+2. View analysis results with validation status
+3. Review summary statistics
+4. Use suggested commit numbers with `--edit` to fix issues
+
+**Example Output**:
+
+```
+┌──────────────────────┐
+│ Analyze Commits      │
+└──────────────────────┘
+
+How many commits to analyze? (Enter for all, or a number): 5
+
+Analyzing last 5 commits...
+
+┌──────────────────────┐
+│ Analysis Results     │
+└──────────────────────┘
+
+1. ✓ [a3c6dbc] feat(ux): improvements in usability and responsiveness
+2. ✓ [97c2e52] chore: removing unnecessary comments
+3. ✗ [2812ed3] update bump version workflow
+4. ✓ [fa6a6df] feat: adding improvements
+5. ✓ [a5309a3] chore: add CODE_IMPROVEMENTS.md
+┌──────────────────────┐
+│ Summary              │
+└──────────────────────┘
+
+Total commits analyzed: 5
+Valid commits: 4 (80%)
+Invalid commits: 1 (20%)
+How to fix invalid commits:
+  • Use 'ccg --edit' to edit a specific commit message
+  • You can select commits by number or hash prefix
+  • Example: 'ccg --edit' then select the commit to fix
+⚠ Tip: Run 'ccg --edit' now to fix invalid commits
+```
+
+**Use Cases**:
+
+- Audit repository for Conventional Commits compliance
+- Identify commits that need fixing before a release
+- Validate commit history after team adoption of conventional commits
+- Check compliance across all branches
+- Find and fix non-compliant commits systematically
+
+**Combined with Other Flags**:
+
+```bash
+# Analyze commits in different repository
+ccg --path /path/to/repo --analyze
+
+# Analyze with verbose logging
+ccg --verbose --analyze
+ccg -v --analyze
+```
+
+!!! tip "Best Practice"
+
+    Use `--analyze` regularly to:
+
+    - Maintain consistent commit history
+    - Enforce team conventions
+    - Prepare for releases with clean commit messages
+    - Identify which commits need editing (use the number shown)
+
+---
+
 ### `--path`: Work with Specific Paths
 
 Specify files, directories, or repository paths:

@@ -75,6 +75,9 @@ ccg --tag
 # Reset local and pull from remote
 ccg --reset
 
+# Analyze commit messages for Conventional Commits compliance
+ccg --analyze
+
 # Stage specific files or directories
 ccg --path src/ tests/
 
@@ -170,6 +173,42 @@ Confirm this commit message? (Y/n): y
 └──────────────────────┘
 Do you want to push these changes? (Y/n): y
 ✓ Changes pushed successfully!
+```
+
+### Analyze commits example
+
+```
+$ ccg --analyze
+
+┌──────────────────────┐
+│ Analyze Commits      │
+└──────────────────────┘
+
+How many commits to analyze? (Enter for all, or a number): 5
+
+Analyzing last 5 commits...
+
+┌──────────────────────┐
+│ Analysis Results     │
+└──────────────────────┘
+
+1. ✓ [a3c6dbc] feat(ux): improvements in usability and responsiveness
+2. ✓ [97c2e52] chore: removing unnecessary comments
+3. ✗ [2812ed3] update bump version workflow
+4. ✓ [fa6a6df] feat: adding improvements
+5. ✓ [a5309a3] chore: add CODE_IMPROVEMENTS.md
+┌──────────────────────┐
+│ Summary              │
+└──────────────────────┘
+
+Total commits analyzed: 5
+Valid commits: 4 (80%)
+Invalid commits: 1 (20%)
+How to fix invalid commits:
+  • Use 'ccg --edit' to edit a specific commit message
+  • You can select commits by number or hash prefix
+  • Example: 'ccg --edit' then select the commit to fix
+⚠ Tip: Run 'ccg --edit' now to fix invalid commits
 ```
 
 ## Commit Types

@@ -302,6 +302,32 @@ Result: `:sparkles: feat(api)!: redesign authentication flow`
 
 ---
 
+### Verify Commit Compliance
+
+Check if your commits follow the Conventional Commits standard:
+
+```bash
+ccg --analyze
+# Choose how many commits to check (or press Enter for all)
+# View color-coded results (✓ valid, ✗ invalid)
+# Use the commit numbers shown to fix invalid commits with --edit
+```
+
+**Example Output**:
+
+```
+1. ✓ [a3c6dbc] feat(ux): improvements in usability
+2. ✗ [2812ed3] update bump version workflow
+3. ✓ [fa6a6df] feat: adding improvements
+```
+
+!!! tip "When to Use"
+    - After adopting Conventional Commits in an existing project
+    - Before creating a release
+    - To identify which commits need fixing
+
+---
+
 ## Important Notes
 
 !!! warning "Git Repository Required"
