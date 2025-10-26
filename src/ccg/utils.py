@@ -308,10 +308,10 @@ def strip_color_codes(text: str) -> str:
         UNDERLINE,
         RESET,
     ]
-    result = text
+    stripped_text = text
     for code in color_codes:
-        result = result.replace(code, "")
-    return result
+        stripped_text = stripped_text.replace(code, "")
+    return stripped_text
 
 
 def print_section(text: str) -> None:
@@ -406,7 +406,9 @@ def print_warning(message: str) -> None:
     print_message(MAGENTA, WARNING, message)
 
 
-def validate_confirmation_input(user_input: str, default_yes: bool = True) -> Optional[bool]:
+def validate_confirmation_input(
+    user_input: str, default_yes: bool = True
+) -> Optional[bool]:
     """Validate user input for yes/no confirmation prompts.
 
     Checks if user input is a valid confirmation response (y/yes/n/no) and
@@ -520,12 +522,16 @@ def create_counter_toolbar(
                 return [("", " " * padding), (color, counter_text)]
             from ccg.config import UI_CONFIG as UI_CFG
 
-            default_max = UI_CFG.CONFIRMATION_MAX_LENGTH if is_confirmation else max_length
+            default_max = (
+                UI_CFG.CONFIRMATION_MAX_LENGTH if is_confirmation else max_length
+            )
             return [("class:toolbar.text", f"0/{default_max}")]
         except Exception:
             from ccg.config import UI_CONFIG as UI_CFG
 
-            default_max = UI_CFG.CONFIRMATION_MAX_LENGTH if is_confirmation else max_length
+            default_max = (
+                UI_CFG.CONFIRMATION_MAX_LENGTH if is_confirmation else max_length
+            )
             return [("class:toolbar.text", f"0/{default_max}")]
 
     return get_toolbar_tokens
@@ -750,7 +756,9 @@ def read_input_fallback(
                 user_input = default_text
 
             if max_length and len(user_input) > max_length:
-                print_error(f"CHARACTER LIMIT EXCEEDED! ({len(user_input)}/{max_length})")
+                print_error(
+                    f"CHARACTER LIMIT EXCEEDED! ({len(user_input)}/{max_length})"
+                )
                 print_warning("Please shorten your input and try again.")
                 continue
 
@@ -812,7 +820,9 @@ def confirm_user_action(
             clean_prompt = strip_color_codes(prompt_display)
 
             validator = ConfirmationValidator_cls(default_yes) if ConfirmationValidator_cls else None  # type: ignore[operator]
-            key_bindings = create_input_key_bindings(is_confirmation=True, default_yes=default_yes)
+            key_bindings = create_input_key_bindings(
+                is_confirmation=True, default_yes=default_yes
+            )
             from ccg.config import UI_CONFIG as UI_CFG
 
             bottom_toolbar = create_counter_toolbar(
@@ -895,7 +905,9 @@ def confirm_user_action(
         return False
 
 
-def _read_multiline_fallback(default_text: Optional[str], max_length: Optional[int]) -> str:
+def _read_multiline_fallback(
+    default_text: Optional[str], max_length: Optional[int]
+) -> str:
     """Fallback multiline input when prompt_toolkit is unavailable.
 
     Args:
@@ -908,7 +920,9 @@ def _read_multiline_fallback(default_text: Optional[str], max_length: Optional[i
     if default_text:
         print(f"{BLUE}Enter new content (or press Enter twice to finish):{RESET}")
     else:
-        print(f"{BLUE}Enter additional details (or press Enter twice to finish):{RESET}")
+        print(
+            f"{BLUE}Enter additional details (or press Enter twice to finish):{RESET}"
+        )
     if max_length:
         print(f"{BLUE}Maximum {max_length} characters allowed{RESET}")
 
@@ -944,8 +958,12 @@ def _read_multiline_fallback(default_text: Optional[str], max_length: Optional[i
                     print(" " * UI_CFG.LINE_CLEAR_LENGTH, end="\r")
 
                 if len(line) > max_line_length:
-                    print_error(f"Line too long! Maximum {max_line_length} characters per line.")
-                    print_warning(f"Current line has {len(line)} characters. Please shorten it.")
+                    print_error(
+                        f"Line too long! Maximum {max_line_length} characters per line."
+                    )
+                    print_warning(
+                        f"Current line has {len(line)} characters. Please shorten it."
+                    )
                     continue
 
                 potential_total = total_chars + len(line) + (1 if lines else 0)
@@ -956,7 +974,9 @@ def _read_multiline_fallback(default_text: Optional[str], max_length: Optional[i
                         print_error(f"Character limit of {max_length} reached.")
                         break
                     else:
-                        print_error(f"Line too long! Only {remaining} characters remaining total.")
+                        print_error(
+                            f"Line too long! Only {remaining} characters remaining total."
+                        )
                         print_warning("Try a shorter line or finish your input.")
                         continue
 
@@ -1017,7 +1037,11 @@ def read_multiline_input(
     """
     from ccg import utils as utils_module
 
-    if _ensure_prompt_toolkit() and utils_module.PROMPT_TOOLKIT_AVAILABLE and max_length:
+    if (
+        _ensure_prompt_toolkit()
+        and utils_module.PROMPT_TOOLKIT_AVAILABLE
+        and max_length
+    ):
         try:
             prompt_multiline = utils_module.prompt
             prompt_style = utils_module.PROMPT_STYLE

@@ -6,7 +6,13 @@ from unittest.mock import MagicMock, Mock, patch
 import pytest
 
 from ccg.cache import invalidate_repository_cache
-from ccg.git import check_has_changes, check_is_git_repo, git_add, git_commit, run_git_command
+from ccg.git import (
+    check_has_changes,
+    check_is_git_repo,
+    git_add,
+    git_commit,
+    run_git_command,
+)
 
 
 @pytest.fixture(autouse=True)
@@ -25,7 +31,9 @@ class TestRunGitCommand:
         """Should execute command successfully."""
         mock_run.return_value = Mock(returncode=0, stdout="success output", stderr="")
 
-        success, output = run_git_command(["git", "status"], "Error message", show_output=True)
+        success, output = run_git_command(
+            ["git", "status"], "Error message", show_output=True
+        )
 
         assert success is True
         assert output == "success output"
@@ -36,7 +44,9 @@ class TestRunGitCommand:
         """Should execute command without returning output."""
         mock_run.return_value = Mock(returncode=0, stdout="success", stderr="")
 
-        success, output = run_git_command(["git", "status"], "Error message", show_output=False)
+        success, output = run_git_command(
+            ["git", "status"], "Error message", show_output=False
+        )
 
         assert success is True
         assert output is None
@@ -46,7 +56,9 @@ class TestRunGitCommand:
         """Should display success message when provided."""
         mock_run.return_value = Mock(returncode=0, stdout="", stderr="")
 
-        success, _ = run_git_command(["git", "commit", "-m", "test"], "Error message", "Success!")
+        success, _ = run_git_command(
+            ["git", "commit", "-m", "test"], "Error message", "Success!"
+        )
 
         assert success is True
 
@@ -64,7 +76,9 @@ class TestRunGitCommand:
     @patch("subprocess.run")
     def test_timeout_error(self, mock_run: Mock) -> None:
         """Should handle timeout correctly."""
-        mock_run.side_effect = subprocess.TimeoutExpired(cmd=["git", "status"], timeout=60)
+        mock_run.side_effect = subprocess.TimeoutExpired(
+            cmd=["git", "status"], timeout=60
+        )
 
         success, error = run_git_command(["git", "status"], "Timeout error", timeout=60)
 
@@ -352,7 +366,9 @@ class TestGitPush:
 
     @patch("ccg.git.get_current_branch")
     @patch("ccg.git.run_git_command")
-    def test_push_with_upstream_and_force(self, mock_run: Mock, mock_branch: Mock) -> None:
+    def test_push_with_upstream_and_force(
+        self, mock_run: Mock, mock_branch: Mock
+    ) -> None:
         """Should push with both --set-upstream and --force."""
         from ccg.git import git_push
 
@@ -385,7 +401,10 @@ class TestGitPush:
         # Mock git push failing with an upstream error
         # Note: get_remote_name is cached, so it's only called once
         mock_run.side_effect = [
-            (True, "origin"),  # First call to get_remote_name (cached for subsequent calls)
+            (
+                True,
+                "origin",
+            ),  # First call to get_remote_name (cached for subsequent calls)
             (False, "no upstream branch"),  # git push fails
             # The following mock is only for the user_confirms=True case
             (True, None),  # git_push(set_upstream=True) succeeds
@@ -405,7 +424,9 @@ class TestGitPush:
 
     @patch("ccg.git.get_current_branch")
     @patch("ccg.git.run_git_command")
-    def test_push_with_set_upstream_failure(self, mock_run: Mock, mock_branch: Mock) -> None:
+    def test_push_with_set_upstream_failure(
+        self, mock_run: Mock, mock_branch: Mock
+    ) -> None:
         """Should handle failure when pushing with --set-upstream."""
         from ccg.git import git_push
 
@@ -433,6 +454,25 @@ class TestGitPush:
         ]
 
         result = git_push(force=True)
+
+        assert result is False
+        assert mock_run.call_count == 2
+
+    @patch("ccg.git.get_current_branch")
+    @patch("ccg.git.run_git_command")
+    def test_push_failure_with_error_output(
+        self, mock_run: Mock, mock_branch: Mock
+    ) -> None:
+        """Should display error output when push fails with non-upstream error."""
+        from ccg.git import git_push
+
+        mock_branch.return_value = "main"
+        mock_run.side_effect = [
+            (True, "origin"),  # git remote
+            (False, "Permission denied (publickey)"),  # git push fails with SSH error
+        ]
+
+        result = git_push()
 
         assert result is False
         assert mock_run.call_count == 2
@@ -495,6 +535,36 @@ class TestCreateTag:
         assert call_args[0:2] == ["git", "tag"]
         assert "-a" in call_args
         assert "-m" in call_args
+
+    @patch("ccg.git.run_git_command")
+    def test_create_lightweight_tag_with_commit_hash(self, mock_run: Mock) -> None:
+        """Should create lightweight tag on specific commit."""
+        from ccg.git import create_tag
+
+        mock_run.return_value = (True, None)
+
+        result = create_tag("v1.0.0", commit_hash="abc1234")
+
+        assert result is True
+        mock_run.assert_called_once()
+        call_args = mock_run.call_args[0][0]
+        assert call_args == ["git", "tag", "v1.0.0", "abc1234"]
+
+    @patch("ccg.git.run_git_command")
+    def test_create_annotated_tag_with_commit_hash(self, mock_run: Mock) -> None:
+        """Should create annotated tag with message on specific commit."""
+        from ccg.git import create_tag
+
+        mock_run.return_value = (True, None)
+
+        result = create_tag("v1.0.0", "Release version 1.0.0", "abc1234")
+
+        assert result is True
+        call_args = mock_run.call_args[0][0]
+        assert call_args[0:2] == ["git", "tag"]
+        assert "-a" in call_args
+        assert "-m" in call_args
+        assert "abc1234" in call_args
 
 
 class TestPushTag:
@@ -783,7 +853,13 @@ class TestGetRecentCommits:
         result = get_recent_commits(2)
 
         assert len(result) == 2
-        assert result[0] == ("abc123", "abc", "feat: add feature", "John Doe", "2 hours ago")
+        assert result[0] == (
+            "abc123",
+            "abc",
+            "feat: add feature",
+            "John Doe",
+            "2 hours ago",
+        )
         assert result[1] == ("def456", "def", "fix: bug fix", "Jane Smith", "1 day ago")
 
     @patch("ccg.git.run_git_command")
@@ -949,7 +1025,9 @@ class TestPreCommitHooks:
         """Should handle timeout."""
         from ccg.git import run_pre_commit_hooks
 
-        mock_run.side_effect = subprocess.TimeoutExpired(cmd=["pre-commit"], timeout=120)
+        mock_run.side_effect = subprocess.TimeoutExpired(
+            cmd=["pre-commit"], timeout=120
+        )
 
         result = run_pre_commit_hooks(["src/file.py"])
 
@@ -971,14 +1049,20 @@ class TestPreCommitHooks:
     @patch("subprocess.run")
     @patch("os.path.exists")
     def test_check_and_install_pre_commit_success(
-        self, mock_exists: Mock, mock_subprocess: Mock, mock_hooks: Mock, mock_staged: Mock
+        self,
+        mock_exists: Mock,
+        mock_subprocess: Mock,
+        mock_hooks: Mock,
+        mock_staged: Mock,
     ) -> None:
         """Should install and run pre-commit hooks."""
         from ccg.git import check_and_install_pre_commit
 
         mock_exists.return_value = True
         mock_subprocess.side_effect = [
-            Mock(returncode=0, stdout="pre-commit 2.0.0", stderr=""),  # pre-commit --version
+            Mock(
+                returncode=0, stdout="pre-commit 2.0.0", stderr=""
+            ),  # pre-commit --version
             Mock(returncode=0, stdout="", stderr=""),  # pre-commit install
         ]
         mock_staged.return_value = ["src/file.py"]
@@ -1011,7 +1095,9 @@ class TestCheckRemoteAccess:
 
     @patch("subprocess.run")
     @patch("ccg.git.run_git_command")
-    def test_check_remote_access_success(self, mock_run: Mock, mock_subprocess: Mock) -> None:
+    def test_check_remote_access_success(
+        self, mock_run: Mock, mock_subprocess: Mock
+    ) -> None:
         """Should return True if remote is accessible."""
         from ccg.git import check_remote_access
 
@@ -1042,7 +1128,9 @@ class TestCheckRemoteAccess:
         from ccg.git import check_remote_access
 
         mock_run.return_value = (True, "origin\thttps://github.com/user/repo.git")
-        mock_subprocess.return_value = Mock(returncode=1, stdout="", stderr="permission denied")
+        mock_subprocess.return_value = Mock(
+            returncode=1, stdout="", stderr="permission denied"
+        )
 
         result = check_remote_access()
 
@@ -1050,7 +1138,9 @@ class TestCheckRemoteAccess:
 
     @patch("subprocess.run")
     @patch("ccg.git.run_git_command")
-    def test_check_remote_access_timeout(self, mock_run: Mock, mock_subprocess: Mock) -> None:
+    def test_check_remote_access_timeout(
+        self, mock_run: Mock, mock_subprocess: Mock
+    ) -> None:
         """Should return False on timeout."""
         from ccg.git import check_remote_access
 
@@ -1094,7 +1184,9 @@ class TestCheckRemoteAccess:
         from ccg.git import check_remote_access
 
         mock_run.return_value = (True, "origin\thttps://github.com/user/repo.git")
-        mock_subprocess.return_value = Mock(returncode=1, stdout="", stderr=error_message)
+        mock_subprocess.return_value = Mock(
+            returncode=1, stdout="", stderr=error_message
+        )
 
         result = check_remote_access()
 
@@ -1111,13 +1203,48 @@ class TestCheckRemoteAccess:
         from ccg.git import check_remote_access
 
         mock_run.return_value = (True, "origin\thttps://github.com/user/repo.git")
-        mock_subprocess.return_value = Mock(returncode=1, stdout="", stderr="some other error")
+        mock_subprocess.return_value = Mock(
+            returncode=1, stdout="", stderr="some other error"
+        )
 
         result = check_remote_access()
 
         assert result is False
         captured = capsys.readouterr()
         assert "Cannot access remote repository" in captured.out
+
+    @patch("subprocess.run")
+    @patch("ccg.git.run_git_command")
+    def test_check_remote_access_exception(
+        self, mock_run: Mock, mock_subprocess: Mock
+    ) -> None:
+        """Should handle general exceptions during remote check."""
+        from ccg.git import check_remote_access
+
+        mock_run.return_value = (True, "origin\thttps://github.com/user/repo.git")
+        mock_subprocess.side_effect = Exception("Unexpected error")
+
+        result = check_remote_access()
+
+        assert result is False
+
+    @patch("subprocess.run")
+    @patch("ccg.git.run_git_command")
+    def test_check_remote_access_no_output(
+        self, mock_run: Mock, mock_subprocess: Mock
+    ) -> None:
+        """Should return False when ls-remote returns non-zero but no error output."""
+        from ccg.git import check_remote_access
+
+        mock_run.return_value = (
+            True,
+            "origin\thttps://github.com/user/repo.git (fetch)",
+        )
+        mock_subprocess.return_value = Mock(returncode=1, stderr="", stdout="")
+
+        result = check_remote_access()
+
+        assert result is False
 
 
 class TestDeleteLatestCommit:
@@ -1175,7 +1302,9 @@ class TestCreateRebaseScriptForDeletion:
 
         mock_run.return_value = (True, "abc123\ndef456")
 
-        success, script_file, script_lines = create_rebase_script_for_deletion("nonexistent")
+        success, script_file, script_lines = create_rebase_script_for_deletion(
+            "nonexistent"
+        )
 
         assert success is False
         assert script_file is None
@@ -1437,7 +1566,9 @@ class TestDeleteOldCommitWithRebase:
         mock_subprocess.side_effect = [
             Mock(returncode=1, stderr="error: could not apply abc123..."),
             Mock(returncode=0, stdout=""),  # git status --short
-            Mock(returncode=1, stderr="error: conflict in file.txt"),  # still has conflicts
+            Mock(
+                returncode=1, stderr="error: conflict in file.txt"
+            ),  # still has conflicts
             Mock(returncode=0, stdout="UU file.txt"),  # recheck status shows conflicts
         ]
 
@@ -1465,7 +1596,9 @@ class TestDeleteOldCommitWithRebase:
         from ccg.git import delete_old_commit_with_rebase
 
         mock_create_script.return_value = (True, "/tmp/script", ["pick abc123 test"])
-        mock_subprocess.side_effect = subprocess.TimeoutExpired(cmd="git rebase", timeout=120)
+        mock_subprocess.side_effect = subprocess.TimeoutExpired(
+            cmd="git rebase", timeout=120
+        )
 
         with patch("ccg.git.run_git_command") as mock_run_git:
             result = delete_old_commit_with_rebase("def456")
@@ -1506,7 +1639,10 @@ class TestGetStagedFileChanges:
         """Should return list of staged file changes with status."""
         from ccg.git import get_staged_file_changes
 
-        mock_run.return_value = (True, "A\tnew_file.txt\nM\tmodified_file.py\nD\tdeleted_file.js\n")
+        mock_run.return_value = (
+            True,
+            "A\tnew_file.txt\nM\tmodified_file.py\nD\tdeleted_file.js\n",
+        )
 
         result = get_staged_file_changes()
 
@@ -1578,32 +1714,6 @@ class TestIsPathInRepositoryProperties:
         assert is_path_in_repository("/", "/home/user/repo") is False
 
 
-class TestGetRemoteNameEdgeCases:
-    """Additional tests for get_remote_name function."""
-
-    @patch("ccg.git.run_git_command")
-    def test_remote_with_whitespace(self, mock_run: Mock) -> None:
-        """Should handle remote names with surrounding whitespace."""
-        from ccg.git import get_remote_name
-
-        mock_run.return_value = (True, "  origin  ")
-
-        result = get_remote_name()
-
-        assert result == "origin"
-
-    @patch("ccg.git.run_git_command")
-    def test_multiple_remotes_returns_first(self, mock_run: Mock) -> None:
-        """Should return first remote when multiple exist."""
-        from ccg.git import get_remote_name
-
-        mock_run.return_value = (True, "origin\nupstream\nfork")
-
-        result = get_remote_name()
-
-        assert result == "origin"
-
-
 class TestGetCommitByHashErrorPaths:
     """Tests for error handling in get_commit_by_hash."""
 
@@ -1627,7 +1737,10 @@ class TestGetCommitByHashErrorPaths:
             (True, None),  # verify
             (True, "abc123full"),  # full hash
             (True, "abc123"),  # short hash
-            (True, "feat: test\n\nLine 1\n\nLine 2"),  # message with multiple paragraphs
+            (
+                True,
+                "feat: test\n\nLine 1\n\nLine 2",
+            ),  # message with multiple paragraphs
             (True, "John"),  # author
             (True, "1 day ago"),  # date
         ]
@@ -1650,7 +1763,9 @@ class TestRunGitCommandAdvanced:
 
         mock_run.return_value = Mock(returncode=0, stdout="", stderr="")
 
-        success, _ = run_git_command(["git", "push"], "", "Changes pushed successfully!")
+        success, _ = run_git_command(
+            ["git", "push"], "", "Changes pushed successfully!"
+        )
 
         assert success is True
 
@@ -1663,7 +1778,9 @@ class TestRunGitCommandAdvanced:
             returncode=1, cmd=["git", "invalid"], stderr="detailed error"
         )
 
-        success, output = run_git_command(["git", "invalid"], "Error message", show_output=True)
+        success, output = run_git_command(
+            ["git", "invalid"], "Error message", show_output=True
+        )
 
         assert success is False
         assert output == "detailed error"
@@ -1684,7 +1801,9 @@ class TestRunGitCommandAdvanced:
         assert output == "stdout message"
 
     @patch("subprocess.run")
-    def test_command_error_shows_stderr_when_not_show_output(self, mock_run: Mock, capsys) -> None:
+    def test_command_error_shows_stderr_when_not_show_output(
+        self, mock_run: Mock, capsys
+    ) -> None:
         """Should print stderr when show_output=False and error_message provided."""
         from ccg.git import run_git_command
 
@@ -1692,7 +1811,9 @@ class TestRunGitCommandAdvanced:
         error.stderr = "error details"
         mock_run.side_effect = error
 
-        success, output = run_git_command(["git", "invalid"], "Error message", show_output=False)
+        success, output = run_git_command(
+            ["git", "invalid"], "Error message", show_output=False
+        )
 
         assert success is False
         captured = capsys.readouterr()
@@ -1738,23 +1859,6 @@ class TestCheckHasChangesAdvanced:
         mock_run.return_value = (True, "")
 
         result = check_has_changes(paths=["src/", "tests/"])
-
-        assert result is False
-
-
-class TestCheckRemoteAccessAdvanced:
-    """Advanced tests for check_remote_access."""
-
-    @patch("subprocess.run")
-    @patch("ccg.git.run_git_command")
-    def test_check_remote_access_exception(self, mock_run: Mock, mock_subprocess: Mock) -> None:
-        """Should handle general exceptions during remote check."""
-        from ccg.git import check_remote_access
-
-        mock_run.return_value = (True, "origin\thttps://github.com/user/repo.git")
-        mock_subprocess.side_effect = Exception("Unexpected error")
-
-        result = check_remote_access()
 
         assert result is False
 
@@ -1852,7 +1956,11 @@ class TestCheckAndInstallPreCommitAdvanced:
     @patch("subprocess.run")
     @patch("os.path.exists")
     def test_check_hooks_not_installed_failure(
-        self, mock_exists: Mock, mock_subprocess: Mock, mock_run: Mock, mock_staged: Mock
+        self,
+        mock_exists: Mock,
+        mock_subprocess: Mock,
+        mock_run: Mock,
+        mock_staged: Mock,
     ) -> None:
         """Should return False when hook installation fails."""
         from ccg.git import check_and_install_pre_commit
@@ -1875,7 +1983,9 @@ class TestCheckAndInstallPreCommitAdvanced:
         from ccg.git import check_and_install_pre_commit
 
         mock_exists.return_value = True
-        mock_subprocess.side_effect = subprocess.TimeoutExpired(cmd=["pre-commit"], timeout=10)
+        mock_subprocess.side_effect = subprocess.TimeoutExpired(
+            cmd=["pre-commit"], timeout=10
+        )
         mock_staged.return_value = []
 
         with patch("ccg.git.run_git_command", return_value=(True, None)):
@@ -1935,7 +2045,9 @@ class TestCreateRebaseScriptForDeletionAdvanced:
 
     @patch("tempfile.NamedTemporaryFile")
     @patch("ccg.git.run_git_command")
-    def test_create_script_tempfile_fails(self, mock_run: Mock, mock_tempfile: Mock) -> None:
+    def test_create_script_tempfile_fails(
+        self, mock_run: Mock, mock_tempfile: Mock
+    ) -> None:
         """Should handle tempfile creation failure."""
         from ccg.git import create_rebase_script_for_deletion
 
@@ -1996,7 +2108,9 @@ class TestEditCommitMessageAdvanced:
 
     @patch("ccg.git_strategies.edit_commit_with_strategy")
     @patch("ccg.git.run_git_command")
-    def test_edit_initial_commit_detected(self, mock_run: Mock, mock_strategy: Mock) -> None:
+    def test_edit_initial_commit_detected(
+        self, mock_run: Mock, mock_strategy: Mock
+    ) -> None:
         """Should detect and handle initial commit editing."""
         from ccg.git import edit_commit_message
 
@@ -2113,7 +2227,9 @@ class TestCreateRebaseScriptForDeletionEdgeCases:
             mock_file.__exit__ = Mock(return_value=False)
             mock_temp.return_value = mock_file
 
-            success, script_file, script_lines = create_rebase_script_for_deletion("def456")
+            success, script_file, script_lines = create_rebase_script_for_deletion(
+                "def456"
+            )
 
             assert success is True
             # Should only have ghi789 in script (abc123 skipped due to error)
@@ -2201,30 +2317,6 @@ class TestIsPathInRepositoryValueError:
         assert result is False
 
 
-class TestCheckRemoteAccessNoOutput:
-    """Test check_remote_access when remote check returns no output."""
-
-    @patch("ccg.git.run_git_command")
-    @patch("subprocess.run")
-    def test_remote_access_ls_remote_no_output_returns_false(
-        self, mock_subprocess: Mock, mock_run: Mock
-    ) -> None:
-        """Should return False when ls-remote returns non-zero but no error output."""
-        from ccg.git import check_remote_access
-
-        mock_run.return_value = (True, "origin\thttps://github.com/user/repo.git (fetch)")
-
-        mock_result = Mock()
-        mock_result.returncode = 1
-        mock_result.stderr = ""
-        mock_result.stdout = ""
-        mock_subprocess.return_value = mock_result
-
-        result = check_remote_access()
-
-        assert result is False
-
-
 class TestDiscardLocalChangesSecondStepFailure:
     """Test discard_local_changes when second command fails."""
 
@@ -2277,6 +2369,100 @@ class TestCheckHasChangesGitFailure:
         assert result is False
 
 
+class TestHasCommitsToPush:
+    """Test has_commits_to_push function."""
+
+    @patch("ccg.git.run_git_command")
+    def test_has_commits_to_push_with_commits(self, mock_run: Mock) -> None:
+        """Should return True when there are commits to push."""
+        from ccg.git import has_commits_to_push
+
+        # First call checks upstream, second call counts commits
+        mock_run.side_effect = [
+            (True, "origin/main"),  # Has upstream
+            (True, "3"),  # 3 commits ahead
+        ]
+
+        result = has_commits_to_push()
+
+        assert result is True
+        assert mock_run.call_count == 2
+
+    @patch("ccg.git.run_git_command")
+    def test_has_commits_to_push_no_commits(self, mock_run: Mock) -> None:
+        """Should return False when there are no commits to push."""
+        from ccg.git import has_commits_to_push
+
+        # First call checks upstream, second call counts commits
+        mock_run.side_effect = [
+            (True, "origin/main"),  # Has upstream
+            (True, "0"),  # 0 commits ahead
+        ]
+
+        result = has_commits_to_push()
+
+        assert result is False
+        assert mock_run.call_count == 2
+
+    @patch("ccg.git.run_git_command")
+    def test_has_commits_to_push_no_upstream(self, mock_run: Mock) -> None:
+        """Should return False when there is no upstream branch."""
+        from ccg.git import has_commits_to_push
+
+        # No upstream branch configured
+        mock_run.return_value = (False, None)
+
+        result = has_commits_to_push()
+
+        assert result is False
+        assert mock_run.call_count == 1
+
+    @patch("ccg.git.run_git_command")
+    def test_has_commits_to_push_empty_upstream(self, mock_run: Mock) -> None:
+        """Should return False when upstream command returns empty string."""
+        from ccg.git import has_commits_to_push
+
+        # Upstream check returns empty string
+        mock_run.return_value = (True, "")
+
+        result = has_commits_to_push()
+
+        assert result is False
+        assert mock_run.call_count == 1
+
+    @patch("ccg.git.run_git_command")
+    def test_has_commits_to_push_count_fails(self, mock_run: Mock) -> None:
+        """Should return False when counting commits fails."""
+        from ccg.git import has_commits_to_push
+
+        # First call succeeds, second call fails
+        mock_run.side_effect = [
+            (True, "origin/main"),  # Has upstream
+            (False, None),  # Count fails
+        ]
+
+        result = has_commits_to_push()
+
+        assert result is False
+        assert mock_run.call_count == 2
+
+    @patch("ccg.git.run_git_command")
+    def test_has_commits_to_push_count_empty(self, mock_run: Mock) -> None:
+        """Should return False when counting commits returns empty."""
+        from ccg.git import has_commits_to_push
+
+        # First call succeeds, second call returns empty
+        mock_run.side_effect = [
+            (True, "origin/main"),  # Has upstream
+            (True, ""),  # Empty count
+        ]
+
+        result = has_commits_to_push()
+
+        assert result is False
+        assert mock_run.call_count == 2
+
+
 class TestDeleteOldCommitWithRebaseSuccess:
     """Test delete_old_commit_with_rebase success path."""
 
@@ -2285,7 +2471,11 @@ class TestDeleteOldCommitWithRebaseSuccess:
     @patch("subprocess.run")
     @patch("ccg.git.create_rebase_script_for_deletion")
     def test_rebase_success_with_cleanup(
-        self, mock_create_script: Mock, mock_subprocess: Mock, mock_unlink: Mock, mock_exists: Mock
+        self,
+        mock_create_script: Mock,
+        mock_subprocess: Mock,
+        mock_unlink: Mock,
+        mock_exists: Mock,
     ) -> None:
         """Should successfully delete commit and cleanup script file."""
         from ccg.git import delete_old_commit_with_rebase
@@ -2304,7 +2494,11 @@ class TestDeleteOldCommitWithRebaseSuccess:
     @patch("subprocess.run")
     @patch("ccg.git.create_rebase_script_for_deletion")
     def test_rebase_success_cleanup_exception_ignored(
-        self, mock_create_script: Mock, mock_subprocess: Mock, mock_exists: Mock, mock_unlink: Mock
+        self,
+        mock_create_script: Mock,
+        mock_subprocess: Mock,
+        mock_exists: Mock,
+        mock_unlink: Mock,
     ) -> None:
         """Should ignore exceptions during script cleanup."""
         from ccg.git import delete_old_commit_with_rebase

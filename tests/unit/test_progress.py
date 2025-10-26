@@ -403,7 +403,9 @@ class TestProgressSpinnerVerboseMode:
         # Start should create thread
         spinner.start()
         time.sleep(0.1)
-        assert spinner.thread is not None, "Thread should be created in non-verbose mode"
+        assert (
+            spinner.thread is not None
+        ), "Thread should be created in non-verbose mode"
         assert spinner.thread.is_alive(), "Thread should be running"
 
         # Clean up

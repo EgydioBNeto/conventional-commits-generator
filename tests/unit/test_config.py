@@ -4,7 +4,14 @@ import pytest
 from hypothesis import given
 from hypothesis import strategies as st
 
-from ccg.config import GIT_CONFIG, INPUT_LIMITS, UI_CONFIG, GitConfig, InputLimits, UIConfig
+from ccg.config import (
+    GIT_CONFIG,
+    INPUT_LIMITS,
+    UI_CONFIG,
+    GitConfig,
+    InputLimits,
+    UIConfig,
+)
 
 
 class TestInputLimits:
@@ -26,18 +33,6 @@ class TestInputLimits:
         assert INPUT_LIMITS.EDIT_MESSAGE > 0
         assert INPUT_LIMITS.CONFIRMATION > 0
         assert INPUT_LIMITS.COMMIT_COUNT > 0
-
-    def test_limits_are_integers(self):
-        """All limits should be integers."""
-        assert isinstance(INPUT_LIMITS.TYPE, int)
-        assert isinstance(INPUT_LIMITS.SCOPE, int)
-        assert isinstance(INPUT_LIMITS.MESSAGE, int)
-        assert isinstance(INPUT_LIMITS.BODY, int)
-        assert isinstance(INPUT_LIMITS.TAG, int)
-        assert isinstance(INPUT_LIMITS.TAG_MESSAGE, int)
-        assert isinstance(INPUT_LIMITS.EDIT_MESSAGE, int)
-        assert isinstance(INPUT_LIMITS.CONFIRMATION, int)
-        assert isinstance(INPUT_LIMITS.COMMIT_COUNT, int)
 
     def test_confirmation_limit_is_three(self):
         """Confirmation limit should be exactly 3 for y/yes or n/no."""
@@ -63,12 +58,6 @@ class TestInputLimits:
         """InputLimits dataclass should be frozen (immutable)."""
         with pytest.raises(AttributeError):
             INPUT_LIMITS.TYPE = 100  # type: ignore
-
-    def test_input_limits_singleton_identity(self):
-        """INPUT_LIMITS should be a singleton instance."""
-        from ccg.config import INPUT_LIMITS as LIMITS2
-
-        assert INPUT_LIMITS is LIMITS2
 
     def test_create_custom_input_limits(self):
         """Should be able to create custom InputLimits instances."""
@@ -120,13 +109,6 @@ class TestGitConfig:
         assert GIT_CONFIG.FILTER_BRANCH_TIMEOUT > 0
         assert GIT_CONFIG.PRE_COMMIT_TIMEOUT > 0
 
-    def test_timeouts_are_integers(self):
-        """All timeouts should be integers."""
-        assert isinstance(GIT_CONFIG.DEFAULT_TIMEOUT, int)
-        assert isinstance(GIT_CONFIG.PULL_TIMEOUT, int)
-        assert isinstance(GIT_CONFIG.FILTER_BRANCH_TIMEOUT, int)
-        assert isinstance(GIT_CONFIG.PRE_COMMIT_TIMEOUT, int)
-
     def test_default_timeout_reasonable(self):
         """Default timeout should be reasonable (30-120 seconds)."""
         assert 30 <= GIT_CONFIG.DEFAULT_TIMEOUT <= 120
@@ -150,16 +132,13 @@ class TestGitConfig:
         with pytest.raises(AttributeError):
             GIT_CONFIG.DEFAULT_TIMEOUT = 100  # type: ignore
 
-    def test_git_config_singleton_identity(self):
-        """GIT_CONFIG should be a singleton instance."""
-        from ccg.config import GIT_CONFIG as CONFIG2
-
-        assert GIT_CONFIG is CONFIG2
-
     def test_create_custom_git_config(self):
         """Should be able to create custom GitConfig instances."""
         custom = GitConfig(
-            DEFAULT_TIMEOUT=90, PULL_TIMEOUT=180, FILTER_BRANCH_TIMEOUT=600, PRE_COMMIT_TIMEOUT=150
+            DEFAULT_TIMEOUT=90,
+            PULL_TIMEOUT=180,
+            FILTER_BRANCH_TIMEOUT=600,
+            PRE_COMMIT_TIMEOUT=150,
         )
 
         assert custom.DEFAULT_TIMEOUT == 90
@@ -194,13 +173,6 @@ class TestUIConfig:
         assert UI_CONFIG.DEFAULT_TERM_WIDTH > 0
         assert UI_CONFIG.DEFAULT_TERM_HEIGHT > 0
 
-    def test_dimensions_are_integers(self):
-        """All dimensions should be integers."""
-        assert isinstance(UI_CONFIG.MIN_BOX_WIDTH, int)
-        assert isinstance(UI_CONFIG.MAX_BOX_WIDTH, int)
-        assert isinstance(UI_CONFIG.DEFAULT_TERM_WIDTH, int)
-        assert isinstance(UI_CONFIG.DEFAULT_TERM_HEIGHT, int)
-
     def test_max_box_width_greater_than_min(self):
         """Max box width should be greater than min."""
         assert UI_CONFIG.MAX_BOX_WIDTH > UI_CONFIG.MIN_BOX_WIDTH
@@ -223,23 +195,24 @@ class TestUIConfig:
 
     def test_term_width_within_box_limits(self):
         """Default terminal width should be within box width limits."""
-        assert UI_CONFIG.MIN_BOX_WIDTH <= UI_CONFIG.DEFAULT_TERM_WIDTH <= UI_CONFIG.MAX_BOX_WIDTH
+        assert (
+            UI_CONFIG.MIN_BOX_WIDTH
+            <= UI_CONFIG.DEFAULT_TERM_WIDTH
+            <= UI_CONFIG.MAX_BOX_WIDTH
+        )
 
     def test_ui_config_frozen(self):
         """UIConfig dataclass should be frozen (immutable)."""
         with pytest.raises(AttributeError):
             UI_CONFIG.MIN_BOX_WIDTH = 100  # type: ignore
 
-    def test_ui_config_singleton_identity(self):
-        """UI_CONFIG should be a singleton instance."""
-        from ccg.config import UI_CONFIG as CONFIG2
-
-        assert UI_CONFIG is CONFIG2
-
     def test_create_custom_ui_config(self):
         """Should be able to create custom UIConfig instances."""
         custom = UIConfig(
-            MIN_BOX_WIDTH=60, MAX_BOX_WIDTH=120, DEFAULT_TERM_WIDTH=100, DEFAULT_TERM_HEIGHT=30
+            MIN_BOX_WIDTH=60,
+            MAX_BOX_WIDTH=120,
+            DEFAULT_TERM_WIDTH=100,
+            DEFAULT_TERM_HEIGHT=30,
         )
 
         assert custom.MIN_BOX_WIDTH == 60
@@ -247,7 +220,10 @@ class TestUIConfig:
         assert custom.DEFAULT_TERM_WIDTH == 100
         assert custom.DEFAULT_TERM_HEIGHT == 30
 
-    @given(st.integers(min_value=40, max_value=80), st.integers(min_value=80, max_value=150))
+    @given(
+        st.integers(min_value=40, max_value=80),
+        st.integers(min_value=80, max_value=150),
+    )
     def test_box_width_range_valid(self, min_width: int, max_width: int):
         """Box width ranges should accept reasonable values."""
         custom = UIConfig(

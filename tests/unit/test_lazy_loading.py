@@ -169,7 +169,10 @@ class TestLazyLoadingWithMockedImport:
                     ),
                 },
             ),
-            patch("builtins.__import__", side_effect=lambda name, *args: sys.modules.get(name)),
+            patch(
+                "builtins.__import__",
+                side_effect=lambda name, *args: sys.modules.get(name),
+            ),
         ):
             result = ccg.utils._ensure_prompt_toolkit()
 
@@ -213,7 +216,9 @@ class TestFunctionsUseLazyLoading:
         ccg.utils._prompt_toolkit_cache = {}
 
         with (
-            patch.object(ccg.utils, "_ensure_prompt_toolkit", return_value=False) as mock_ensure,
+            patch.object(
+                ccg.utils, "_ensure_prompt_toolkit", return_value=False
+            ) as mock_ensure,
             patch("builtins.input", return_value="test"),
         ):
             result = ccg.utils.read_input("Test prompt")
@@ -231,7 +236,9 @@ class TestFunctionsUseLazyLoading:
         ccg.utils._prompt_toolkit_cache = {}
 
         with (
-            patch.object(ccg.utils, "_ensure_prompt_toolkit", return_value=False) as mock_ensure,
+            patch.object(
+                ccg.utils, "_ensure_prompt_toolkit", return_value=False
+            ) as mock_ensure,
             patch("builtins.input", return_value="y"),
         ):
             result = ccg.utils.confirm_user_action("Test confirmation (y/n)")
@@ -249,7 +256,9 @@ class TestFunctionsUseLazyLoading:
         ccg.utils._prompt_toolkit_cache = {}
 
         with (
-            patch.object(ccg.utils, "_ensure_prompt_toolkit", return_value=False) as mock_ensure,
+            patch.object(
+                ccg.utils, "_ensure_prompt_toolkit", return_value=False
+            ) as mock_ensure,
             patch("builtins.input", side_effect=["line1", "", ""]),
         ):
             result = ccg.utils.read_multiline_input(max_length=100)
@@ -266,7 +275,9 @@ class TestFunctionsUseLazyLoading:
         ccg.utils.prompt_toolkit_available = None
         ccg.utils._prompt_toolkit_cache = {}
 
-        with patch.object(ccg.utils, "_ensure_prompt_toolkit", return_value=False) as mock_ensure:
+        with patch.object(
+            ccg.utils, "_ensure_prompt_toolkit", return_value=False
+        ) as mock_ensure:
             result = ccg.utils.create_input_key_bindings()
 
             # Should have tried to load prompt_toolkit

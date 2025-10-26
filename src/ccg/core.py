@@ -199,7 +199,9 @@ def want_emoji() -> bool:
         False
     """
     print_section("Emoji")
-    print_info("GitHub-compatible emojis can make your commits more visual and expressive")
+    print_info(
+        "GitHub-compatible emojis can make your commits more visual and expressive"
+    )
     print_info("Examples: :sparkles: feat, :bug: fix, :books: docs")
 
     return confirm_user_action(
@@ -233,7 +235,9 @@ def get_commit_message() -> str:
     """
     print_section("Commit Message")
     print_info("Provide a clear, concise description of the change")
-    print_info("Examples: 'implement OAuth login', 'fix navigation bug', 'update documentation'")
+    print_info(
+        "Examples: 'implement OAuth login', 'fix navigation bug', 'update documentation'"
+    )
 
     while True:
         message: str = read_input(
@@ -267,7 +271,9 @@ def get_commit_body() -> Optional[str]:
         None
     """
     print_section("Commit Body")
-    print_info("Add implementation details, breaking changes, or issue references (optional)")
+    print_info(
+        "Add implementation details, breaking changes, or issue references (optional)"
+    )
     print_info(
         "Examples: 'Added Google OAuth integration', 'BREAKING: API endpoint changed', 'Fixes #123'"
     )
@@ -319,14 +325,16 @@ def convert_emoji_codes_to_real(text: str) -> str:
         commit_data["emoji_code"]: commit_data["emoji"] for commit_data in COMMIT_TYPES
     }
 
-    result: str = text
+    text_with_emojis: str = text
     for code, emoji in emoji_map.items():
-        result = result.replace(code, emoji)
-    return result
+        text_with_emojis = text_with_emojis.replace(code, emoji)
+    return text_with_emojis
 
 
 def confirm_commit(
-    commit_message_header: str, commit_body: Optional[str] = None, show_file_changes: bool = False
+    commit_message_header: str,
+    commit_body: Optional[str] = None,
+    show_file_changes: bool = False,
 ) -> bool:
     """Display commit preview and ask for confirmation.
 

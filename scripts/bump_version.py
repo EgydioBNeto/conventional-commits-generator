@@ -81,9 +81,13 @@ def format_changelog_section(version: str, categories: Dict[str, List[Dict]]) ->
 
                     for commit in unique_commits:
                         scope_text = (
-                            f"**{commit['scope'].strip('()')}**: " if commit["scope"] else ""
+                            f"**{commit['scope'].strip('()')}**: "
+                            if commit["scope"]
+                            else ""
                         )
-                        lines.append(f"- {scope_text}{commit['description']} ([{commit['hash']}])")
+                        lines.append(
+                            f"- {scope_text}{commit['description']} ([{commit['hash']}])"
+                        )
 
                         if commit["body"] and len(commit["body"]) > 10:
                             body_lines = commit["body"].split("\n")[:3]

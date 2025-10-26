@@ -16,6 +16,36 @@ from typing import Optional, Union
 logger = logging.getLogger("ccg.platform_utils")
 
 
+def ensure_ccg_directory() -> Optional[Path]:
+    """Ensure the CCG temporary directory exists in the user's home directory.
+
+    Creates ~/.ccg directory with appropriate permissions if it doesn't exist.
+    This directory is used for temporary files during git operations (commit
+    messages, rebase scripts, filter-branch scripts).
+
+    Returns:
+        Path to the CCG directory (~/.ccg) if successful, None on error
+
+    Note:
+        - Creates directory with default permissions (usually 0o755)
+        - Returns existing directory if already present
+        - Logs errors but doesn't raise exceptions
+
+    Example:
+        >>> ccg_dir = ensure_ccg_directory()
+        >>> if ccg_dir:
+        ...     temp_file = ccg_dir / "commit_message.tmp"
+    """
+    ccg_dir = Path.home() / ".ccg"
+    try:
+        ccg_dir.mkdir(parents=True, exist_ok=True)
+        logger.debug(f"CCG directory ready: {ccg_dir}")
+        return ccg_dir
+    except (OSError, PermissionError) as e:
+        logger.error(f"Failed to create CCG directory: {str(e)}")
+        return None
+
+
 def set_file_permissions_secure(file_path: Union[str, Path]) -> None:
     """Set restrictive permissions on a file in a cross-platform way.
 
@@ -206,17 +236,19 @@ def create_secure_temp_file(
             logger.error(f"Failed to create secure file: {e}")
             raise
     else:
-        old_umask: int = os.umask(0o077)
+        original_umask: int = os.umask(0o077)
 
         try:
             file_path.write_text(content, encoding="utf-8")
             os.chmod(file_path, 0o600)
-            logger.debug(f"Created secure file with Unix permissions (0o600): {file_path}")
+            logger.debug(
+                f"Created secure file with Unix permissions (0o600): {file_path}"
+            )
         except (IOError, OSError, PermissionError) as e:
             logger.error(f"Failed to create secure file: {e}")
             raise
         finally:
-            os.umask(old_umask)
+            os.umask(original_umask)
 
     return file_path
 
@@ -266,13 +298,15 @@ def create_executable_temp_file(
             file_path.write_text(content, encoding="utf-8")
             # Set Windows permissions (best effort)
             os.chmod(file_path, stat.S_IWRITE | stat.S_IREAD)
-            logger.debug(f"Created executable file with Windows permissions: {file_path}")
+            logger.debug(
+                f"Created executable file with Windows permissions: {file_path}"
+            )
         except (IOError, OSError, PermissionError) as e:
             logger.error(f"Failed to create executable file: {e}")
             raise
     else:
         # Unix/Linux/macOS: Set restrictive umask BEFORE creating file
-        old_umask: int = os.umask(0o077)  # Only owner can read/write
+        original_umask: int = os.umask(0o077)  # Only owner can read/write
 
         try:
             # File is created with secure permissions from the start
@@ -280,13 +314,15 @@ def create_executable_temp_file(
 
             # Add execute permission for owner (0o700 = rwx------)
             os.chmod(file_path, 0o700)
-            logger.debug(f"Created executable file with Unix permissions (0o700): {file_path}")
+            logger.debug(
+                f"Created executable file with Unix permissions (0o700): {file_path}"
+            )
         except (IOError, OSError, PermissionError) as e:
             logger.error(f"Failed to create executable file: {e}")
             raise
         finally:
             # Always restore original umask
-            os.umask(old_umask)
+            os.umask(original_umask)
 
     return file_path
 

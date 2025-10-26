@@ -282,7 +282,9 @@ class TestCacheIntegration:
 
     @patch("ccg.git.run_git_command")
     @patch("ccg.git.print_error")
-    def test_get_remote_name_caches_result(self, mock_print_error, mock_run_git) -> None:
+    def test_get_remote_name_caches_result(
+        self, mock_print_error, mock_run_git
+    ) -> None:
         """Should cache remote name and reuse it."""
         from ccg.git import get_remote_name
 
@@ -342,7 +344,9 @@ class TestCacheIntegration:
         assert cache._branch is None
 
     @patch("ccg.git.run_git_command")
-    def test_cache_invalidates_on_directory_change(self, mock_run_git, tmp_path) -> None:
+    def test_cache_invalidates_on_directory_change(
+        self, mock_run_git, tmp_path
+    ) -> None:
         """Should invalidate cache when changing directories."""
         from ccg.git import get_current_branch
 

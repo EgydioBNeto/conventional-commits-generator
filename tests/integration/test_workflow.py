@@ -168,7 +168,9 @@ class TestEditCommitWorkflow:
 
         try:
             # Get the first commit (oldest)
-            result = temp_git_repo_with_commits.run_git(["rev-list", "--max-parents=0", "HEAD"])
+            result = temp_git_repo_with_commits.run_git(
+                ["rev-list", "--max-parents=0", "HEAD"]
+            )
             first_commit_hash = result.stdout.strip()
 
             # Edit the old commit - just verify it succeeds

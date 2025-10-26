@@ -10,7 +10,11 @@ from unittest.mock import patch
 
 import pytest
 
-from ccg.platform_utils import get_copy_command_for_rebase, get_filter_branch_command
+from ccg.platform_utils import (
+    ensure_ccg_directory,
+    get_copy_command_for_rebase,
+    get_filter_branch_command,
+)
 
 
 class TestCommandInjectionPrevention:
@@ -56,7 +60,9 @@ class TestCommandInjectionPrevention:
 
             # Command should use shlex.quote() which wraps in single quotes
             # The entire malicious path should be inside quotes
-            assert "'" in command, f"{description} not prevented (no quotes found): {command}"
+            assert (
+                "'" in command
+            ), f"{description} not prevented (no quotes found): {command}"
 
             # Verify the malicious path is wrapped in quotes
             # Extract the part after "cp "
@@ -80,7 +86,9 @@ class TestCommandInjectionPrevention:
             ("/tmp/file$(whoami)", "Command substitution"),
         ],
     )
-    def test_filter_branch_command_prevents_injection(self, malicious_path, description):
+    def test_filter_branch_command_prevents_injection(
+        self, malicious_path, description
+    ):
         """Test that malicious paths are properly escaped in filter-branch command.
 
         This validates that get_filter_branch_command() properly escapes
@@ -93,14 +101,17 @@ class TestCommandInjectionPrevention:
         command = get_filter_branch_command(script_path)
 
         # The command should contain quotes to protect against injection
-        assert "'" in command, f"{description} not prevented (no quotes found): {command}"
+        assert (
+            "'" in command
+        ), f"{description} not prevented (no quotes found): {command}"
 
         # The script path should be quoted
         # Check if the malicious part appears within quotes in the command
         # Note: Path() may normalize trailing slashes, so check the core malicious part
         core_malicious = malicious_path.rstrip("/")
         in_single_quotes = (
-            f"'{core_malicious}" in command and "'" in command[command.index(core_malicious) :]
+            f"'{core_malicious}" in command
+            and "'" in command[command.index(core_malicious) :]
         )
         in_double_quotes = f'"{core_malicious}"' in command
         assert (
@@ -175,7 +186,9 @@ class TestCommandInjectionPrevention:
 
             # Simulate a malicious path with quotes (in the Path object, not filesystem)
             # This tests the sanitization logic
-            malicious_path_str = str(script_file).replace("test_script", 'file"with"quotes')
+            malicious_path_str = str(script_file).replace(
+                "test_script", 'file"with"quotes'
+            )
             malicious_path = Path(malicious_path_str)
 
             command, temp_file = get_copy_command_for_rebase(malicious_path)
@@ -194,7 +207,8 @@ class TestCommandInjectionPrevention:
                     batch_content = batch_file_path.read_text()
                     # Quotes should be sanitized (removed) from the path
                     assert (
-                        'file"with"quotes' not in batch_content or "filewithquotes" in batch_content
+                        'file"with"quotes' not in batch_content
+                        or "filewithquotes" in batch_content
                     ), f"Quotes not sanitized: {batch_content}"
                     # Cleanup
                     try:
@@ -217,7 +231,9 @@ class TestCommandInjectionPrevention:
 
             # All dangerous characters should be neutralized
             # shlex.quote() should wrap the entire thing in single quotes
-            assert "'" in command, f"Long malicious path not properly escaped: {command}"
+            assert (
+                "'" in command
+            ), f"Long malicious path not properly escaped: {command}"
 
             # Unix should not create temp files
             assert temp_file is None
@@ -328,3 +344,55 @@ class TestRealWorldScenarios:
 
             # Python path should be quoted
             assert "'" in command or '"' in command or "\\" in command
+
+
+class TestEnsureCCGDirectory:
+    """Test ensure_ccg_directory function."""
+
+    @patch("ccg.platform_utils.Path.home")
+    def test_creates_directory_successfully(self, mock_home):
+        """Test that directory is created successfully."""
+        from pathlib import Path as RealPath
+        from unittest.mock import MagicMock
+
+        mock_home_path = MagicMock()
+        mock_ccg_dir = MagicMock(spec=RealPath)
+        mock_home.return_value = mock_home_path
+        mock_home_path.__truediv__.return_value = mock_ccg_dir
+
+        result = ensure_ccg_directory()
+
+        mock_ccg_dir.mkdir.assert_called_once_with(parents=True, exist_ok=True)
+        assert result == mock_ccg_dir
+
+    @patch("ccg.platform_utils.Path.home")
+    def test_returns_none_on_oserror(self, mock_home):
+        """Test that None is returned when OSError occurs."""
+        from pathlib import Path as RealPath
+        from unittest.mock import MagicMock
+
+        mock_home_path = MagicMock()
+        mock_ccg_dir = MagicMock(spec=RealPath)
+        mock_home.return_value = mock_home_path
+        mock_home_path.__truediv__.return_value = mock_ccg_dir
+        mock_ccg_dir.mkdir.side_effect = OSError("Permission denied")
+
+        result = ensure_ccg_directory()
+
+        assert result is None
+
+    @patch("ccg.platform_utils.Path.home")
+    def test_returns_none_on_permission_error(self, mock_home):
+        """Test that None is returned when PermissionError occurs."""
+        from pathlib import Path as RealPath
+        from unittest.mock import MagicMock
+
+        mock_home_path = MagicMock()
+        mock_ccg_dir = MagicMock(spec=RealPath)
+        mock_home.return_value = mock_home_path
+        mock_home_path.__truediv__.return_value = mock_ccg_dir
+        mock_ccg_dir.mkdir.side_effect = PermissionError("Access denied")
+
+        result = ensure_ccg_directory()
+
+        assert result is None

@@ -35,14 +35,10 @@ class TestAmendStrategy:
         assert "amend" in description.lower()
         assert "latest" in description.lower()
 
-    @patch("ccg.git_strategies.Path")
-    def test_edit_ccg_dir_creation_failure(self, mock_path_cls):
+    @patch("ccg.git_strategies.ensure_ccg_directory")
+    def test_edit_ccg_dir_creation_failure(self, mock_ensure_ccg_dir):
         """Test edit handles CCG directory creation failure."""
-        mock_home = MagicMock()
-        mock_ccg_dir = MagicMock()
-        mock_path_cls.home.return_value = mock_home
-        mock_home.__truediv__.return_value = mock_ccg_dir
-        mock_ccg_dir.mkdir.side_effect = OSError("Permission denied")
+        mock_ensure_ccg_dir.return_value = None
 
         strategy = AmendStrategy()
         result = strategy.edit("abc123", "feat: new feature")
@@ -52,24 +48,24 @@ class TestAmendStrategy:
     @patch("ccg.git.run_git_command")
     @patch("ccg.git_strategies.invalidate_repository_cache")
     @patch("ccg.git_strategies.create_secure_temp_file")
-    @patch("ccg.git_strategies.Path")
+    @patch("ccg.git_strategies.ensure_ccg_directory")
     def test_edit_success(
         self,
-        mock_path_cls,
+        mock_ensure_ccg_dir,
         mock_create_secure,
         mock_invalidate,
         mock_run_git,
     ):
         """Test edit successfully amends commit."""
-        # Mock Path.home() / ".ccg"
-        mock_home = MagicMock()
-        mock_ccg_dir = MagicMock()
-        mock_path_cls.home.return_value = mock_home
-        mock_home.__truediv__.return_value = mock_ccg_dir
+        # Mock ensure_ccg_directory returning a Path
+        mock_ccg_dir = Path("/home/user/.ccg")
+        mock_ensure_ccg_dir.return_value = mock_ccg_dir
 
         # Mock the secure temp file creation
         mock_message_file = MagicMock(spec=Path)
-        mock_message_file.__str__.return_value = "/home/user/.ccg/commit_message_amend_abc123.tmp"
+        mock_message_file.__str__.return_value = (
+            "/home/user/.ccg/commit_message_amend_abc123.tmp"
+        )
         mock_message_file.exists.return_value = True
         mock_create_secure.return_value = mock_message_file
 
@@ -80,7 +76,9 @@ class TestAmendStrategy:
 
         assert result is True
         mock_create_secure.assert_called_once_with(
-            mock_ccg_dir, "commit_message_amend_abc123.tmp", "feat: new feature\n\nBody text"
+            mock_ccg_dir,
+            "commit_message_amend_abc123.tmp",
+            "feat: new feature\n\nBody text",
         )
         mock_run_git.assert_called_once_with(
             [
@@ -99,18 +97,20 @@ class TestAmendStrategy:
 
     @patch("ccg.git.run_git_command")
     @patch("ccg.git_strategies.create_secure_temp_file")
-    @patch("ccg.git_strategies.Path")
-    def test_edit_without_body(self, mock_path_cls, mock_create_secure, mock_run_git):
+    @patch("ccg.git_strategies.ensure_ccg_directory")
+    def test_edit_without_body(
+        self, mock_ensure_ccg_dir, mock_create_secure, mock_run_git
+    ):
         """Test edit with only subject line (no body)."""
-        # Mock Path.home() / ".ccg"
-        mock_home = MagicMock()
-        mock_ccg_dir = MagicMock()
-        mock_path_cls.home.return_value = mock_home
-        mock_home.__truediv__.return_value = mock_ccg_dir
+        # Mock ensure_ccg_directory returning a Path
+        mock_ccg_dir = Path("/home/user/.ccg")
+        mock_ensure_ccg_dir.return_value = mock_ccg_dir
 
         # Mock the secure temp file creation
         mock_message_file = MagicMock(spec=Path)
-        mock_message_file.__str__.return_value = "/home/user/.ccg/commit_message_amend_abc123.tmp"
+        mock_message_file.__str__.return_value = (
+            "/home/user/.ccg/commit_message_amend_abc123.tmp"
+        )
         mock_message_file.exists.return_value = True
         mock_create_secure.return_value = mock_message_file
 
@@ -125,14 +125,13 @@ class TestAmendStrategy:
         )
 
     @patch("ccg.git_strategies.create_secure_temp_file")
-    @patch("ccg.git_strategies.Path")
-    def test_edit_temp_file_creation_failure(self, mock_path_cls, mock_create_secure):
+    @patch("ccg.git_strategies.ensure_ccg_directory")
+    def test_edit_temp_file_creation_failure(
+        self, mock_ensure_ccg_dir, mock_create_secure
+    ):
         """Test edit handles temp file creation failure."""
-        # Mock Path.home() / ".ccg"
-        mock_home = MagicMock()
-        mock_ccg_dir = MagicMock()
-        mock_path_cls.home.return_value = mock_home
-        mock_home.__truediv__.return_value = mock_ccg_dir
+        mock_ccg_dir = Path("/home/user/.ccg")
+        mock_ensure_ccg_dir.return_value = mock_ccg_dir
 
         mock_create_secure.side_effect = IOError("Permission denied")
 
@@ -143,18 +142,19 @@ class TestAmendStrategy:
 
     @patch("ccg.git.run_git_command")
     @patch("ccg.git_strategies.create_secure_temp_file")
-    @patch("ccg.git_strategies.Path")
-    def test_edit_git_command_failure(self, mock_path_cls, mock_create_secure, mock_run_git):
+    @patch("ccg.git_strategies.ensure_ccg_directory")
+    def test_edit_git_command_failure(
+        self, mock_ensure_ccg_dir, mock_create_secure, mock_run_git
+    ):
         """Test edit handles git command failure."""
-        # Mock Path.home() / ".ccg"
-        mock_home = MagicMock()
-        mock_ccg_dir = MagicMock()
-        mock_path_cls.home.return_value = mock_home
-        mock_home.__truediv__.return_value = mock_ccg_dir
+        mock_ccg_dir = Path("/home/user/.ccg")
+        mock_ensure_ccg_dir.return_value = mock_ccg_dir
 
         # Mock the secure temp file creation
         mock_message_file = MagicMock(spec=Path)
-        mock_message_file.__str__.return_value = "/home/user/.ccg/commit_message_amend_abc123.tmp"
+        mock_message_file.__str__.return_value = (
+            "/home/user/.ccg/commit_message_amend_abc123.tmp"
+        )
         mock_message_file.exists.return_value = True
         mock_create_secure.return_value = mock_message_file
 
@@ -169,24 +169,23 @@ class TestAmendStrategy:
     @patch("ccg.git.run_git_command")
     @patch("ccg.git_strategies.invalidate_repository_cache")
     @patch("ccg.git_strategies.create_secure_temp_file")
-    @patch("ccg.git_strategies.Path")
+    @patch("ccg.git_strategies.ensure_ccg_directory")
     def test_edit_cleanup_on_unlink_failure(
         self,
-        mock_path_cls,
+        mock_ensure_ccg_dir,
         mock_create_secure,
         mock_invalidate,
         mock_run_git,
     ):
         """Test edit handles cleanup failure gracefully."""
-        # Mock Path.home() / ".ccg"
-        mock_home = MagicMock()
-        mock_ccg_dir = MagicMock()
-        mock_path_cls.home.return_value = mock_home
-        mock_home.__truediv__.return_value = mock_ccg_dir
+        mock_ccg_dir = Path("/home/user/.ccg")
+        mock_ensure_ccg_dir.return_value = mock_ccg_dir
 
         # Mock the secure temp file creation
         mock_message_file = MagicMock(spec=Path)
-        mock_message_file.__str__.return_value = "/home/user/.ccg/commit_message_amend_abc123.tmp"
+        mock_message_file.__str__.return_value = (
+            "/home/user/.ccg/commit_message_amend_abc123.tmp"
+        )
         mock_message_file.exists.return_value = True
         mock_message_file.unlink.side_effect = OSError("Cleanup failed")
         mock_create_secure.return_value = mock_message_file
@@ -226,12 +225,12 @@ class TestFilterBranchStrategy:
     @patch("ccg.git_strategies.invalidate_repository_cache")
     @patch("ccg.git_strategies.create_secure_temp_file")
     @patch("ccg.git_strategies.create_executable_temp_file")
-    @patch("ccg.git_strategies.Path")
+    @patch("ccg.git_strategies.ensure_ccg_directory")
     @patch("ccg.git_strategies.ProgressSpinner")
     def test_edit_success(
         self,
         mock_spinner,
-        mock_path,
+        mock_ensure_ccg_dir,
         mock_create_exec,
         mock_create_secure,
         mock_invalidate,
@@ -241,10 +240,8 @@ class TestFilterBranchStrategy:
         mock_print_success,
     ):
         """Test edit successfully edits old commit."""
-        mock_home = MagicMock()
-        mock_ccg_dir = MagicMock()
-        mock_path.home.return_value = mock_home
-        mock_home.__truediv__.return_value = mock_ccg_dir
+        mock_ccg_dir = Path("/home/user/.ccg")
+        mock_ensure_ccg_dir.return_value = mock_ccg_dir
 
         mock_message_file = MagicMock(spec=Path)
         mock_script_file = MagicMock(spec=Path)
@@ -277,12 +274,12 @@ class TestFilterBranchStrategy:
     @patch("ccg.git_strategies.invalidate_repository_cache")
     @patch("ccg.git_strategies.create_secure_temp_file")
     @patch("ccg.git_strategies.create_executable_temp_file")
-    @patch("ccg.git_strategies.Path")
+    @patch("ccg.git_strategies.ensure_ccg_directory")
     @patch("ccg.git_strategies.ProgressSpinner")
     def test_edit_with_initial_commit_flag(
         self,
         mock_spinner,
-        mock_path,
+        mock_ensure_ccg_dir,
         mock_create_exec,
         mock_create_secure,
         mock_invalidate,
@@ -292,10 +289,8 @@ class TestFilterBranchStrategy:
         mock_print_success,
     ):
         """Test edit handles initial commit flag correctly."""
-        mock_home = MagicMock()
-        mock_ccg_dir = MagicMock()
-        mock_path.home.return_value = mock_home
-        mock_home.__truediv__.return_value = mock_ccg_dir
+        mock_ccg_dir = Path("/home/user/.ccg")
+        mock_ensure_ccg_dir.return_value = mock_ccg_dir
 
         mock_message_file = MagicMock(spec=Path)
         mock_script_file = MagicMock(spec=Path)
@@ -320,14 +315,10 @@ class TestFilterBranchStrategy:
         mock_print_process.assert_called_once()
         mock_print_info.assert_called_once()
 
-    @patch("ccg.git_strategies.Path")
-    def test_edit_ccg_dir_creation_failure(self, mock_path):
+    @patch("ccg.git_strategies.ensure_ccg_directory")
+    def test_edit_ccg_dir_creation_failure(self, mock_ensure_ccg_dir):
         """Test edit handles CCG directory creation failure."""
-        mock_home = MagicMock()
-        mock_ccg_dir = MagicMock()
-        mock_path.home.return_value = mock_home
-        mock_home.__truediv__.return_value = mock_ccg_dir
-        mock_ccg_dir.mkdir.side_effect = OSError("Permission denied")
+        mock_ensure_ccg_dir.return_value = None
 
         strategy = FilterBranchStrategy()
         result = strategy.edit("abc1234", "feat: new feature")
@@ -335,13 +326,13 @@ class TestFilterBranchStrategy:
         assert result is False
 
     @patch("ccg.git_strategies.create_secure_temp_file")
-    @patch("ccg.git_strategies.Path")
-    def test_edit_message_file_creation_failure(self, mock_path, mock_create_secure):
+    @patch("ccg.git_strategies.ensure_ccg_directory")
+    def test_edit_message_file_creation_failure(
+        self, mock_ensure_ccg_dir, mock_create_secure
+    ):
         """Test edit handles message file creation failure."""
-        mock_home = MagicMock()
-        mock_ccg_dir = MagicMock()
-        mock_path.home.return_value = mock_home
-        mock_home.__truediv__.return_value = mock_ccg_dir
+        mock_ccg_dir = Path("/home/user/.ccg")
+        mock_ensure_ccg_dir.return_value = mock_ccg_dir
 
         mock_create_secure.side_effect = IOError("Write failed")
 
@@ -352,15 +343,13 @@ class TestFilterBranchStrategy:
 
     @patch("ccg.git_strategies.create_secure_temp_file")
     @patch("ccg.git_strategies.create_executable_temp_file")
-    @patch("ccg.git_strategies.Path")
+    @patch("ccg.git_strategies.ensure_ccg_directory")
     def test_edit_script_file_creation_failure(
-        self, mock_path, mock_create_exec, mock_create_secure
+        self, mock_ensure_ccg_dir, mock_create_exec, mock_create_secure
     ):
         """Test edit handles script file creation failure."""
-        mock_home = MagicMock()
-        mock_ccg_dir = MagicMock()
-        mock_path.home.return_value = mock_home
-        mock_home.__truediv__.return_value = mock_ccg_dir
+        mock_ccg_dir = Path("/home/user/.ccg")
+        mock_ensure_ccg_dir.return_value = mock_ccg_dir
 
         mock_message_file = MagicMock(spec=Path)
         mock_message_file.exists.return_value = True
@@ -381,12 +370,12 @@ class TestFilterBranchStrategy:
     @patch("ccg.git_strategies.create_secure_temp_file")
     @patch("ccg.git_strategies.create_executable_temp_file")
     @patch("ccg.git.run_git_command")
-    @patch("ccg.git_strategies.Path")
+    @patch("ccg.git_strategies.ensure_ccg_directory")
     @patch("ccg.git_strategies.ProgressSpinner")
     def test_edit_git_command_failure(
         self,
         mock_spinner,
-        mock_path,
+        mock_ensure_ccg_dir,
         mock_run_git,
         mock_create_exec,
         mock_create_secure,
@@ -396,10 +385,8 @@ class TestFilterBranchStrategy:
         mock_print,
     ):
         """Test edit handles git command failure."""
-        mock_home = MagicMock()
-        mock_ccg_dir = MagicMock()
-        mock_path.home.return_value = mock_home
-        mock_home.__truediv__.return_value = mock_ccg_dir
+        mock_ccg_dir = Path("/home/user/.ccg")
+        mock_ensure_ccg_dir.return_value = mock_ccg_dir
 
         mock_message_file = MagicMock(spec=Path)
         mock_script_file = MagicMock(spec=Path)
@@ -432,12 +419,12 @@ class TestFilterBranchStrategy:
     @patch("ccg.git_strategies.invalidate_repository_cache")
     @patch("ccg.git_strategies.create_secure_temp_file")
     @patch("ccg.git_strategies.create_executable_temp_file")
-    @patch("ccg.git_strategies.Path")
+    @patch("ccg.git_strategies.ensure_ccg_directory")
     @patch("ccg.git_strategies.ProgressSpinner")
     def test_edit_cleanup_on_success(
         self,
         mock_spinner,
-        mock_path,
+        mock_ensure_ccg_dir,
         mock_create_exec,
         mock_create_secure,
         mock_invalidate,
@@ -447,10 +434,8 @@ class TestFilterBranchStrategy:
         mock_print_success,
     ):
         """Test edit cleans up temporary files on success."""
-        mock_home = MagicMock()
-        mock_ccg_dir = MagicMock()
-        mock_path.home.return_value = mock_home
-        mock_home.__truediv__.return_value = mock_ccg_dir
+        mock_ccg_dir = Path("/home/user/.ccg")
+        mock_ensure_ccg_dir.return_value = mock_ccg_dir
 
         mock_message_file = MagicMock(spec=Path)
         mock_script_file = MagicMock(spec=Path)
@@ -481,12 +466,12 @@ class TestFilterBranchStrategy:
     @patch("ccg.git_strategies.invalidate_repository_cache")
     @patch("ccg.git_strategies.create_secure_temp_file")
     @patch("ccg.git_strategies.create_executable_temp_file")
-    @patch("ccg.git_strategies.Path")
+    @patch("ccg.git_strategies.ensure_ccg_directory")
     @patch("ccg.git_strategies.ProgressSpinner")
     def test_edit_cleanup_failure_handled_gracefully(
         self,
         mock_spinner,
-        mock_path,
+        mock_ensure_ccg_dir,
         mock_create_exec,
         mock_create_secure,
         mock_invalidate,
@@ -496,10 +481,8 @@ class TestFilterBranchStrategy:
         mock_print_success,
     ):
         """Test edit handles cleanup failure gracefully."""
-        mock_home = MagicMock()
-        mock_ccg_dir = MagicMock()
-        mock_path.home.return_value = mock_home
-        mock_home.__truediv__.return_value = mock_ccg_dir
+        mock_ccg_dir = Path("/home/user/.ccg")
+        mock_ensure_ccg_dir.return_value = mock_ccg_dir
 
         mock_message_file = MagicMock(spec=Path)
         mock_script_file = MagicMock(spec=Path)
@@ -566,11 +549,15 @@ class TestEditCommitWithStrategy:
 
         mock_strategies.__iter__.return_value = [mock_amend, mock_filter]
 
-        result = edit_commit_with_strategy("abc123", "def456", "feat: new feature", "Body text")
+        result = edit_commit_with_strategy(
+            "abc123", "def456", "feat: new feature", "Body text"
+        )
 
         assert result is True
         mock_filter.can_handle.assert_called_once_with("abc123", "def456")
-        mock_filter.edit.assert_called_once_with("abc123", "feat: new feature", "Body text")
+        mock_filter.edit.assert_called_once_with(
+            "abc123", "feat: new feature", "Body text"
+        )
 
     @patch("ccg.git_strategies.EDIT_STRATEGIES")
     def test_passes_kwargs_to_strategy(self, mock_strategies):

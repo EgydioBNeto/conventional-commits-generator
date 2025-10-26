@@ -58,10 +58,14 @@ class TestCommitMessageValidation:
             ]
         ),
         st.text(
-            alphabet=st.characters(min_codepoint=97, max_codepoint=122), min_size=1, max_size=20
+            alphabet=st.characters(min_codepoint=97, max_codepoint=122),
+            min_size=1,
+            max_size=20,
         ),
     )
-    def test_valid_type_with_random_description(self, commit_type: str, description: str):
+    def test_valid_type_with_random_description(
+        self, commit_type: str, description: str
+    ):
         """Valid type with any alphabetic description should be valid."""
         message = f"{commit_type}: {description}"
         is_valid, error = validate_commit_message(message)
@@ -85,10 +89,14 @@ class TestCommitMessageValidation:
             ]
         ),
         st.text(
-            alphabet=st.characters(min_codepoint=97, max_codepoint=122), min_size=1, max_size=15
+            alphabet=st.characters(min_codepoint=97, max_codepoint=122),
+            min_size=1,
+            max_size=15,
         ),
         st.text(
-            alphabet=st.characters(min_codepoint=97, max_codepoint=122), min_size=1, max_size=20
+            alphabet=st.characters(min_codepoint=97, max_codepoint=122),
+            min_size=1,
+            max_size=20,
         ),
     )
     def test_valid_type_with_scope_and_description(
@@ -117,10 +125,14 @@ class TestCommitMessageValidation:
             ]
         ),
         st.text(
-            alphabet=st.characters(min_codepoint=97, max_codepoint=122), min_size=1, max_size=15
+            alphabet=st.characters(min_codepoint=97, max_codepoint=122),
+            min_size=1,
+            max_size=15,
         ),
         st.text(
-            alphabet=st.characters(min_codepoint=97, max_codepoint=122), min_size=1, max_size=20
+            alphabet=st.characters(min_codepoint=97, max_codepoint=122),
+            min_size=1,
+            max_size=20,
         ),
         st.booleans(),
     )
@@ -171,7 +183,11 @@ class TestConfirmationInputValidation:
         assert result is None
 
     @given(
-        st.text(alphabet=st.characters(min_codepoint=65, max_codepoint=122), min_size=1, max_size=3)
+        st.text(
+            alphabet=st.characters(min_codepoint=65, max_codepoint=122),
+            min_size=1,
+            max_size=3,
+        )
     )
     def test_invalid_short_input_returns_none(self, text: str):
         """Invalid short inputs (not y/n/yes/no) should return None."""
@@ -207,12 +223,16 @@ class TestSemverValidation:
             alphabet="abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789",
         ),
     )
-    def test_semver_with_prerelease(self, major: int, minor: int, patch: int, prerelease: str):
+    def test_semver_with_prerelease(
+        self, major: int, minor: int, patch: int, prerelease: str
+    ):
         """Semver with prerelease should be valid (alphanumeric only)."""
         # Semver spec allows alphanumeric and hyphens in prerelease, but not dots
         # For simplicity, we test only alphanumeric
         # Semver spec: numeric identifiers MUST NOT include leading zeroes
-        assume(not (prerelease.isdigit() and len(prerelease) > 1 and prerelease[0] == "0"))
+        assume(
+            not (prerelease.isdigit() and len(prerelease) > 1 and prerelease[0] == "0")
+        )
         version = f"{major}.{minor}.{patch}-{prerelease}"
         assert is_valid_semver(version), f"{version} should be valid"
 
@@ -226,7 +246,9 @@ class TestSemverValidation:
             alphabet="abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789",
         ),
     )
-    def test_semver_with_build_metadata(self, major: int, minor: int, patch: int, metadata: str):
+    def test_semver_with_build_metadata(
+        self, major: int, minor: int, patch: int, metadata: str
+    ):
         """Semver with build metadata should be valid (alphanumeric only)."""
         # Semver spec allows alphanumeric and hyphens in build metadata
         # For simplicity, we test only alphanumeric
