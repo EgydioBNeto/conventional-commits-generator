@@ -28,7 +28,7 @@ jobs:
 
     steps:
     - name: Checkout code
-      uses: actions/checkout@v4
+      uses: actions/checkout@v5
       with:
         fetch-depth: 0
         token: ${{ secrets.GITHUB_TOKEN }}
@@ -66,13 +66,13 @@ jobs:
 
     steps:
     - name: Checkout code
-      uses: actions/checkout@v4
+      uses: actions/checkout@v5
       with:
         fetch-depth: 0
         token: ${{ secrets.GITHUB_TOKEN }}
 
     - name: Set up Python
-      uses: actions/setup-python@v5
+      uses: actions/setup-python@v6.0.0
       with:
         python-version: ${{ env.PYTHON_VERSION }}
 
@@ -203,7 +203,7 @@ jobs:
 
     steps:
     - name: Checkout code
-      uses: actions/checkout@v4
+      uses: actions/checkout@v5
       with:
         ref: ${{ needs.release.outputs.commit_hash }}
         fetch-depth: 0
@@ -226,7 +226,7 @@ jobs:
         fi
 
     - name: Set up Python
-      uses: actions/setup-python@v5
+      uses: actions/setup-python@v6.0.0
       with:
         python-version: ${{ env.PYTHON_VERSION }}
 
