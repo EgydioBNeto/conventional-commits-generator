@@ -58,7 +58,9 @@ class TestValidateCommitMessage:
     @example("feat", "api")
     def test_valid_commit_with_scope(self, commit_type: str, scope: str) -> None:
         """Should accept commits with scope."""
-        is_valid, error = validate_commit_message(f"{commit_type}({scope}): resolve bug")
+        is_valid, error = validate_commit_message(
+            f"{commit_type}({scope}): resolve bug"
+        )
         assert is_valid is True
         assert error is None
 
@@ -72,9 +74,13 @@ class TestValidateCommitMessage:
 
     @given(valid_commit_types, valid_scopes)
     @example("feat", "api")
-    def test_valid_breaking_change_with_scope(self, commit_type: str, scope: str) -> None:
+    def test_valid_breaking_change_with_scope(
+        self, commit_type: str, scope: str
+    ) -> None:
         """Should accept breaking changes with scope."""
-        is_valid, error = validate_commit_message(f"{commit_type}({scope})!: breaking change")
+        is_valid, error = validate_commit_message(
+            f"{commit_type}({scope})!: breaking change"
+        )
         assert is_valid is True
         assert error is None
 
@@ -89,9 +95,13 @@ class TestValidateCommitMessage:
 
     @given(emoji_codes, valid_commit_types, valid_scopes)
     @example(":bug:", "fix", "auth")
-    def test_valid_with_emoji_and_scope(self, emoji: str, commit_type: str, scope: str) -> None:
+    def test_valid_with_emoji_and_scope(
+        self, emoji: str, commit_type: str, scope: str
+    ) -> None:
         """Should accept emoji with scope."""
-        is_valid, error = validate_commit_message(f"{emoji} {commit_type}({scope}): resolve bug")
+        is_valid, error = validate_commit_message(
+            f"{emoji} {commit_type}({scope}): resolve bug"
+        )
         assert is_valid is True
         assert error is None
 
@@ -236,7 +246,9 @@ class TestInteractiveFunctions:
             assert "✨" in captured.out
 
     @patch("ccg.core.get_staged_file_changes")
-    def test_confirm_commit_shows_file_changes(self, mock_get_staged: Mock, capsys) -> None:
+    def test_confirm_commit_shows_file_changes(
+        self, mock_get_staged: Mock, capsys
+    ) -> None:
         """Should display staged file changes in separate section before review."""
         import re
         from unittest.mock import patch
@@ -266,7 +278,9 @@ class TestInteractiveFunctions:
             # Check that Review section comes after File Changes
             file_changes_pos = output.find("File Changes")
             review_pos = output.find("Review")
-            assert file_changes_pos < review_pos, "File Changes should come before Review"
+            assert (
+                file_changes_pos < review_pos
+            ), "File Changes should come before Review"
 
     @patch("ccg.core.get_staged_file_changes")
     def test_confirm_commit_shows_no_file_changes_message(
@@ -631,7 +645,9 @@ class TestValidateCommitMessageEdgeCases:
 
     def test_validate_emoji_with_scope_and_breaking(self) -> None:
         """Should accept emoji with scope and breaking change."""
-        is_valid, error = validate_commit_message(":sparkles: feat(api)!: breaking change")
+        is_valid, error = validate_commit_message(
+            ":sparkles: feat(api)!: breaking change"
+        )
         assert is_valid is True
 
     def test_validate_message_description_only_tab(self) -> None:
@@ -752,7 +768,9 @@ class TestPrecompiledRegexPatterns:
 
         for input_text, expected_output in test_cases:
             result = _EMOJI_CODE_PATTERN.sub("", input_text).strip()
-            assert result == expected_output, f"Expected '{expected_output}', got '{result}'"
+            assert (
+                result == expected_output
+            ), f"Expected '{expected_output}', got '{result}'"
 
     def test_emoji_code_pattern_handles_no_emoji(self) -> None:
         """Should not modify text without emoji codes."""

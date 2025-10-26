@@ -12,7 +12,9 @@ class TestSetupLogging:
     """Tests for setup_logging function."""
 
     @patch("ccg.logging.Path.home")
-    def test_setup_logging_creates_directory(self, mock_home: Mock, tmp_path: Path) -> None:
+    def test_setup_logging_creates_directory(
+        self, mock_home: Mock, tmp_path: Path
+    ) -> None:
         """Should create .ccg directory if it doesn't exist."""
         from ccg.logging import setup_logging
 
@@ -27,7 +29,9 @@ class TestSetupLogging:
         assert log_dir.is_dir()
 
     @patch("ccg.logging.Path.home")
-    def test_setup_logging_creates_log_file(self, mock_home: Mock, tmp_path: Path) -> None:
+    def test_setup_logging_creates_log_file(
+        self, mock_home: Mock, tmp_path: Path
+    ) -> None:
         """Should create ccg.log file."""
         from ccg.logging import setup_logging
 
@@ -78,7 +82,9 @@ class TestSetupLogging:
         assert type(logger.handlers[0]).__name__ == "RotatingFileHandler"
 
     @patch("ccg.logging.Path.home")
-    def test_setup_logging_sets_debug_level(self, mock_home: Mock, tmp_path: Path) -> None:
+    def test_setup_logging_sets_debug_level(
+        self, mock_home: Mock, tmp_path: Path
+    ) -> None:
         """Should set logger level to DEBUG."""
         from ccg.logging import setup_logging
 
@@ -90,7 +96,9 @@ class TestSetupLogging:
         assert logger.level == logging.DEBUG
 
     @patch("ccg.logging.Path.home")
-    def test_setup_logging_clears_existing_handlers(self, mock_home: Mock, tmp_path: Path) -> None:
+    def test_setup_logging_clears_existing_handlers(
+        self, mock_home: Mock, tmp_path: Path
+    ) -> None:
         """Should clear existing handlers before adding new ones."""
         from ccg.logging import setup_logging
 
@@ -109,7 +117,9 @@ class TestSetupLogging:
         assert second_handler_count == 2
 
     @patch("ccg.logging.Path.home")
-    def test_setup_logging_file_handler_has_rotation(self, mock_home: Mock, tmp_path: Path) -> None:
+    def test_setup_logging_file_handler_has_rotation(
+        self, mock_home: Mock, tmp_path: Path
+    ) -> None:
         """Should configure file handler with rotation (10MB, 5 backups)."""
         from ccg.logging import setup_logging
 
@@ -143,7 +153,9 @@ class TestSetupLogging:
         assert "verbose=True" in captured.err
 
     @patch("ccg.logging.Path.home")
-    def test_setup_logging_logs_file_path(self, mock_home: Mock, tmp_path: Path, capsys) -> None:
+    def test_setup_logging_logs_file_path(
+        self, mock_home: Mock, tmp_path: Path, capsys
+    ) -> None:
         """Should log the log file path."""
         from ccg.logging import setup_logging
 
@@ -211,7 +223,9 @@ class TestSetupLogging:
 
         logger = logging.getLogger("ccg")
         # Find the console handler
-        console_handler = next(h for h in logger.handlers if type(h).__name__ == "StreamHandler")
+        console_handler = next(
+            h for h in logger.handlers if type(h).__name__ == "StreamHandler"
+        )
 
         assert console_handler.level == logging.DEBUG
 
@@ -233,7 +247,9 @@ class TestSetupLogging:
         # Test with verbose=True
         setup_logging(verbose=True)
         logger = logging.getLogger("ccg")
-        file_handler = next(h for h in logger.handlers if type(h).__name__ == "RotatingFileHandler")
+        file_handler = next(
+            h for h in logger.handlers if type(h).__name__ == "RotatingFileHandler"
+        )
         assert file_handler.level == logging.DEBUG
 
 
@@ -333,7 +349,9 @@ class TestLoggingIntegration:
         assert "Test message" in log_content
 
     @patch("ccg.logging.Path.home")
-    def test_logging_includes_all_format_fields(self, mock_home: Mock, tmp_path: Path) -> None:
+    def test_logging_includes_all_format_fields(
+        self, mock_home: Mock, tmp_path: Path
+    ) -> None:
         """Should include all format fields in log output."""
         from ccg.logging import get_logger, setup_logging
 
@@ -393,7 +411,9 @@ class TestLoggingIntegration:
         assert "Silent test message" not in captured.out
 
     @patch("ccg.logging.Path.home")
-    def test_logging_handles_unicode_characters(self, mock_home: Mock, tmp_path: Path) -> None:
+    def test_logging_handles_unicode_characters(
+        self, mock_home: Mock, tmp_path: Path
+    ) -> None:
         """Should correctly handle unicode characters in log messages."""
         from ccg.logging import get_logger, setup_logging
 
@@ -443,7 +463,9 @@ class TestLoggingEdgeCases:
     """Edge case tests for logging functionality."""
 
     @patch("ccg.logging.Path.home")
-    def test_setup_logging_multiple_calls_idempotent(self, mock_home: Mock, tmp_path: Path) -> None:
+    def test_setup_logging_multiple_calls_idempotent(
+        self, mock_home: Mock, tmp_path: Path
+    ) -> None:
         """Should be idempotent when called multiple times."""
         from ccg.logging import setup_logging
 
@@ -459,7 +481,9 @@ class TestLoggingEdgeCases:
         assert len(logger.handlers) == 2  # file + console (last call was verbose=True)
 
     @patch("ccg.logging.Path.home")
-    def test_setup_logging_handles_long_messages(self, mock_home: Mock, tmp_path: Path) -> None:
+    def test_setup_logging_handles_long_messages(
+        self, mock_home: Mock, tmp_path: Path
+    ) -> None:
         """Should handle very long log messages."""
         from ccg.logging import get_logger, setup_logging
 

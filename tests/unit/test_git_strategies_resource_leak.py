@@ -74,7 +74,9 @@ class TestAmendStrategyResourceCleanup:
 
         # Temp file should be cleaned up
         for file_path in created_files:
-            assert not os.path.exists(file_path), f"Temp file leaked after git failure: {file_path}"
+            assert not os.path.exists(
+                file_path
+            ), f"Temp file leaked after git failure: {file_path}"
 
     @patch("ccg.git.run_git_command")
     def test_cleanup_on_success(self, mock_run_git):
@@ -101,7 +103,9 @@ class TestAmendStrategyResourceCleanup:
 
         # Temp file should be cleaned up
         for file_path in created_files:
-            assert not os.path.exists(file_path), f"Temp file leaked after success: {file_path}"
+            assert not os.path.exists(
+                file_path
+            ), f"Temp file leaked after success: {file_path}"
 
 
 class TestFilterBranchStrategyResourceCleanup:

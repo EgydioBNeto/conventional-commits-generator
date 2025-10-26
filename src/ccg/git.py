@@ -9,12 +9,11 @@ from pathlib import Path
 from typing import List, Optional, Tuple
 
 from ccg.cache import get_cache, invalidate_repository_cache
-from ccg.config import GIT_CONFIG
+from ccg.config import GIT_CONFIG, GIT_MESSAGES
 from ccg.platform_utils import (
     get_copy_command_for_rebase,
     get_filter_branch_command,
     get_null_editor_command,
-    set_file_permissions_executable,
     set_file_permissions_secure,
 )
 from ccg.progress import ProgressSpinner
@@ -147,7 +146,7 @@ def _execute_git_command(
         It's designed to be easily testable and composable.
     """
     try:
-        # nosec B603: Command is array, not string - safe from shell injection
+        # Using list format prevents shell injection
         result = subprocess.run(  # nosec B603
             command, capture_output=True, check=True, text=True, timeout=timeout
         )
@@ -157,9 +156,9 @@ def _execute_git_command(
         return False, None, f"Command timed out after {timeout} seconds"
 
     except subprocess.CalledProcessError as error:
-        stdout = error.stdout if error.stdout else None
-        stderr = error.stderr if error.stderr else None
-        return False, stdout, stderr
+        error_stdout = error.stdout if error.stdout else None
+        error_stderr = error.stderr if error.stderr else None
+        return False, error_stdout, error_stderr
 
     except FileNotFoundError:
         return False, None, "Git is not installed"
@@ -202,7 +201,7 @@ def run_git_command(
         (True, "main\\n* feature\\n")
 
     Note:
-        Special handling for "Changes pushed successfully!" message - displays
+        Special handling for GIT_MESSAGES.PUSH_SUCCESS message - displays
         it in a "Remote Push" section for visual clarity
     """
     logger.debug(f"Executing git command: {' '.join(command)}")
@@ -213,19 +212,21 @@ def run_git_command(
         logger.debug(f"Git command succeeded: {' '.join(command)}")
 
         if success_message:
-            if success_message == "Changes pushed successfully!":
+            if success_message == GIT_MESSAGES.PUSH_SUCCESS:
                 print_section("Remote Push")
             print_success(success_message)
 
         return (True, stdout) if show_output else (True, None)
 
     else:
-        if stderr and stderr.startswith("Command timed out after"):
+        if stderr and stderr.startswith(GIT_MESSAGES.TIMEOUT_PREFIX):
             logger.error(f"Git command timed out after {timeout}s: {' '.join(command)}")
-            print_error(f"Command timed out after {timeout} seconds: {' '.join(command)}")
+            print_error(
+                f"Command timed out after {timeout} seconds: {' '.join(command)}"
+            )
             return False, stderr
 
-        elif stderr and stderr == "Git is not installed":
+        elif stderr and stderr == GIT_MESSAGES.GIT_NOT_INSTALLED:
             logger.critical("Git executable not found in PATH")
             print_error("Git is not installed. Please install Git and try again.")
             return False, None
@@ -265,8 +266,8 @@ def git_add(paths: Optional[List[str]] = None) -> bool:
     if not paths:
         paths = ["."]
 
-    path_str = ", ".join(paths)
-    print_process(f"Staging changes for {path_str}")
+    paths_display = ", ".join(paths)
+    print_process(f"Staging changes for {paths_display}")
 
     for path in paths:
         success, _ = run_git_command(
@@ -351,7 +352,9 @@ def get_remote_name() -> Optional[str]:
     return get_cache().get_or_fetch("remote_name", fetch_remote_name)
 
 
-def handle_upstream_error(branch_name: str, remote_name: str, error_output: str) -> bool:
+def handle_upstream_error(
+    branch_name: str, remote_name: str, error_output: str
+) -> bool:
     """Handle git push errors related to missing upstream branch configuration.
 
     Detects if a push failure is due to missing upstream tracking and prompts
@@ -368,9 +371,14 @@ def handle_upstream_error(branch_name: str, remote_name: str, error_output: str)
     Note:
         Looks for specific error messages about upstream configuration
     """
-    if "set the remote as upstream" in error_output or "no upstream branch" in error_output:
+    if (
+        "set the remote as upstream" in error_output
+        or "no upstream branch" in error_output
+    ):
         print_warning("Upstream not set for this branch")
-        print_info(f"Suggested command: git push --set-upstream {remote_name} {branch_name}")
+        print_info(
+            f"Suggested command: git push --set-upstream {remote_name} {branch_name}"
+        )
 
         from ccg.utils import RESET, YELLOW, confirm_user_action
 
@@ -430,12 +438,16 @@ def git_push(set_upstream: bool = False, force: bool = False) -> bool:
                 f"Branch '{branch_name}' created on remote and changes pushed successfully!"
             )
         else:
-            print_error(f"Error setting upstream and pushing to '{remote_name}/{branch_name}'")
+            print_error(
+                f"Error setting upstream and pushing to '{remote_name}/{branch_name}'"
+            )
 
         return success
     elif force:
         message = f"Force pushing changes to '{remote_name}/{branch_name}'..."
-        success_msg = f"Changes force pushed to '{remote_name}/{branch_name}' successfully!"
+        success_msg = (
+            f"Changes force pushed to '{remote_name}/{branch_name}' successfully!"
+        )
 
         print_process(message)
         with ProgressSpinner(f"Force pushing to {remote_name}/{branch_name}"):
@@ -459,25 +471,33 @@ def git_push(set_upstream: bool = False, force: bool = False) -> bool:
 
         if success:
             print_section("Remote Push")
-            print_success("Changes pushed successfully!")
+            print_success(GIT_MESSAGES.PUSH_SUCCESS)
         else:
-            print_error("Error during 'git push'")
-            if error_output and handle_upstream_error(branch_name, remote_name, error_output):
+            if error_output and handle_upstream_error(
+                branch_name, remote_name, error_output
+            ):
                 return git_push(set_upstream=True)
+            print_error("Error during 'git push'")
+            if error_output:
+                logger.error(f"Git push error output: {error_output}")
+                print_error(f"Git error: {error_output.strip()}")
             return False
 
         return success
 
 
-def create_tag(tag_name: str, message: Optional[str] = None) -> bool:
+def create_tag(
+    tag_name: str, message: Optional[str] = None, commit_hash: Optional[str] = None
+) -> bool:
     """Create a git tag (lightweight or annotated).
 
     Creates either a lightweight tag (no message) or an annotated tag (with message)
-    at the current HEAD commit.
+    at the specified commit or current HEAD if no commit is specified.
 
     Args:
         tag_name: Name of the tag to create (e.g., "v1.0.0")
         message: Optional tag message (creates annotated tag if provided)
+        commit_hash: Optional commit hash to tag (defaults to HEAD if not provided)
 
     Returns:
         True if tag created successfully, False on error
@@ -485,20 +505,25 @@ def create_tag(tag_name: str, message: Optional[str] = None) -> bool:
     Note:
         Annotated tags include metadata (tagger, date) and are recommended for releases
     """
-    print_process(f"Creating tag '{tag_name}'...")
-
-    if message:
-        success, _ = run_git_command(
-            ["git", "tag", "-a", tag_name, "-m", message],
-            f"Error creating tag '{tag_name}'",
-            f"Tag '{tag_name}' created successfully",
-        )
+    if commit_hash:
+        print_process(f"Creating tag '{tag_name}' at commit {commit_hash[:7]}...")
     else:
-        success, _ = run_git_command(
-            ["git", "tag", tag_name],
-            f"Error creating tag '{tag_name}'",
-            f"Tag '{tag_name}' created successfully",
-        )
+        print_process(f"Creating tag '{tag_name}'...")
+
+    cmd = ["git", "tag"]
+    if message:
+        cmd.extend(["-a", tag_name, "-m", message])
+    else:
+        cmd.append(tag_name)
+
+    if commit_hash:
+        cmd.append(commit_hash)
+
+    success, _ = run_git_command(
+        cmd,
+        f"Error creating tag '{tag_name}'",
+        f"Tag '{tag_name}' created successfully",
+    )
 
     return success
 
@@ -528,8 +553,11 @@ def push_tag(tag_name: str) -> bool:
         success, _ = run_git_command(
             ["git", "push", remote_name, tag_name],
             f"Error pushing tag '{tag_name}' to remote",
-            f"Tag '{tag_name}' pushed to remote successfully",
+            "",
         )
+
+    if success:
+        print_success(f"Tag '{tag_name}' pushed to remote successfully")
 
     return success
 
@@ -569,8 +597,10 @@ def discard_local_changes() -> bool:
         success, _ = run_git_command(
             ["git", "clean", "-fd"],
             "Error while removing untracked files",
-            "Removed all untracked files and directories",
         )
+
+    if success:
+        print_success("Removed all untracked files and directories")
 
     return success
 
@@ -721,8 +751,8 @@ def check_has_changes(paths: Optional[List[str]] = None) -> bool:
             return True
         return False
 
-    path_str = ", ".join(paths)
-    print_process(f"Checking for changes in: {path_str}...")
+    paths_display = ", ".join(paths)
+    print_process(f"Checking for changes in: {paths_display}...")
 
     for path in paths:
         success, output = run_git_command(
@@ -735,7 +765,51 @@ def check_has_changes(paths: Optional[List[str]] = None) -> bool:
             print_success(f"Changes detected in: {path}")
             return True
 
-    print_info(f"No changes detected in the specified path(s): {path_str}")
+    print_info(f"No changes detected in the specified path(s): {paths_display}")
+    return False
+
+
+def has_commits_to_push() -> bool:
+    """Check if there are local commits that need to be pushed to remote.
+
+    Compares the local branch with its remote tracking branch to determine
+    if there are any commits that haven't been pushed yet.
+
+    Returns:
+        True if there are commits to push, False if branch is up to date or has no upstream
+
+    Note:
+        Returns False if branch has no upstream tracking branch configured
+    """
+    print_process("Checking for commits to push...")
+
+    # First check if current branch has an upstream
+    success, output = run_git_command(
+        ["git", "rev-parse", "--abbrev-ref", "@{u}"],
+        "Failed to check upstream branch",
+        show_output=True,
+    )
+
+    if not success or not output:
+        print_info("No upstream branch configured")
+        return False
+
+    # Count commits ahead of upstream
+    success, output = run_git_command(
+        ["git", "rev-list", "--count", "@{u}..HEAD"],
+        "Failed to count commits ahead",
+        show_output=True,
+    )
+
+    if success and output:
+        commit_count = int(output.strip())
+        if commit_count > 0:
+            commit_word = "commit" if commit_count == 1 else "commits"
+            print_success(f"{commit_count} {commit_word} ready to push")
+            return True
+        print_info("No commits to push - branch is up to date")
+        return False
+
     return False
 
 
@@ -759,7 +833,9 @@ def _handle_remote_access_error(remote_name: str, error_output: Optional[str]) -
     error_category = categorize_git_error(error_output)
 
     if error_category in (GitErrorCategory.PERMISSION, GitErrorCategory.AUTHENTICATION):
-        print_error("ACCESS DENIED: You don't have permission to access this repository.")
+        print_error(
+            "ACCESS DENIED: You don't have permission to access this repository."
+        )
         print_error("Please check:")
         print_error("  • You have push access to this repository")
         print_error("  • The repository URL is correct")
@@ -817,7 +893,6 @@ def check_remote_access() -> bool:
         env["GIT_TERMINAL_PROMPT"] = "0"
         env["GIT_ASKPASS"] = "true"
 
-        # nosec B603: Command is array with hardcoded git command - safe
         with ProgressSpinner(f"Checking access to {remote_name}"):
             result = subprocess.run(  # nosec B603
                 ["git", "ls-remote", "--exit-code", remote_name],
@@ -996,8 +1071,8 @@ def get_recent_commits(
     Note:
         Uses custom format string to parse commit data reliably
     """
-    format_str = "%H|%h|%s|%an|%ar"
-    command = ["git", "log", f"--pretty=format:{format_str}"]
+    commit_log_format = "%H|%h|%s|%an|%ar"
+    command = ["git", "log", f"--pretty=format:{commit_log_format}"]
     if count is not None and count > 0:
         command.append(f"-{count}")
 
@@ -1074,9 +1149,9 @@ def get_commit_by_hash(
     if not success or not commit_message:
         return None
 
-    message_parts = commit_message.strip().split("\n\n", 1)
-    subject = message_parts[0].strip()
-    body = message_parts[1].strip() if len(message_parts) > 1 else ""
+    commit_message_parts = commit_message.strip().split("\n\n", 1)
+    subject = commit_message_parts[0].strip()
+    body = commit_message_parts[1].strip() if len(commit_message_parts) > 1 else ""
 
     success, author = run_git_command(
         ["git", "log", "-1", "--pretty=%an", commit_hash],
@@ -1099,7 +1174,9 @@ def get_commit_by_hash(
     return (full_hash, short_hash, subject, body, author, date)
 
 
-def edit_commit_message(commit_hash: str, new_message: str, new_body: Optional[str] = None) -> bool:
+def edit_commit_message(
+    commit_hash: str, new_message: str, new_body: Optional[str] = None
+) -> bool:
     """Edit a commit message by hash, using appropriate strategy based on position.
 
     Uses the Strategy Pattern to automatically choose between amend (for latest commit)
@@ -1199,14 +1276,18 @@ def create_rebase_script_for_deletion(
     if not success:
         return False, None, []
 
-    commits = all_commits.strip().split("\n") if all_commits and all_commits.strip() else []
+    commits = (
+        all_commits.strip().split("\n") if all_commits and all_commits.strip() else []
+    )
     rebase_script: List[str] = []
     found_target = False
 
     for commit in commits:
         if commit == commit_hash:
             found_target = True
-            print_info(f"Removing commit {commit[:GIT_CONFIG.SHORT_HASH_LENGTH]} from history")
+            print_info(
+                f"Removing commit {commit[:GIT_CONFIG.SHORT_HASH_LENGTH]} from history"
+            )
             continue
         else:
             success, subject = run_git_command(
@@ -1261,7 +1342,9 @@ def delete_old_commit_with_rebase(commit_hash: str) -> bool:
     script_file = None
     batch_file = None
     try:
-        success, script_file, rebase_script = create_rebase_script_for_deletion(commit_hash)
+        success, script_file, rebase_script = create_rebase_script_for_deletion(
+            commit_hash
+        )
         if not success or not script_file:
             return False
 
@@ -1284,7 +1367,6 @@ def delete_old_commit_with_rebase(commit_hash: str) -> bool:
             env["GIT_EDITOR"] = get_null_editor_command()
 
             with ProgressSpinner("Deleting commit via rebase"):
-                # nosec B603: Command is array with hardcoded git command - safe
                 result = subprocess.run(  # nosec B603
                     ["git", "rebase", "-i", "--root"],
                     env=env,
@@ -1308,13 +1390,11 @@ def delete_old_commit_with_rebase(commit_hash: str) -> bool:
 
                 if is_conflict:
                     # Show clear conflict message
-                    print()
                     print_error("=" * 70)
                     print_error(
                         f"CONFLICT: Cannot delete commit '{commit_hash[:GIT_CONFIG.SHORT_HASH_LENGTH]}' cleanly"
                     )
                     print_error("=" * 70)
-                    print()
 
                     # Show conflicting files using git status
                     status_cmd = subprocess.run(  # nosec B603
@@ -1327,14 +1407,16 @@ def delete_old_commit_with_rebase(commit_hash: str) -> bool:
                         conflict_lines = [
                             line
                             for line in status_cmd.stdout.split("\n")
-                            if any(marker in line for marker in ["UU ", "AA ", "DD ", "DU ", "UD "])
+                            if any(
+                                marker in line
+                                for marker in ["UU ", "AA ", "DD ", "DU ", "UD "]
+                            )
                         ]
 
                         if conflict_lines:
                             print_error("Conflicting files:")
                             for line in conflict_lines:
                                 print_error(f"  {line}")
-                            print()
 
                     # Clear instructions
                     print_info("TO RESOLVE:")
@@ -1343,13 +1425,13 @@ def delete_old_commit_with_rebase(commit_hash: str) -> bool:
                     print_info("  3. Save the files")
                     print_info("  4. Stage resolved files: git add <file>")
                     print_info("  5. Press Enter here to continue")
-                    print()
                     print_warning("OR type 'abort' to cancel the deletion")
-                    print()
 
                     # Wait for user
                     user_choice = (
-                        read_input("Press Enter when conflicts are resolved (or 'abort'): ")
+                        read_input(
+                            "Press Enter when conflicts are resolved (or 'abort'): "
+                        )
                         .strip()
                         .lower()
                     )
@@ -1375,9 +1457,7 @@ def delete_old_commit_with_rebase(commit_hash: str) -> bool:
                         return True
 
                     # Still has problems
-                    print()
                     print_error("Failed to continue. Details:")
-                    print()
                     if cont_cmd.stdout:
                         for line in cont_cmd.stdout.strip().split("\n"):
                             if line.strip():
@@ -1386,7 +1466,6 @@ def delete_old_commit_with_rebase(commit_hash: str) -> bool:
                         for line in cont_cmd.stderr.strip().split("\n"):
                             if line.strip():
                                 print_error(line)
-                    print()
 
                     # Check for remaining conflicts
                     recheck_status = subprocess.run(  # nosec B603
@@ -1406,8 +1485,9 @@ def delete_old_commit_with_rebase(commit_hash: str) -> bool:
                             print_error("Still has conflicts in:")
                             for line in remaining:
                                 print_error(f"  {line}")
-                            print()
-                            print_error("All conflicts must be resolved before continuing.")
+                            print_error(
+                                "All conflicts must be resolved before continuing."
+                            )
 
                     print_error("Aborting rebase and restoring repository...")
                     run_git_command(["git", "rebase", "--abort"], "", "")
@@ -1514,7 +1594,6 @@ def run_pre_commit_hooks(staged_files: List[str]) -> bool:
     """
     try:
         with ProgressSpinner("Running pre-commit hooks"):
-            # nosec B603: Command is array with validated file list - safe
             result = subprocess.run(  # nosec B603
                 ["pre-commit", "run", "--files"] + staged_files,
                 capture_output=True,
@@ -1528,7 +1607,9 @@ def run_pre_commit_hooks(staged_files: List[str]) -> bool:
                 print(result.stdout)
             if result.stderr:
                 print(f"\033[91m{result.stderr}\033[0m")
-            print_warning("Please fix the issues reported by pre-commit and run ccg again.")
+            print_warning(
+                "Please fix the issues reported by pre-commit and run ccg again."
+            )
             return False
 
         print_success("All pre-commit checks passed successfully")
@@ -1543,7 +1624,9 @@ def run_pre_commit_hooks(staged_files: List[str]) -> bool:
             print(e.stdout)
         if e.stderr:
             print(f"\033[91m{e.stderr}\033[0m")
-        print_warning("Please ensure pre-commit is configured correctly and run ccg again.")
+        print_warning(
+            "Please ensure pre-commit is configured correctly and run ccg again."
+        )
         return False
     except (OSError, subprocess.SubprocessError, Exception) as e:
         print_error(f"Unexpected error running pre-commit checks: {str(e)}")
@@ -1571,7 +1654,6 @@ def check_and_install_pre_commit() -> bool:
             return True
 
         try:
-            # nosec B603: Command is hardcoded array - safe
             subprocess.run(  # nosec B603
                 ["pre-commit", "--version"],
                 capture_output=True,
@@ -1588,7 +1670,9 @@ def check_and_install_pre_commit() -> bool:
         if not pre_commit_installed:
             print_warning("pre-commit is configured but not installed.")
             print_info("Run 'pip install pre-commit' to install it.")
-            print_info("After installing, run 'pre-commit install' to set up the hooks.")
+            print_info(
+                "After installing, run 'pre-commit install' to set up the hooks."
+            )
             return False
 
         print_process("Setting up pre-commit hooks...")

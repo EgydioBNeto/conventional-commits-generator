@@ -39,7 +39,9 @@ class RepositoryCache:
         self._remote_name = None
         # Note: _cached_cwd is not cleared here - it's updated separately in invalidate_if_cwd_changed()
 
-    def get_or_fetch(self, key: str, fetcher: Callable[[], Optional[str]]) -> Optional[str]:
+    def get_or_fetch(
+        self, key: str, fetcher: Callable[[], Optional[str]]
+    ) -> Optional[str]:
         """Generic cached getter with lazy loading.
 
         Args:
@@ -51,9 +53,9 @@ class RepositoryCache:
         """
         self.invalidate_if_cwd_changed()
 
-        cached: Optional[str] = getattr(self, f"_{key}", None)
-        if cached is not None:
-            return cached
+        cached_value: Optional[str] = getattr(self, f"_{key}", None)
+        if cached_value is not None:
+            return cached_value
 
         value = fetcher()
         setattr(self, f"_{key}", value)

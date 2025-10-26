@@ -37,7 +37,9 @@ class TestSetFilePermissionsSecure:
     @patch("ccg.platform_utils.logger")
     @patch("ccg.platform_utils.os.chmod")
     @patch("ccg.platform_utils.sys.platform", "linux")
-    def test_handles_permission_error(self, mock_chmod: Mock, mock_logger: Mock) -> None:
+    def test_handles_permission_error(
+        self, mock_chmod: Mock, mock_logger: Mock
+    ) -> None:
         """Should log warning on permission error but not raise."""
         from ccg.platform_utils import set_file_permissions_secure
 
@@ -311,7 +313,9 @@ class TestCreateExecutableTempFile:
     @patch("ccg.platform_utils.os.chmod")
     @patch("ccg.platform_utils.os.umask")
     @patch("ccg.platform_utils.sys.platform", "linux")
-    def test_creates_executable_file_unix(self, mock_umask: Mock, mock_chmod: Mock) -> None:
+    def test_creates_executable_file_unix(
+        self, mock_umask: Mock, mock_chmod: Mock
+    ) -> None:
         """Should create file with executable permissions on Unix."""
         import tempfile
 

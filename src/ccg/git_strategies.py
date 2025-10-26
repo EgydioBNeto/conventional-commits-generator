@@ -15,6 +15,7 @@ from ccg.config import GIT_CONFIG
 from ccg.platform_utils import (
     create_executable_temp_file,
     create_secure_temp_file,
+    ensure_ccg_directory,
     get_filter_branch_command,
 )
 from ccg.progress import ProgressSpinner
@@ -45,7 +46,11 @@ class CommitEditStrategy(ABC):
 
     @abstractmethod
     def edit(
-        self, commit_hash: str, new_message: str, new_body: Optional[str] = None, **kwargs: object
+        self,
+        commit_hash: str,
+        new_message: str,
+        new_body: Optional[str] = None,
+        **kwargs: object,
     ) -> bool:
         """Edit the commit message using this strategy's technique.
 
@@ -90,7 +95,11 @@ class AmendStrategy(CommitEditStrategy):
         return commit_hash == latest_commit_hash
 
     def edit(
-        self, commit_hash: str, new_message: str, new_body: Optional[str] = None, **kwargs: object
+        self,
+        commit_hash: str,
+        new_message: str,
+        new_body: Optional[str] = None,
+        **kwargs: object,
     ) -> bool:
         """Edit latest commit using git commit --amend.
 
@@ -110,12 +119,9 @@ class AmendStrategy(CommitEditStrategy):
             full_commit_message += f"\n\n{new_body}"
 
         # Create CCG directory in user's home
-        ccg_dir: Path = Path.home() / ".ccg"
-        try:
-            ccg_dir.mkdir(parents=True, exist_ok=True)
-        except (OSError, PermissionError) as e:
-            logger.error(f"Failed to create CCG directory: {str(e)}")
-            print_error(f"Failed to create directory {ccg_dir}: {str(e)}")
+        ccg_dir: Optional[Path] = ensure_ccg_directory()
+        if not ccg_dir:
+            print_error("Failed to create CCG temporary directory")
             return False
 
         message_file: Optional[Path] = None
@@ -125,7 +131,9 @@ class AmendStrategy(CommitEditStrategy):
                 filename: str = (
                     f"commit_message_amend_{commit_hash[:GIT_CONFIG.SHORT_HASH_LENGTH]}.tmp"
                 )
-                message_file = create_secure_temp_file(ccg_dir, filename, full_commit_message)
+                message_file = create_secure_temp_file(
+                    ccg_dir, filename, full_commit_message
+                )
                 logger.debug(f"Created secure message file: {message_file}")
             except (IOError, OSError, PermissionError) as e:
                 logger.error(f"Failed to create temporary file: {str(e)}")
@@ -182,7 +190,11 @@ class FilterBranchStrategy(CommitEditStrategy):
         return commit_hash != latest_commit_hash
 
     def edit(
-        self, commit_hash: str, new_message: str, new_body: Optional[str] = None, **kwargs: object
+        self,
+        commit_hash: str,
+        new_message: str,
+        new_body: Optional[str] = None,
+        **kwargs: object,
     ) -> bool:
         """Edit old commit using git filter-branch.
 
@@ -203,12 +215,9 @@ class FilterBranchStrategy(CommitEditStrategy):
         if new_body:
             full_commit_message += f"\n\n{new_body}"
 
-        ccg_dir = Path.home() / ".ccg"
-        try:
-            ccg_dir.mkdir(parents=True, exist_ok=True)
-        except (OSError, PermissionError) as e:
-            logger.error(f"Failed to create CCG directory: {str(e)}")
-            print_error(f"Failed to create directory {ccg_dir}: {str(e)}")
+        ccg_dir = ensure_ccg_directory()
+        if not ccg_dir:
+            print_error("Failed to create CCG temporary directory")
             return False
 
         message_file: Optional[Path] = None
@@ -216,15 +225,19 @@ class FilterBranchStrategy(CommitEditStrategy):
         try:
             try:
                 # Create message file with secure permissions from the start
-                filename: str = f"commit_message_{commit_hash[:GIT_CONFIG.SHORT_HASH_LENGTH]}.tmp"
-                message_file = create_secure_temp_file(ccg_dir, filename, full_commit_message)
+                filename: str = (
+                    f"commit_message_{commit_hash[:GIT_CONFIG.SHORT_HASH_LENGTH]}.tmp"
+                )
+                message_file = create_secure_temp_file(
+                    ccg_dir, filename, full_commit_message
+                )
                 logger.debug(f"Created secure message file: {message_file}")
             except (IOError, OSError, PermissionError) as e:
                 logger.error(f"Failed to create message file: {str(e)}")
                 print_error(f"Failed to create temporary message file: {str(e)}")
                 return False
 
-            script_content: str = f"""#!/usr/bin/env python3
+            filter_branch_script: str = f"""#!/usr/bin/env python3
 import subprocess
 import sys
 
@@ -244,8 +257,12 @@ else:
 
             try:
                 # Create executable script file with secure permissions from the start
-                script_filename: str = f"msg_filter_{commit_hash[:GIT_CONFIG.SHORT_HASH_LENGTH]}.py"
-                script_file = create_executable_temp_file(ccg_dir, script_filename, script_content)
+                script_filename: str = (
+                    f"msg_filter_{commit_hash[:GIT_CONFIG.SHORT_HASH_LENGTH]}.py"
+                )
+                script_file = create_executable_temp_file(
+                    ccg_dir, script_filename, filter_branch_script
+                )
                 logger.debug(f"Created secure executable script file: {script_file}")
             except (IOError, OSError, PermissionError) as e:
                 logger.error(f"Failed to create Python script file: {str(e)}")
@@ -360,7 +377,9 @@ def edit_commit_with_strategy(
             logger.info(f"Using strategy: {strategy.get_description()}")
             return strategy.edit(commit_hash, new_message, new_body, **kwargs)
 
-    logger.error(f"No strategy found to handle commit {commit_hash[:GIT_CONFIG.SHORT_HASH_LENGTH]}")
+    logger.error(
+        f"No strategy found to handle commit {commit_hash[:GIT_CONFIG.SHORT_HASH_LENGTH]}"
+    )
     print_error(
         f"Unable to find appropriate strategy for editing commit {commit_hash[:GIT_CONFIG.SHORT_HASH_LENGTH]}"
     )

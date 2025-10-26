@@ -67,6 +67,15 @@ class LoggingConfig:
     THREAD_JOIN_TIMEOUT: float = 1.0
 
 
+@dataclass(frozen=True)
+class GitMessages:
+    """Common git success messages used for special handling."""
+
+    PUSH_SUCCESS: str = "Changes pushed successfully!"
+    GIT_NOT_INSTALLED: str = "Git is not installed"
+    TIMEOUT_PREFIX: str = "Command timed out after"
+
+
 # ANSI Color codes for terminal output
 RED = "\033[91m"
 GREEN = "\033[92m"
@@ -164,3 +173,4 @@ INPUT_LIMITS = InputLimits()
 GIT_CONFIG = GitConfig()
 UI_CONFIG = UIConfig()
 LOGGING_CONFIG = LoggingConfig()
+GIT_MESSAGES = GitMessages()
