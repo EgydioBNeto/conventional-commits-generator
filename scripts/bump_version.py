@@ -133,7 +133,7 @@ def update_init_file(new_version: str) -> None:
     )
 
     init_file.write_text(updated_content)
-    print(f"✅ Updated {init_file} with version {new_version}")
+    print(f"[OK] Updated {init_file} with version {new_version}")
 
 
 def update_pyproject_toml(new_version: str) -> None:
@@ -141,7 +141,7 @@ def update_pyproject_toml(new_version: str) -> None:
     pyproject_file = Path("pyproject.toml")
 
     if not pyproject_file.exists():
-        print(f"⚠️  {pyproject_file} not found, skipping")
+        print(f"[WARNING] {pyproject_file} not found, skipping")
         return
 
     content = pyproject_file.read_text()
@@ -154,7 +154,7 @@ def update_pyproject_toml(new_version: str) -> None:
     )
 
     pyproject_file.write_text(updated_content)
-    print(f"✅ Updated {pyproject_file} with version {new_version}")
+    print(f"[OK] Updated {pyproject_file} with version {new_version}")
 
 
 def update_security_md(new_version: str) -> None:
@@ -162,7 +162,7 @@ def update_security_md(new_version: str) -> None:
     security_file = Path(".github/SECURITY.md")
 
     if not security_file.exists():
-        print(f"⚠️  {security_file} not found, skipping")
+        print(f"[WARNING] {security_file} not found, skipping")
         return
 
     content = security_file.read_text()
@@ -184,7 +184,7 @@ def update_security_md(new_version: str) -> None:
         )
 
     security_file.write_text(updated_content)
-    print(f"✅ Updated {security_file} with version {new_version}")
+    print(f"[OK] Updated {security_file} with version {new_version}")
 
 
 def update_docs_usage_md(new_version: str) -> None:
@@ -192,7 +192,7 @@ def update_docs_usage_md(new_version: str) -> None:
     usage_file = Path("docs/user-guide/usage.md")
 
     if not usage_file.exists():
-        print(f"⚠️  {usage_file} not found, skipping")
+        print(f"[WARNING] {usage_file} not found, skipping")
         return
 
     content = usage_file.read_text()
@@ -206,7 +206,7 @@ def update_docs_usage_md(new_version: str) -> None:
     )
 
     usage_file.write_text(updated_content)
-    print(f"✅ Updated {usage_file} with version {new_version}")
+    print(f"[OK] Updated {usage_file} with version {new_version}")
 
 
 def update_changelog_with_real_content(new_version: str) -> None:
@@ -261,12 +261,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
     # Write to root changelog
     changelog_file.write_text(changelog_content)
-    print(f"✅ Updated {changelog_file} with version {new_version}")
+    print(f"[OK] Updated {changelog_file} with version {new_version}")
 
     # Sync to docs changelog
     if docs_changelog_file.parent.exists():
         docs_changelog_file.write_text(changelog_content)
-        print(f"✅ Synced changelog to {docs_changelog_file}")
+        print(f"[OK] Synced changelog to {docs_changelog_file}")
 
 
 def main():
@@ -287,32 +287,32 @@ def main():
 
     try:
         current_version = get_current_version()
-        print(f"📋 Current version: {current_version}")
+        print(f"Current version: {current_version}")
 
         new_version = bump_version(current_version, args.type)
-        print(f"🚀 New version: {new_version} (bump: {args.type})")
+        print(f"New version: {new_version} (bump: {args.type})")
 
         if args.dry_run:
-            print("🔍 Dry run mode - no files will be modified")
+            print("Dry run mode - no files will be modified")
             print(f"Would update version from {current_version} to {new_version}")
-            print("\n📝 Changelog content that would be generated:")
+            print("\nChangelog content that would be generated:")
             changelog_content = generate_changelog_content(new_version)
             print("=" * 50)
             print(changelog_content)
             print("=" * 50)
             return
 
-        print("\n📝 Updating files...")
+        print("\nUpdating files...")
         update_init_file(new_version)
         update_pyproject_toml(new_version)
         update_security_md(new_version)
         update_docs_usage_md(new_version)
         update_changelog_with_real_content(new_version)
 
-        print(f"\n🎉 Successfully bumped version to {new_version}")
+        print(f"\nSuccessfully bumped version to {new_version}")
 
     except Exception as e:
-        print(f"❌ Error: {e}", file=sys.stderr)
+        print(f"[ERROR] {e}", file=sys.stderr)
         sys.exit(1)
 
 
