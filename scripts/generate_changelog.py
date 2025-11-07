@@ -32,8 +32,12 @@ def format_changelog_section(version: str, categories: Dict[str, List[Dict]]) ->
             lines.append("")
 
             for commit in categories[category]:
-                scope_text = f"**{commit['scope'].strip('()')}**: " if commit["scope"] else ""
-                lines.append(f"- {scope_text}{commit['description']} ([{commit['hash']}])")
+                scope_text = (
+                    f"**{commit['scope'].strip('()')}**: " if commit["scope"] else ""
+                )
+                lines.append(
+                    f"- {scope_text}{commit['description']} ([{commit['hash']}])"
+                )
 
                 if commit["body"] and len(commit["body"]) > 10:
                     body_lines = commit["body"].split("\n")[:3]

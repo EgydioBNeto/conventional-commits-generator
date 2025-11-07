@@ -28,7 +28,7 @@ jobs:
 
     steps:
     - name: Checkout code
-      uses: actions/checkout@v4
+      uses: actions/checkout@v5
       with:
         fetch-depth: 0
         token: ${{ secrets.GITHUB_TOKEN }}
@@ -42,10 +42,10 @@ jobs:
         # Check for skip release indicators
         if [[ $COMMIT_MSG =~ \[skip-release\] ]] || [[ $COMMIT_MSG =~ \[skip-deploy\] ]]; then
           echo "should_release=false" >> $GITHUB_OUTPUT
-          echo "🚫 Release skipped due to [skip-release] flag in commit message"
+          echo "Release skipped due to [skip-release] flag in commit message"
         else
           echo "should_release=true" >> $GITHUB_OUTPUT
-          echo "✅ Will proceed with release process"
+          echo "Will proceed with release process"
         fi
 
     - name: Get commit info
@@ -66,13 +66,13 @@ jobs:
 
     steps:
     - name: Checkout code
-      uses: actions/checkout@v4
+      uses: actions/checkout@v5
       with:
         fetch-depth: 0
         token: ${{ secrets.GITHUB_TOKEN }}
 
     - name: Set up Python
-      uses: actions/setup-python@v5
+      uses: actions/setup-python@v6.0.0
       with:
         python-version: ${{ env.PYTHON_VERSION }}
 
@@ -203,7 +203,7 @@ jobs:
 
     steps:
     - name: Checkout code
-      uses: actions/checkout@v4
+      uses: actions/checkout@v5
       with:
         ref: ${{ needs.release.outputs.commit_hash }}
         fetch-depth: 0
@@ -217,7 +217,7 @@ jobs:
         echo "Expected version: $EXPECTED_VERSION"
 
         if [ "$CURRENT_VERSION" != "$EXPECTED_VERSION" ]; then
-          echo "❌ ERROR: Version mismatch!"
+          echo "ERROR: Version mismatch!"
           echo "Expected: $EXPECTED_VERSION"
           echo "Got: $CURRENT_VERSION"
           exit 1
@@ -226,7 +226,7 @@ jobs:
         fi
 
     - name: Set up Python
-      uses: actions/setup-python@v5
+      uses: actions/setup-python@v6.0.0
       with:
         python-version: ${{ env.PYTHON_VERSION }}
 
@@ -249,9 +249,9 @@ jobs:
         echo "Built wheel: $WHEEL_FILE"
 
         if [[ $WHEEL_FILE == *"${{ needs.release.outputs.version }}"* ]]; then
-          echo "✅ Wheel file has correct version"
+          echo "Wheel file has correct version"
         else
-          echo "❌ ERROR: Wheel file doesn't contain expected version"
+          echo "ERROR: Wheel file doesn't contain expected version"
           echo "Expected version in filename: ${{ needs.release.outputs.version }}"
           exit 1
         fi

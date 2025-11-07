@@ -302,6 +302,32 @@ Result: `:sparkles: feat(api)!: redesign authentication flow`
 
 ---
 
+### Verify Commit Compliance
+
+Check if your commits follow the Conventional Commits standard:
+
+```bash
+ccg --analyze
+# Choose how many commits to check (or press Enter for all)
+# View color-coded results (✓ valid, ✗ invalid)
+# Use the commit numbers shown to fix invalid commits with --edit
+```
+
+**Example Output**:
+
+```
+1. ✓ [a3c6dbc] feat(ux): improvements in usability
+2. ✗ [2812ed3] update bump version workflow
+3. ✓ [fa6a6df] feat: adding improvements
+```
+
+!!! tip "When to Use"
+    - After adopting Conventional Commits in an existing project
+    - Before creating a release
+    - To identify which commits need fixing
+
+---
+
 ## Important Notes
 
 !!! warning "Git Repository Required"
@@ -360,6 +386,28 @@ ssh -T git@github.com  # Test SSH (for SSH URLs)
 pre-commit run --all-files  # See what's failing
 # Fix the issues, then run ccg again
 ```
+
+---
+
+### Debug with Verbose Mode
+
+**Problem**: Something isn't working as expected
+
+**Solution**: Use verbose mode to see detailed logs:
+
+```bash
+ccg --verbose
+# or
+ccg -v
+```
+
+This enables debug output showing:
+
+- All git commands being executed
+- Detailed error messages
+- Step-by-step operation flow
+
+**Log File**: Check `~/.ccg/ccg.log` for the complete log history.
 
 ---
 
