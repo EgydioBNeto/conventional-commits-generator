@@ -126,38 +126,44 @@ def get_copy_command_for_rebase(script_file: Path) -> tuple[str, Optional[Path]]
     Returns:
         Tuple of (command_string, temp_file_path):
         - command_string: Command to use for GIT_SEQUENCE_EDITOR
-        - temp_file_path: Path to temporary .bat file (Windows only), or None (Unix)
+        - temp_file_path: Path to temporary shell script (Windows only), or None (Unix)
 
     Security:
-        Uses shlex.quote() on Unix to prevent command injection from malicious paths.
-        On Windows, sanitizes paths by removing double quotes to prevent string escape.
+        Uses shlex.quote() to prevent command injection from malicious paths.
 
     Note:
         On Unix: Uses 'cp' command with properly quoted path, no temp file created
-        On Windows: Creates a temporary batch file that performs the copy
+        On Windows: Creates a temporary shell script for Git Bash compatibility
         IMPORTANT: Caller must delete the temp file (if not None) after use!
 
     Example:
         >>> script = Path("/tmp/rebase_script.txt")
         >>> cmd, temp_file = get_copy_command_for_rebase(script)
         # Unix: ("cp '/tmp/rebase_script.txt'", None)
-        # Windows: ("C:\\path\\to\\file_copy.bat", Path("C:\\path\\to\\file_copy.bat"))
+        # Windows: ("sh /path/to/file_copy.sh", Path("/path/to/file_copy.sh"))
     """
     if sys.platform != "win32":
         escaped_path = shlex.quote(str(script_file))
         return f"cp {escaped_path}", None
     else:
-        safe_path = str(script_file).replace('"', "")
-        batch_content = f'@echo off\ncopy /Y "{safe_path}" %1\n'
+        # Windows with Git Bash: create a shell script that works in both cmd and bash
+        # Convert Windows path to forward slashes for Git Bash compatibility
+        script_path_posix = str(script_file).replace("\\", "/")
+        escaped_path = shlex.quote(script_path_posix)
 
-        batch_file = script_file.parent / f"{script_file.stem}_copy.bat"
+        # Create a shell script (Git for Windows uses bash)
+        shell_script = script_file.parent / f"{script_file.stem}_copy.sh"
+        shell_content = f'#!/bin/sh\ncp {escaped_path} "$1"\n'
+
         try:
-            batch_file.write_text(batch_content, encoding="utf-8")
-            logger.debug(f"Created Windows batch file for copy: {batch_file}")
-            return str(batch_file), batch_file
+            shell_script.write_text(shell_content, encoding="utf-8")
+            logger.debug(f"Created shell script for Windows Git Bash: {shell_script}")
+            # Return sh command with the script path
+            return f"sh {shlex.quote(str(shell_script))}", shell_script
         except (IOError, OSError) as e:
-            logger.error(f"Failed to create Windows batch file: {e}")
-            return f'copy /Y "{safe_path}"', None
+            logger.error(f"Failed to create shell script: {e}")
+            # Fallback to inline cp command
+            return f"cp {escaped_path}", None
 
 
 def get_null_editor_command() -> str:

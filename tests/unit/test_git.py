@@ -2517,7 +2517,7 @@ class TestDeleteOldCommitWithRebaseSuccess:
     @patch("ccg.git.get_copy_command_for_rebase")
     @patch("subprocess.run")
     @patch("ccg.git.create_rebase_script_for_deletion")
-    def test_rebase_success_with_windows_batch_file_cleanup(
+    def test_rebase_success_with_windows_shell_script_cleanup(
         self,
         mock_create_script: Mock,
         mock_subprocess: Mock,
@@ -2525,7 +2525,7 @@ class TestDeleteOldCommitWithRebaseSuccess:
         mock_exists: Mock,
         mock_unlink: Mock,
     ) -> None:
-        """Should cleanup both script and batch file on Windows."""
+        """Should cleanup both script and shell script on Windows."""
         from pathlib import Path
 
         from ccg.git import delete_old_commit_with_rebase
@@ -2533,11 +2533,11 @@ class TestDeleteOldCommitWithRebaseSuccess:
         mock_create_script.return_value = (True, "/tmp/script", ["pick abc123 test"])
         mock_subprocess.return_value = Mock(returncode=0, stderr="")
 
-        # Simulate Windows: get_copy_command_for_rebase returns a batch file path
-        mock_batch_file = Path("/tmp/script_copy.bat")
-        mock_get_copy.return_value = ("C:\\tmp\\script_copy.bat", mock_batch_file)
+        # Simulate Windows: get_copy_command_for_rebase returns a shell script path
+        mock_shell_file = Path("/tmp/script_copy.sh")
+        mock_get_copy.return_value = ("sh C:\\tmp\\script_copy.sh", mock_shell_file)
 
-        # Both script and batch file exist
+        # Both script and shell script exist
         mock_exists.return_value = True
 
         result = delete_old_commit_with_rebase("def456")
@@ -2546,14 +2546,15 @@ class TestDeleteOldCommitWithRebaseSuccess:
         # Verify both files were deleted
         assert mock_unlink.call_count == 2
         mock_unlink.assert_any_call("/tmp/script")
-        mock_unlink.assert_any_call("/tmp/script_copy.bat")
+        # Use str(mock_shell_file) to handle cross-platform path separators
+        mock_unlink.assert_any_call(str(mock_shell_file))
 
     @patch("os.unlink")
     @patch("os.path.exists")
     @patch("ccg.git.get_copy_command_for_rebase")
     @patch("subprocess.run")
     @patch("ccg.git.create_rebase_script_for_deletion")
-    def test_rebase_success_with_windows_batch_file_cleanup_exception(
+    def test_rebase_success_with_windows_shell_script_cleanup_exception(
         self,
         mock_create_script: Mock,
         mock_subprocess: Mock,
@@ -2561,7 +2562,7 @@ class TestDeleteOldCommitWithRebaseSuccess:
         mock_exists: Mock,
         mock_unlink: Mock,
     ) -> None:
-        """Should ignore exceptions during Windows batch file cleanup."""
+        """Should ignore exceptions during Windows shell script cleanup."""
         from pathlib import Path
 
         from ccg.git import delete_old_commit_with_rebase
@@ -2569,21 +2570,22 @@ class TestDeleteOldCommitWithRebaseSuccess:
         mock_create_script.return_value = (True, "/tmp/script", ["pick abc123 test"])
         mock_subprocess.return_value = Mock(returncode=0, stderr="")
 
-        # Simulate Windows: get_copy_command_for_rebase returns a batch file path
-        mock_batch_file = Path("/tmp/script_copy.bat")
-        mock_get_copy.return_value = ("C:\\tmp\\script_copy.bat", mock_batch_file)
+        # Simulate Windows: get_copy_command_for_rebase returns a shell script path
+        mock_shell_file = Path("/tmp/script_copy.sh")
+        mock_get_copy.return_value = ("sh C:\\tmp\\script_copy.sh", mock_shell_file)
 
         # Both files exist
         mock_exists.return_value = True
 
-        # First unlink (script file) succeeds, second unlink (batch file) fails
+        # First unlink (script file) succeeds, second unlink (shell file) fails
         mock_unlink.side_effect = [None, Exception("Permission denied")]
 
         result = delete_old_commit_with_rebase("def456")
 
-        # Should still succeed despite batch file cleanup failure
+        # Should still succeed despite shell script cleanup failure
         assert result is True
         # Verify both unlinks were attempted
         assert mock_unlink.call_count == 2
         mock_unlink.assert_any_call("/tmp/script")
-        mock_unlink.assert_any_call("/tmp/script_copy.bat")
+        # Use str(mock_shell_file) to handle cross-platform path separators
+        mock_unlink.assert_any_call(str(mock_shell_file))

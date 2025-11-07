@@ -107,13 +107,13 @@ class TestCommandInjectionPrevention:
 
         # The script path should be quoted
         # Check if the malicious part appears within quotes in the command
-        # Note: Path() may normalize trailing slashes, so check the core malicious part
-        core_malicious = malicious_path.rstrip("/")
+        # Use str(script_path) because Path() normalizes separators (/ -> \ on Windows)
+        normalized_path = str(script_path).rstrip("/").rstrip("\\")
         in_single_quotes = (
-            f"'{core_malicious}" in command
-            and "'" in command[command.index(core_malicious) :]
+            f"'{normalized_path}" in command
+            and "'" in command[command.index(normalized_path) :]
         )
-        in_double_quotes = f'"{core_malicious}"' in command
+        in_double_quotes = f'"{normalized_path}"' in command
         assert (
             in_single_quotes or in_double_quotes
         ), f"{description} not prevented - path not quoted: {command}"

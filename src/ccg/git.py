@@ -1337,10 +1337,10 @@ def delete_old_commit_with_rebase(commit_hash: str) -> bool:
         Uses 120 second timeout for rebase operation.
         Automatically aborts rebase on failure to prevent repository corruption.
         If deleting all commits, creates empty repository with update-ref.
-        Cleans up all temporary files (.txt script and .bat file on Windows).
+        Cleans up all temporary files (.txt script and .sh script on Windows).
     """
     script_file = None
-    batch_file = None
+    temp_script = None
     try:
         success, script_file, rebase_script = create_rebase_script_for_deletion(
             commit_hash
@@ -1360,8 +1360,8 @@ def delete_old_commit_with_rebase(commit_hash: str) -> bool:
         try:
             env = os.environ.copy()
             # Use cross-platform copy command for GIT_SEQUENCE_EDITOR
-            # On Windows, this creates a temporary .bat file that must be cleaned up
-            copy_command, batch_file = get_copy_command_for_rebase(Path(script_file))
+            # On Windows, this creates a temporary shell script that must be cleaned up
+            copy_command, temp_script = get_copy_command_for_rebase(Path(script_file))
             env["GIT_SEQUENCE_EDITOR"] = copy_command
             # Use cross-platform null editor for GIT_EDITOR
             env["GIT_EDITOR"] = get_null_editor_command()
@@ -1522,16 +1522,16 @@ def delete_old_commit_with_rebase(commit_hash: str) -> bool:
             except Exception as e:
                 logger.warning(f"Failed to delete script file {script_file}: {e}")
 
-        # Clean up batch file (.bat) - Windows only
-        if batch_file:
+        # Clean up temp script (.sh) - Windows only
+        if temp_script:
             try:
-                # batch_file is a Path object, convert to string for os.path.exists
-                batch_file_str = str(batch_file)
-                if os.path.exists(batch_file_str):
-                    os.unlink(batch_file_str)
-                    logger.debug(f"Deleted temporary batch file: {batch_file_str}")
+                # temp_script is a Path object, convert to string for os.path.exists
+                temp_script_str = str(temp_script)
+                if os.path.exists(temp_script_str):
+                    os.unlink(temp_script_str)
+                    logger.debug(f"Deleted temporary script: {temp_script_str}")
             except Exception as e:
-                logger.warning(f"Failed to delete batch file {batch_file}: {e}")
+                logger.warning(f"Failed to delete temp script {temp_script}: {e}")
 
 
 def delete_commit(commit_hash: str) -> bool:

@@ -114,49 +114,57 @@ class TestGetCopyCommandForRebase:
     def test_returns_cp_command_on_unix(self) -> None:
         """Should return 'cp' command on Unix systems and no temp file."""
         from ccg.platform_utils import get_copy_command_for_rebase
+        import shlex
 
         script_file = Path("/tmp/rebase_script.txt")
         result, temp_file = get_copy_command_for_rebase(script_file)
 
-        assert result == f"cp {script_file}"
+        # Path should be quoted for security
+        expected = f"cp {shlex.quote(str(script_file))}"
+        assert result == expected
         assert temp_file is None  # No temp file on Unix
 
     @patch("ccg.platform_utils.sys.platform", "win32")
-    def test_creates_batch_file_on_windows(self) -> None:
-        """Should create .bat file on Windows and return its path."""
+    def test_creates_shell_script_on_windows(self) -> None:
+        """Should create .sh script on Windows for Git Bash compatibility."""
         from ccg.platform_utils import get_copy_command_for_rebase
+        import shlex
 
         # Create a mock Path object
         mock_script_file = MagicMock(spec=Path)
         mock_script_file.stem = "rebase_script"
+        mock_script_file.__str__ = MagicMock(return_value="C:\\tmp\\rebase_script.txt")
         mock_parent = MagicMock()
         mock_script_file.parent = mock_parent
-        mock_batch_file = MagicMock()
-        mock_parent.__truediv__.return_value = mock_batch_file
+        mock_shell_file = MagicMock()
+        mock_shell_file.__str__ = MagicMock(return_value="C:\\tmp\\rebase_script_copy.sh")
+        mock_parent.__truediv__.return_value = mock_shell_file
 
         result, temp_file = get_copy_command_for_rebase(mock_script_file)
 
-        # Should create batch file
-        mock_batch_file.write_text.assert_called_once()
-        # Should return path to batch file as command
-        assert result == str(mock_batch_file)
+        # Should create shell script
+        mock_shell_file.write_text.assert_called_once()
+        # Should return sh command with quoted script path
+        assert "sh " in result
+        assert shlex.quote(str(mock_shell_file)) in result
         # Should also return temp file path for cleanup
-        assert temp_file == mock_batch_file
+        assert temp_file == mock_shell_file
 
     @patch("ccg.platform_utils.logger")
     @patch("ccg.platform_utils.sys.platform", "win32")
-    def test_handles_batch_file_creation_error(self, mock_logger: Mock) -> None:
-        """Should handle errors when creating Windows batch file."""
+    def test_handles_shell_script_creation_error(self, mock_logger: Mock) -> None:
+        """Should handle errors when creating Windows shell script."""
         from ccg.platform_utils import get_copy_command_for_rebase
 
         # Create a mock Path object that raises error on write
         mock_script_file = MagicMock(spec=Path)
         mock_script_file.stem = "rebase_script"
+        mock_script_file.__str__ = MagicMock(return_value="C:\\tmp\\rebase_script.txt")
         mock_parent = MagicMock()
         mock_script_file.parent = mock_parent
-        mock_batch_file = MagicMock()
-        mock_parent.__truediv__.return_value = mock_batch_file
-        mock_batch_file.write_text.side_effect = IOError("Disk full")
+        mock_shell_file = MagicMock()
+        mock_parent.__truediv__.return_value = mock_shell_file
+        mock_shell_file.write_text.side_effect = IOError("Disk full")
 
         result, temp_file = get_copy_command_for_rebase(mock_script_file)
 
@@ -195,14 +203,14 @@ class TestGetFilterBranchCommand:
     def test_returns_python_executable_with_script_path(self) -> None:
         """Should return sys.executable with script path for cross-platform reliability."""
         from ccg.platform_utils import get_filter_branch_command
+        import shlex
 
         script_file = Path("/tmp/filter_script.py")
         result = get_filter_branch_command(script_file)
 
-        # Should use sys.executable to invoke Python
-        assert sys.executable in result
-        assert str(script_file) in result
-        assert result == f"{sys.executable} {script_file}"
+        # Both paths should be quoted for security
+        expected = f"{shlex.quote(sys.executable)} {shlex.quote(str(script_file))}"
+        assert result == expected
 
     def test_works_with_windows_paths(self) -> None:
         """Should work correctly with Windows-style paths."""
