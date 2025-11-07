@@ -373,7 +373,7 @@ ccg --verbose --path /path/to/repo
 **Log Format**:
 
 ```
-2025-10-13 23:58:34 - ccg.cli - INFO - main:123 - CCG started (version 2.2.8)
+2025-10-13 23:58:34 - ccg.cli - INFO - main:123 - CCG started (version 2.3.0)
 2025-10-13 23:58:35 - ccg.git - DEBUG - run_git_command:145 - Executing git command: git status
 2025-10-13 23:58:35 - ccg.git - INFO - git_commit:289 - Creating commit with message: feat: add...
 ```
