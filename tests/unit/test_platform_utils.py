@@ -168,9 +168,9 @@ class TestGetCopyCommandForRebase:
 
         result, temp_file = get_copy_command_for_rebase(mock_script_file)
 
-        # Should log error and return fallback command
+        # Should log error and return fallback command (cp with POSIX path)
         assert mock_logger.error.called
-        assert "copy" in result.lower()
+        assert "cp" in result
         # No temp file since creation failed
         assert temp_file is None
 
