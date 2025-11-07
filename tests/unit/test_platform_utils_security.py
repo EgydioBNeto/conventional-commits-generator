@@ -170,10 +170,10 @@ class TestCommandInjectionPrevention:
 
     @patch("sys.platform", "win32")
     def test_copy_command_windows_quote_sanitization(self):
-        """Test that Windows command sanitizes quotes in paths.
+        """Test that Windows command properly quotes paths in shell scripts.
 
-        On Windows, quotes in paths are removed to prevent breaking out of
-        the quoted string in batch file commands.
+        On Windows, Git Bash is used, so we create .sh shell scripts instead
+        of batch files. Paths should be properly quoted using shlex.quote().
         """
         import os
         import tempfile
@@ -193,26 +193,23 @@ class TestCommandInjectionPrevention:
 
             command, temp_file = get_copy_command_for_rebase(malicious_path)
 
-            # On Windows, should create a .bat file or use copy command
+            # On Windows, should create a .sh file or use cp command
             assert (
-                ".bat" in command or "copy" in command.lower()
-            ), f"Windows should create .bat or use copy: {command}"
+                ".sh" in command or "cp" in command
+            ), f"Windows should create .sh or use cp: {command}"
 
-            # The actual batch file should be created - let's verify the logic works
-            # by checking that the function sanitizes quotes
-            if ".bat" in command:
-                # Verify the batch file was created
-                batch_file_path = Path(command)
-                if batch_file_path.exists():
-                    batch_content = batch_file_path.read_text()
-                    # Quotes should be sanitized (removed) from the path
-                    assert (
-                        'file"with"quotes' not in batch_content
-                        or "filewithquotes" in batch_content
-                    ), f"Quotes not sanitized: {batch_content}"
+            # The actual shell script should be created - let's verify it uses proper quoting
+            if ".sh" in command:
+                # Verify the shell script was created
+                shell_file_path = Path(command.replace("sh ", "").strip("'\""))
+                if shell_file_path.exists():
+                    shell_content = shell_file_path.read_text()
+                    # Should use cp command and have proper quoting
+                    assert "cp" in shell_content, f"Shell script should use cp: {shell_content}"
+                    assert "#!/bin/sh" in shell_content, f"Missing shebang: {shell_content}"
                     # Cleanup
                     try:
-                        batch_file_path.unlink()
+                        shell_file_path.unlink()
                     except:
                         pass
 
@@ -309,8 +306,8 @@ class TestRealWorldScenarios:
             assert temp_file is None
 
     @patch("sys.platform", "win32")
-    def test_windows_batch_file_creation(self):
-        """Test that Windows creates batch files correctly."""
+    def test_windows_shell_script_creation(self):
+        """Test that Windows creates shell scripts correctly for Git Bash."""
         import os
 
         path = Path("C:\\Users\\test\\script.txt")
@@ -318,19 +315,19 @@ class TestRealWorldScenarios:
         command, temp_file = get_copy_command_for_rebase(path)
 
         try:
-            # On Windows, should return a path to a .bat file
-            assert ".bat" in command or "copy" in command.lower()
+            # On Windows, should return a path to a .sh file or use cp command
+            assert ".sh" in command or "cp" in command
 
-            # Windows should return temp file path for cleanup (if .bat was created)
-            if ".bat" in command:
+            # Windows should return temp file path for cleanup (if .sh was created)
+            if ".sh" in command:
                 assert temp_file is not None
         finally:
-            # Cleanup: delete the .bat file if it was created
+            # Cleanup: delete the .sh file if it was created
             if temp_file:
                 try:
-                    batch_file_path = str(temp_file)
-                    if os.path.exists(batch_file_path):
-                        os.unlink(batch_file_path)
+                    shell_file_path = str(temp_file)
+                    if os.path.exists(shell_file_path):
+                        os.unlink(shell_file_path)
                 except Exception:
                     pass  # Ignore cleanup errors
 
