@@ -11,6 +11,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+---
+
+## [2.3.0] - 2025-11-07
+
+### 💥 BREAKING CHANGES
+
+- adding some improvements - performance and security ([9b8248f])
+
+### ✨ Added
+
+- new feature ([3dab0a7])
+- **ux**: improvements in usability and responsiveness ([a3c6dbc])
+- adding improvements ([fa6a6df])
+- remove some dead code ([f1030da])
+- add some quality improvements ([371c299])
+
+### 🔨 Changed
+
+- remove emojis from script outputs ([848097c])
+
+### 🐛 Fixed
+
+- **linux**: resolve Python 3.12 test failures on linux platform ([4348ca4])
+- **windows**: resolve Python 3.12 test failures on Windows platform ([b51aa85])
+
+### 🔧 Maintenance
+
+- removing unnecessary comments ([97c2e52])
+- add CODE_IMPROVEMENTS.md ([a5309a3])
+
 ## [2.2.8] - 2025-10-12
 
 ### ✨ Added
