@@ -198,6 +198,94 @@ ccg --reset
 
 ---
 
+### `--analyze`: Analyze Commit Compliance
+
+Analyze all commits in the repository to check Conventional Commits compliance:
+
+```bash
+ccg --analyze
+```
+
+**Features**:
+
+- Analyzes all commits or recent N commits
+- Validates each commit against Conventional Commits format
+- Color-coded output (green ✓ for valid, red ✗ for invalid)
+- Shows numbered list for easy identification
+- Provides summary statistics (total, valid %, invalid %)
+- Suggests using `--edit` to fix invalid commits
+
+**Workflow**:
+
+1. Choose how many commits to analyze (or all)
+2. View analysis results with validation status
+3. Review summary statistics
+4. Use suggested commit numbers with `--edit` to fix issues
+
+**Example Output**:
+
+```
+┌──────────────────────┐
+│ Analyze Commits      │
+└──────────────────────┘
+
+How many commits to analyze? (Enter for all, or a number): 5
+
+Analyzing last 5 commits...
+
+┌──────────────────────┐
+│ Analysis Results     │
+└──────────────────────┘
+
+1. ✓ [a3c6dbc] feat(ux): improvements in usability and responsiveness
+2. ✓ [97c2e52] chore: removing unnecessary comments
+3. ✗ [2812ed3] update bump version workflow
+4. ✓ [fa6a6df] feat: adding improvements
+5. ✓ [a5309a3] chore: add CODE_IMPROVEMENTS.md
+┌──────────────────────┐
+│ Summary              │
+└──────────────────────┘
+
+Total commits analyzed: 5
+Valid commits: 4 (80%)
+Invalid commits: 1 (20%)
+How to fix invalid commits:
+  • Use 'ccg --edit' to edit a specific commit message
+  • You can select commits by number or hash prefix
+  • Example: 'ccg --edit' then select the commit to fix
+⚠ Tip: Run 'ccg --edit' now to fix invalid commits
+```
+
+**Use Cases**:
+
+- Audit repository for Conventional Commits compliance
+- Identify commits that need fixing before a release
+- Validate commit history after team adoption of conventional commits
+- Check compliance across all branches
+- Find and fix non-compliant commits systematically
+
+**Combined with Other Flags**:
+
+```bash
+# Analyze commits in different repository
+ccg --path /path/to/repo --analyze
+
+# Analyze with verbose logging
+ccg --verbose --analyze
+ccg -v --analyze
+```
+
+!!! tip "Best Practice"
+
+    Use `--analyze` regularly to:
+
+    - Maintain consistent commit history
+    - Enforce team conventions
+    - Prepare for releases with clean commit messages
+    - Identify which commits need editing (use the number shown)
+
+---
+
 ### `--path`: Work with Specific Paths
 
 Specify files, directories, or repository paths:
@@ -243,6 +331,66 @@ ccg --path /path/to/repo --tag
 - Paths must exist
 - Paths must be within a git repository
 - Invalid paths show helpful error messages
+
+---
+
+### `--verbose`: Enable Debug Logging
+
+Enable verbose logging for debugging and troubleshooting:
+
+```bash
+ccg --verbose
+ccg -v
+```
+
+**Features**:
+
+- Logs all operations to `~/.ccg/ccg.log` (always enabled)
+- Shows debug output in console when `--verbose` is used
+- Logs include timestamps, module names, function names, and line numbers
+- Rotating log files (10MB max, keeps 5 backups)
+
+**Use Cases**:
+
+- Debugging issues with git commands
+- Troubleshooting authentication problems
+- Understanding what CCG is doing behind the scenes
+- Reporting bugs with detailed logs
+
+**Combined with Other Flags**:
+
+```bash
+# Debug push issues
+ccg --verbose --push
+
+# Debug commit editing
+ccg -v --edit
+
+# Debug with specific paths
+ccg --verbose --path /path/to/repo
+```
+
+**Log Format**:
+
+```
+2025-10-13 23:58:34 - ccg.cli - INFO - main:123 - CCG started (version 2.2.8)
+2025-10-13 23:58:35 - ccg.git - DEBUG - run_git_command:145 - Executing git command: git status
+2025-10-13 23:58:35 - ccg.git - INFO - git_commit:289 - Creating commit with message: feat: add...
+```
+
+**Log Location**:
+
+- **Linux/Mac**: `~/.ccg/ccg.log`
+- **Windows**: `%USERPROFILE%\.ccg\ccg.log`
+
+!!! tip "When to Use Verbose Mode"
+
+    Use `--verbose` when:
+
+    - Reporting bugs or issues
+    - Troubleshooting git authentication
+    - Understanding unexpected behavior
+    - Debugging pre-commit hooks
 
 ---
 

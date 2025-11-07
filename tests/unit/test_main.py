@@ -22,7 +22,9 @@ class TestMainEntry:
 
     @patch.object(sys, "exit")
     @patch("ccg.cli.main")
-    def test_main_exits_with_return_code(self, mock_cli_main: Mock, mock_exit: Mock) -> None:
+    def test_main_exits_with_return_code(
+        self, mock_cli_main: Mock, mock_exit: Mock
+    ) -> None:
         """Should exit with the return code from cli.main()."""
         mock_cli_main.return_value = 42
 
@@ -64,7 +66,10 @@ class TestMainImport:
 
         # Run Python with -m ccg to trigger __main__.py
         result = subprocess.run(
-            [sys.executable, "-m", "ccg", "--help"], capture_output=True, text=True, timeout=5
+            [sys.executable, "-m", "ccg", "--help"],
+            capture_output=True,
+            text=True,
+            timeout=5,
         )
 
         # The command should execute successfully (exit code 0 for --help)

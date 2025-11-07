@@ -154,6 +154,8 @@ cython_debug/
 #Claude
 .claude
 CLAUDE.md
+CODE_IMPROVEMENTS.md
+CODE_ANALYSIS.md
 
 #Gemini
 .gemini

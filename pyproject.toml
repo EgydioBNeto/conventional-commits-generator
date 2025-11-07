@@ -30,26 +30,32 @@ classifiers = [
     "Topic :: Utilities",
 ]
 dependencies = [
-    "prompt_toolkit >= 3.0.20"
+    "prompt_toolkit >= 3.0.52"
 ]
 
 [project.optional-dependencies]
 dev = [
-    "pre-commit >= 3.5.0",
-    "tox >= 4.0.0"
+    "pre-commit >= 4.3.0",
+    "tox >= 4.31.0"
 ]
 test = [
-    "pytest >= 7.4.0",
-    "pytest-cov >= 4.1.0",
-    "pytest-mock >= 3.11.0",
-    "hypothesis >= 6.82.0"
+    "pytest >= 8.4.2",
+    "pytest-cov >= 7.0.0",
+    "pytest-mock >= 3.15.1",
+    "hypothesis >= 6.142.2"
 ]
 docs = [
-    "mkdocs >= 1.5.0",
-    "mkdocs-material >= 9.5.0",
-    "mkdocs-git-revision-date-localized-plugin >= 1.2.0",
-    "mkdocs-minify-plugin >= 0.7.0",
-    "pymdown-extensions >= 10.0"
+    "mkdocs >= 1.6.1",
+    "mkdocs-material >= 9.6.22",
+    "mkdocs-git-revision-date-localized-plugin >= 1.4.7",
+    "mkdocs-minify-plugin >= 0.8.0",
+    "pymdown-extensions >= 10.16.1"
+]
+quality = [
+    "radon >= 6.0.1",
+    "vulture >= 2.14",
+    "bandit[toml] >= 1.8.6",
+    "pylint >= 3.0.0"
 ]
 
 [project.urls]
@@ -66,3 +72,31 @@ packages = ["src/ccg"]
 
 [tool.hatch.version]
 path = "src/ccg/__init__.py"
+
+[tool.bandit]
+exclude_dirs = ["tests", ".tox", ".venv", "build"]
+skips = [
+    "B101",  # Skip assert_used (needed for tests)
+    "B404",  # Skip subprocess import warning (required for git operations)
+    "B607",  # Skip partial path executable warning (git/pre-commit in PATH is standard)
+]
+
+[tool.pylint.main]
+fail-under = 100
+ignore = ["tests"]
+jobs = 0  # Auto-detect CPU cores
+
+[tool.pylint.messages_control]
+disable = [
+    "C0111",  # missing-docstring (we use Google-style via separate checks)
+    "R0903",  # too-few-public-methods
+    "W0511",  # fixme
+]
+
+[tool.pylint.format]
+max-line-length = 88
+
+[tool.pylint.design]
+max-args = 7
+max-attributes = 10
+max-locals = 15

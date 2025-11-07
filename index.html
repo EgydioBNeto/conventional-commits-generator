@@ -863,6 +863,11 @@
                         <p>Edit or delete existing commits with interactive selection and safety checks.</p>
                     </div>
                     <div class="card animate-fadeInUp">
+                        <div class="feature-icon">🔍</div>
+                        <h3 class="feature-title">Commit Analysis</h3>
+                        <p>Analyze commits for Conventional Commits compliance with color-coded validation results.</p>
+                    </div>
+                    <div class="card animate-fadeInUp">
                         <div class="feature-icon">🏷️</div>
                         <h3 class="feature-title">Tag Creation</h3>
                         <p>Create and push annotated or lightweight tags directly from the CLI.</p>
@@ -1063,6 +1068,14 @@ Do you want to push these changes? (Y/n): <span style="color: hsl(var(--primary)
                             <button class="copy-button" onclick="copyCode(this, 'ccg --reset')">📋 Copy</button>
                         </div>
                         <p style="margin-top: 1rem;">Discard local changes and pull from remote</p>
+                    </div>
+                    <div class="card animate-fadeInUp">
+                        <h3 class="feature-title">🔍 Analyze Commits</h3>
+                        <div class="code-block">
+                            ccg --analyze
+                            <button class="copy-button" onclick="copyCode(this, 'ccg --analyze')">📋 Copy</button>
+                        </div>
+                        <p style="margin-top: 1rem;">Check commits for Conventional Commits compliance</p>
                     </div>
                     <div class="card animate-fadeInUp">
                         <h3 class="feature-title">📁 Specific Paths</h3>

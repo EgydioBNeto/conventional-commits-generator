@@ -27,19 +27,19 @@ log() {
 
     case $level in
         "INFO")
-            echo -e "${BLUE}[${timestamp}] ℹ️  ${message}${NC}"
+            echo -e "${BLUE}[${timestamp}] [INFO] ${message}${NC}"
             ;;
         "SUCCESS")
-            echo -e "${GREEN}[${timestamp}] ✅ ${message}${NC}"
+            echo -e "${GREEN}[${timestamp}] [OK] ${message}${NC}"
             ;;
         "WARNING")
-            echo -e "${YELLOW}[${timestamp}] ⚠️  ${message}${NC}"
+            echo -e "${YELLOW}[${timestamp}] [WARNING] ${message}${NC}"
             ;;
         "ERROR")
-            echo -e "${RED}[${timestamp}] ❌ ${message}${NC}"
+            echo -e "${RED}[${timestamp}] [ERROR] ${message}${NC}"
             ;;
         "STEP")
-            echo -e "${PURPLE}[${timestamp}] 🔄 ${message}${NC}"
+            echo -e "${PURPLE}[${timestamp}] [STEP] ${message}${NC}"
             ;;
     esac
 }
@@ -68,7 +68,7 @@ show_progress() {
     local exit_code=$?
 
     if [[ $exit_code -eq 1 ]]; then
-        printf "\r   ❌ Error!           \n"
+        printf "\r   [ERROR] Failed!           \n"
         return $exit_code
     fi
 }
@@ -76,7 +76,7 @@ show_progress() {
 # Help function
 show_help() {
     cat << EOF
-🔧 Conventional Commits Generator - Setup Script
+Conventional Commits Generator - Setup Script
 
 USAGE:
     $0 [OPTIONS]
@@ -122,7 +122,7 @@ cat << 'EOF'
    \ \_______\   \ \_______\   \ \_______\
     \|_______|    \|_______|    \|_______|
 
-🚀 Setting up development environment...
+Setting up development environment...
 
 EOF
 
@@ -199,10 +199,10 @@ echo
 log "SUCCESS" "Setup completed!"
 echo
 echo -e "${GREEN}═══════════════════════════════════════════════════════════════${NC}"
-echo -e "${GREEN}🎉 ENVIRONMENT SUCCESSFULLY CONFIGURED!${NC}"
+echo -e "${GREEN}ENVIRONMENT SUCCESSFULLY CONFIGURED!${NC}"
 echo -e "${GREEN}═══════════════════════════════════════════════════════════════${NC}"
 echo
-echo -e "${YELLOW}📋 NEXT STEPS:${NC}"
+echo -e "${YELLOW}NEXT STEPS:${NC}"
 echo
 echo -e "${CYAN}1. Activate the virtual environment:${NC}"
 echo -e "   ${BLUE}source $VENV_DIR/bin/activate${NC}"

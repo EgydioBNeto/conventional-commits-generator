@@ -151,9 +151,18 @@ pytest
 
 # Test specific version
 ./scripts/tox-mise.sh -e py312
+```
 
-# Test in parallel (faster)
-./scripts/tox-mise.sh -p auto
+### 5. Run Code Quality Checks
+
+Before submitting a PR, run quality checks:
+
+```bash
+# Run all quality checks at once
+./scripts/tox-mise.sh -e quality
+
+# List all available environments
+./scripts/tox-mise.sh --list
 ```
 
 ## Testing
@@ -171,9 +180,6 @@ Use our `tox-mise.sh` script for easy multi-version testing:
 # Test specific version
 ./scripts/tox-mise.sh -e py39
 ./scripts/tox-mise.sh -e py312
-
-# Test in parallel (faster)
-./scripts/tox-mise.sh -p auto
 
 # Run type checking
 ./scripts/tox-mise.sh -e mypy
@@ -223,7 +229,7 @@ tox -e mypy
 
 - **Type Hints**: Required for all function signatures
 - **Docstrings**: [Google Style](https://google.github.io/styleguide/pyguide.html#38-comments-and-docstrings) for all public functions and classes
-- **Line Length**: Maximum 100 characters
+- **Line Length**: Maximum 88 characters (Black's default)
 - **String Formatting**: Use f-strings
 - **Imports**: Organized by standard library, third-party, local
 - **Naming**:

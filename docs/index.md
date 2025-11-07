@@ -29,11 +29,15 @@
 
 - **Advanced Git Operations** - Edit, delete, and manage commits with intelligent history rewriting and safety checks
 
+- **Commit Analysis** - Analyze all commits in your repository to check Conventional Commits compliance with color-coded validation results
+
 - **Tag Management** - Create and push semantic version tags with annotated messages
 
 - **Flexible Workflows** - Work with specific paths, multiple repositories, and various git workflows seamlessly
 
 - **Pre-commit Integration** - Automatic detection and execution of pre-commit hooks for code quality assurance
+
+- **Debug Logging** - Comprehensive logging system with verbose mode for troubleshooting and debugging
 
 ---
 

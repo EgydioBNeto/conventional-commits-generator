@@ -22,7 +22,10 @@ def get_repository_name() -> str:
 
     try:
         result = subprocess.run(
-            ["git", "remote", "get-url", "origin"], capture_output=True, text=True, check=True
+            ["git", "remote", "get-url", "origin"],
+            capture_output=True,
+            text=True,
+            check=True,
         )
         remote_url = result.stdout.strip()
 
@@ -243,7 +246,9 @@ ccg
 
         changelog_content = changelog_file.read_text()
 
-        current_changelog = extract_current_version_changelog(changelog_content, current_version)
+        current_changelog = extract_current_version_changelog(
+            changelog_content, current_version
+        )
 
         print(current_changelog)
 

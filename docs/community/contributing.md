@@ -80,9 +80,6 @@ pytest
 
 # Test specific version
 ./scripts/tox-mise.sh -e py312
-
-# Test in parallel (faster)
-./scripts/tox-mise.sh -p auto
 ```
 
 ### 3. Create Commit
@@ -112,7 +109,7 @@ ccg
 
 - **Type Hints**: Required for all functions
 - **Docstrings**: [Google Style](https://google.github.io/styleguide/pyguide.html#38-comments-and-docstrings) for public functions
-- **Line Length**: Maximum 100 characters
+- **Line Length**: Maximum 88 characters (Black's default)
 - **Formatting**: Use f-strings for string formatting
 - **Coverage**: 100% test coverage required
 

@@ -1,5 +1,7 @@
 """Unit tests for core.py module - Property-Based Testing with Hypothesis."""
 
+from unittest.mock import Mock, patch
+
 from hypothesis import example, given
 from hypothesis import strategies as st
 
@@ -56,7 +58,9 @@ class TestValidateCommitMessage:
     @example("feat", "api")
     def test_valid_commit_with_scope(self, commit_type: str, scope: str) -> None:
         """Should accept commits with scope."""
-        is_valid, error = validate_commit_message(f"{commit_type}({scope}): resolve bug")
+        is_valid, error = validate_commit_message(
+            f"{commit_type}({scope}): resolve bug"
+        )
         assert is_valid is True
         assert error is None
 
@@ -70,9 +74,13 @@ class TestValidateCommitMessage:
 
     @given(valid_commit_types, valid_scopes)
     @example("feat", "api")
-    def test_valid_breaking_change_with_scope(self, commit_type: str, scope: str) -> None:
+    def test_valid_breaking_change_with_scope(
+        self, commit_type: str, scope: str
+    ) -> None:
         """Should accept breaking changes with scope."""
-        is_valid, error = validate_commit_message(f"{commit_type}({scope})!: breaking change")
+        is_valid, error = validate_commit_message(
+            f"{commit_type}({scope})!: breaking change"
+        )
         assert is_valid is True
         assert error is None
 
@@ -87,9 +95,13 @@ class TestValidateCommitMessage:
 
     @given(emoji_codes, valid_commit_types, valid_scopes)
     @example(":bug:", "fix", "auth")
-    def test_valid_with_emoji_and_scope(self, emoji: str, commit_type: str, scope: str) -> None:
+    def test_valid_with_emoji_and_scope(
+        self, emoji: str, commit_type: str, scope: str
+    ) -> None:
         """Should accept emoji with scope."""
-        is_valid, error = validate_commit_message(f"{emoji} {commit_type}({scope}): resolve bug")
+        is_valid, error = validate_commit_message(
+            f"{emoji} {commit_type}({scope}): resolve bug"
+        )
         assert is_valid is True
         assert error is None
 
@@ -232,6 +244,80 @@ class TestInteractiveFunctions:
 
             # Should show visual emoji, not code
             assert "✨" in captured.out
+
+    @patch("ccg.core.get_staged_file_changes")
+    def test_confirm_commit_shows_file_changes(
+        self, mock_get_staged: Mock, capsys
+    ) -> None:
+        """Should display staged file changes in separate section before review."""
+        import re
+        from unittest.mock import patch
+
+        from ccg.core import confirm_commit
+
+        mock_get_staged.return_value = [
+            ("A", "new_file.txt"),
+            ("M", "modified_file.py"),
+            ("D", "deleted_file.js"),
+            ("U", "unknown_status_file.txt"),
+        ]
+
+        with patch("ccg.core.confirm_user_action", return_value=True):
+            confirm_commit("feat: test", show_file_changes=True)
+            captured = capsys.readouterr()
+
+            output = re.sub(r"\x1b\[[0-9;]*m", "", captured.out)
+
+            # Check that File Changes section exists
+            assert "File Changes" in output
+            assert "Added: new_file.txt" in output
+            assert "Modified: modified_file.py" in output
+            assert "Deleted: deleted_file.js" in output
+            assert "U: unknown_status_file.txt" in output
+
+            # Check that Review section comes after File Changes
+            file_changes_pos = output.find("File Changes")
+            review_pos = output.find("Review")
+            assert (
+                file_changes_pos < review_pos
+            ), "File Changes should come before Review"
+
+    @patch("ccg.core.get_staged_file_changes")
+    def test_confirm_commit_shows_no_file_changes_message(
+        self, mock_get_staged: Mock, capsys
+    ) -> None:
+        """Should display message when no staged file changes and show_file_changes is True."""
+        from unittest.mock import patch
+
+        from ccg.core import confirm_commit
+
+        mock_get_staged.return_value = []
+
+        with patch("ccg.core.confirm_user_action", return_value=True):
+            confirm_commit("feat: test", show_file_changes=True)
+            captured = capsys.readouterr()
+
+            assert "No staged file changes to display." in captured.out
+
+    @patch("ccg.core.get_staged_file_changes")
+    def test_confirm_commit_does_not_show_file_changes_by_default(
+        self, mock_get_staged: Mock, capsys
+    ) -> None:
+        """Should not display staged file changes when show_file_changes is False."""
+        from unittest.mock import patch
+
+        from ccg.core import confirm_commit
+
+        mock_get_staged.return_value = [
+            ("A", "new_file.txt"),
+        ]
+
+        with patch("ccg.core.confirm_user_action", return_value=True):
+            confirm_commit("feat: test")
+            captured = capsys.readouterr()
+
+            assert "File Changes:" not in captured.out
+            mock_get_staged.assert_not_called()
 
     def test_confirm_push_displays_info(self, capsys) -> None:
         """Should display push information."""
@@ -559,7 +645,9 @@ class TestValidateCommitMessageEdgeCases:
 
     def test_validate_emoji_with_scope_and_breaking(self) -> None:
         """Should accept emoji with scope and breaking change."""
-        is_valid, error = validate_commit_message(":sparkles: feat(api)!: breaking change")
+        is_valid, error = validate_commit_message(
+            ":sparkles: feat(api)!: breaking change"
+        )
         assert is_valid is True
 
     def test_validate_message_description_only_tab(self) -> None:
@@ -571,3 +659,177 @@ class TestValidateCommitMessageEdgeCases:
         """Should strip emoji code from beginning before validation."""
         is_valid, error = validate_commit_message(":sparkles: feat: add new feature")
         assert is_valid is True
+
+
+class TestPrecompiledRegexPatterns:
+    """Tests for pre-compiled regex patterns optimization (Improvement 7)."""
+
+    def test_commit_message_pattern_exists(self) -> None:
+        """Should have pre-compiled commit message pattern constant."""
+        from ccg.core import _COMMIT_MESSAGE_PATTERN
+
+        assert _COMMIT_MESSAGE_PATTERN is not None
+        # Should be a compiled regex pattern object
+        assert hasattr(_COMMIT_MESSAGE_PATTERN, "match")
+        assert hasattr(_COMMIT_MESSAGE_PATTERN, "pattern")
+
+    def test_emoji_code_pattern_exists(self) -> None:
+        """Should have pre-compiled emoji code pattern constant."""
+        from ccg.core import _EMOJI_CODE_PATTERN
+
+        assert _EMOJI_CODE_PATTERN is not None
+        # Should be a compiled regex pattern object
+        assert hasattr(_EMOJI_CODE_PATTERN, "match")
+        assert hasattr(_EMOJI_CODE_PATTERN, "sub")
+        assert hasattr(_EMOJI_CODE_PATTERN, "pattern")
+
+    def test_commit_message_pattern_matches_valid_commits(self) -> None:
+        """Should correctly match valid commit formats."""
+        from ccg.core import _COMMIT_MESSAGE_PATTERN
+
+        # Test various valid formats
+        test_cases = [
+            "feat: add feature",
+            "fix: resolve bug",
+            "feat(auth): add login",
+            "fix(api): correct endpoint",
+            "feat!: breaking change",
+            "fix(scope)!: breaking fix",
+        ]
+
+        for test_case in test_cases:
+            match = _COMMIT_MESSAGE_PATTERN.match(test_case)
+            assert match is not None, f"Pattern should match: {test_case}"
+
+    def test_commit_message_pattern_groups(self) -> None:
+        """Should extract correct groups from commit message."""
+        from ccg.core import _COMMIT_MESSAGE_PATTERN
+
+        # Test without scope or breaking change
+        match = _COMMIT_MESSAGE_PATTERN.match("feat: add feature")
+        assert match is not None
+        assert match.group(1) == "feat"  # type
+        assert match.group(2) is None  # scope (optional)
+        assert match.group(3) == ""  # breaking indicator
+        assert match.group(4) == "add feature"  # description
+
+        # Test with scope
+        match = _COMMIT_MESSAGE_PATTERN.match("fix(auth): resolve bug")
+        assert match is not None
+        assert match.group(1) == "fix"  # type
+        assert match.group(2) == "auth"  # scope
+        assert match.group(3) == ""  # breaking indicator
+        assert match.group(4) == "resolve bug"  # description
+
+        # Test with breaking change
+        match = _COMMIT_MESSAGE_PATTERN.match("feat!: breaking change")
+        assert match is not None
+        assert match.group(1) == "feat"  # type
+        assert match.group(2) is None  # scope
+        assert match.group(3) == "!"  # breaking indicator
+        assert match.group(4) == "breaking change"  # description
+
+        # Test with scope and breaking change
+        match = _COMMIT_MESSAGE_PATTERN.match("feat(api)!: breaking change")
+        assert match is not None
+        assert match.group(1) == "feat"  # type
+        assert match.group(2) == "api"  # scope
+        assert match.group(3) == "!"  # breaking indicator
+        assert match.group(4) == "breaking change"  # description
+
+    def test_commit_message_pattern_rejects_invalid(self) -> None:
+        """Should not match invalid commit formats."""
+        from ccg.core import _COMMIT_MESSAGE_PATTERN
+
+        # Test various invalid formats
+        invalid_cases = [
+            "no colon here",
+            "feat add feature",
+            "feat(scope",  # unclosed scope
+            "feat)",  # no opening scope
+            "",
+            ":",
+        ]
+
+        for test_case in invalid_cases:
+            match = _COMMIT_MESSAGE_PATTERN.match(test_case)
+            assert match is None, f"Pattern should NOT match: {test_case}"
+
+    def test_emoji_code_pattern_removes_emoji_codes(self) -> None:
+        """Should correctly remove emoji codes from beginning."""
+        from ccg.core import _EMOJI_CODE_PATTERN
+
+        test_cases = [
+            (":sparkles: feat: add feature", "feat: add feature"),
+            (":bug: fix: resolve bug", "fix: resolve bug"),
+            (":wrench: chore: update config", "chore: update config"),
+            (":test_tube: test: add tests", "test: add tests"),
+        ]
+
+        for input_text, expected_output in test_cases:
+            result = _EMOJI_CODE_PATTERN.sub("", input_text).strip()
+            assert (
+                result == expected_output
+            ), f"Expected '{expected_output}', got '{result}'"
+
+    def test_emoji_code_pattern_handles_no_emoji(self) -> None:
+        """Should not modify text without emoji codes."""
+        from ccg.core import _EMOJI_CODE_PATTERN
+
+        test_cases = [
+            "feat: add feature",
+            "fix: resolve bug",
+            "regular text",
+            "text with : colon but not emoji",
+        ]
+
+        for test_case in test_cases:
+            result = _EMOJI_CODE_PATTERN.sub("", test_case).strip()
+            # Should be the same or very close (whitespace)
+            assert result == test_case or result == test_case.strip()
+
+    def test_validate_commit_message_uses_precompiled_patterns(self) -> None:
+        """Should use pre-compiled patterns for validation (no re-compilation)."""
+        import re
+        from unittest.mock import patch
+
+        # Mock re.compile to ensure it's not called during validation
+        with patch("re.compile") as mock_compile:
+            # Call validate_commit_message multiple times
+            validate_commit_message("feat: test 1")
+            validate_commit_message("fix: test 2")
+            validate_commit_message(":sparkles: feat: test 3")
+
+            # re.compile should NOT be called during validation
+            # (patterns are already compiled at module level)
+            mock_compile.assert_not_called()
+
+    def test_pattern_performance_vs_runtime_compilation(self) -> None:
+        """Should be faster than runtime regex compilation."""
+        import re
+        import time
+
+        from ccg.core import _COMMIT_MESSAGE_PATTERN
+
+        test_message = "feat(auth): add login functionality"
+        iterations = 1000
+
+        # Test with pre-compiled pattern
+        start = time.perf_counter()
+        for _ in range(iterations):
+            _COMMIT_MESSAGE_PATTERN.match(test_message)
+        precompiled_time = time.perf_counter() - start
+
+        # Test with runtime compilation
+        start = time.perf_counter()
+        for _ in range(iterations):
+            pattern = re.compile(r"^(\w+)(?:\(([^)]+)\))?(!?): (.*)$")
+            pattern.match(test_message)
+        runtime_time = time.perf_counter() - start
+
+        # Pre-compiled should be significantly faster
+        # Allow some tolerance for system variability
+        assert precompiled_time < runtime_time, (
+            f"Pre-compiled ({precompiled_time:.4f}s) should be faster than "
+            f"runtime compilation ({runtime_time:.4f}s)"
+        )
